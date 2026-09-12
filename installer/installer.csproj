@@ -7,7 +7,7 @@
     <ProjectGuid>{6D83A6D8-B42C-4F66-B063-F6D42779855A}</ProjectGuid>
     <OutputType>WinExe</OutputType>
     <RootNamespace>WechatDuokai.Installer</RootNamespace>
-    <AssemblyName>wechat_duokai-setup-v1.0.0</AssemblyName>
+    <AssemblyName>wechat_duokai-setup-v1.0.1</AssemblyName>
     <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
@@ -44,6 +44,9 @@
     <Compile Include="InstallerEngine.cs" />
     <Compile Include="InstallForm.cs" />
     <Compile Include="UninstallForm.cs" />
+    <Compile Include="..\shared\PremiumControls.cs">
+      <Link>UI\PremiumControls.cs</Link>
+    </Compile>
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

@@ -5,15 +5,20 @@ using System.IO;
 using System.Threading;
 using System.Windows.Forms;
 using shuangkai.Core;
+using WechatDuokai.UI;
 
 namespace shuangkai
 {
-    public partial class Home : Form
+    public partial class Home : PremiumForm
     {
+        private const int MinimumTargetCount = 1;
+        private const int MaximumTargetCount = 10;
+
         private readonly InstanceManager _instanceManager = new InstanceManager();
         private AppDefinition _wechat;
         private AppDefinition _wecom;
         private bool _launchInProgress;
+        private bool _updatingTargetCount;
 
         public Home()
         {
@@ -22,9 +27,9 @@ namespace shuangkai
 
         private void Home_Load(object sender, EventArgs e)
         {
-            var cachedCount = Math.Max((int)targetCountInput.Minimum,
-                Math.Min((int)targetCountInput.Maximum, UserPreferences.LoadTargetCount()));
-            targetCountInput.Value = cachedCount;
+            var cachedCount = Math.Max(MinimumTargetCount,
+                Math.Min(MaximumTargetCount, UserPreferences.LoadTargetCount()));
+            SetTargetCount(cachedCount, false);
 
             ReloadApplications();
             RefreshInstanceStatus();
@@ -59,9 +64,53 @@ namespace shuangkai
             }
         }
 
-        private void targetCountInput_ValueChanged(object sender, EventArgs e)
+        private void targetCountInput_TextChanged(object sender, EventArgs e)
         {
-            TrySaveSettings((int)targetCountInput.Value);
+            if (_updatingTargetCount)
+            {
+                return;
+            }
+
+            int targetCount;
+            if (TryGetTargetCount(out targetCount))
+            {
+                targetCountInput.ForeColor = UiPalette.Ivory;
+                TrySaveSettings(targetCount);
+            }
+            else
+            {
+                targetCountInput.ForeColor = UiPalette.Warning;
+            }
+        }
+
+        private void targetCountInput_KeyPress(object sender, KeyPressEventArgs e)
+        {
+            if (!char.IsControl(e.KeyChar) && !char.IsDigit(e.KeyChar))
+            {
+                e.Handled = true;
+            }
+
+            if (e.KeyChar == (char)Keys.Enter)
+            {
+                e.Handled = true;
+                NormalizeTargetCount();
+                SelectNextControl(targetCountInput, true, true, true, true);
+            }
+        }
+
+        private void targetCountInput_Leave(object sender, EventArgs e)
+        {
+            NormalizeTargetCount();
+        }
+
+        private void decreaseButton_Click(object sender, EventArgs e)
+        {
+            SetTargetCount(Math.Max(MinimumTargetCount, GetTargetCount() - 1), true);
+        }
+
+        private void increaseButton_Click(object sender, EventArgs e)
+        {
+            SetTargetCount(Math.Min(MaximumTargetCount, GetTargetCount() + 1), true);
         }
 
         private void wechatStartButton_Click(object sender, EventArgs e)
@@ -100,31 +149,31 @@ namespace shuangkai
 
             _launchInProgress = true;
             SetActionsEnabled(false);
-            targetCountInput.Enabled = false;
+            SetTargetControlsEnabled(false);
             statusTimer.Stop();
 
             try
             {
-                var targetCount = (int)targetCountInput.Value;
+                var targetCount = GetTargetCount();
                 TrySaveSettings(targetCount);
 
                 var result = await _instanceManager.EnsureTargetCountAsync(
                     application,
                     targetCount,
-                    message => BeginInvoke(new Action(() => SetStatus(message, Color.FromArgb(44, 91, 160)))),
+                    message => BeginInvoke(new Action(() => SetStatus(message, UiPalette.Blue))),
                     CancellationToken.None);
 
-                SetStatus(result.Message, result.Success ? Color.FromArgb(31, 122, 70) : Color.FromArgb(184, 92, 20));
+                SetStatus(result.Message, result.Success ? UiPalette.Green : UiPalette.Warning);
             }
             catch (Exception ex)
             {
-                SetStatus("启动失败：" + ex.Message, Color.FromArgb(190, 50, 50));
+                SetStatus("启动失败：" + ex.Message, UiPalette.Danger);
                 MessageBox.Show(ex.Message, "启动失败", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
             finally
             {
                 _launchInProgress = false;
-                targetCountInput.Enabled = true;
+                SetTargetControlsEnabled(true);
                 SetActionsEnabled(true);
                 RefreshInstanceStatus();
                 statusTimer.Start();
@@ -150,15 +199,15 @@ namespace shuangkai
             if (application == null || !application.IsAvailable)
             {
                 countLabel.Text = "不可用";
-                countLabel.ForeColor = Color.FromArgb(135, 142, 150);
+                countLabel.ForeColor = UiPalette.MutedDark;
                 return;
             }
 
             var count = _instanceManager.GetInstanceCount(application);
             countLabel.Text = count == 0 ? "当前未运行" : $"当前运行 {count} 个实例";
             countLabel.ForeColor = count == 0
-                ? Color.FromArgb(105, 113, 122)
-                : Color.FromArgb(31, 122, 70);
+                ? UiPalette.Muted
+                : UiPalette.Green;
         }
 
         private void SetActionsEnabled(bool enabled)
@@ -173,20 +222,79 @@ namespace shuangkai
         {
             statusLabel.Text = message;
             statusLabel.ForeColor = color;
+            statusDotLabel.ForeColor = color;
         }
 
         private void sourceLink_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
         {
             Process.Start(new ProcessStartInfo
             {
-                FileName = "https://github.com/CN-Root/wechat-wecom-duokai",
+                FileName = "https://github.com/PascalePaF/wechat-wecom-duokai",
                 UseShellExecute = true
             });
         }
 
+        private void minimizeButton_Click(object sender, EventArgs e)
+        {
+            WindowState = FormWindowState.Minimized;
+        }
+
+        private void closeButton_Click(object sender, EventArgs e)
+        {
+            Close();
+        }
+
         private void Home_FormClosing(object sender, FormClosingEventArgs e)
         {
-            TrySaveSettings((int)targetCountInput.Value);
+            TrySaveSettings(GetTargetCount());
+        }
+
+        private void SetTargetControlsEnabled(bool enabled)
+        {
+            targetCountInput.Enabled = enabled;
+            decreaseButton.Enabled = enabled;
+            increaseButton.Enabled = enabled;
+        }
+
+        private bool TryGetTargetCount(out int targetCount)
+        {
+            return int.TryParse(targetCountInput.Text, out targetCount) &&
+                   targetCount >= MinimumTargetCount &&
+                   targetCount <= MaximumTargetCount;
+        }
+
+        private int GetTargetCount()
+        {
+            int targetCount;
+            return TryGetTargetCount(out targetCount)
+                ? targetCount
+                : Math.Max(MinimumTargetCount,
+                    Math.Min(MaximumTargetCount, UserPreferences.LoadTargetCount()));
+        }
+
+        private void NormalizeTargetCount()
+        {
+            int parsed;
+            if (!int.TryParse(targetCountInput.Text, out parsed))
+            {
+                parsed = UserPreferences.LoadTargetCount();
+            }
+
+            SetTargetCount(Math.Max(MinimumTargetCount, Math.Min(MaximumTargetCount, parsed)), true);
+        }
+
+        private void SetTargetCount(int targetCount, bool save)
+        {
+            targetCount = Math.Max(MinimumTargetCount, Math.Min(MaximumTargetCount, targetCount));
+            _updatingTargetCount = true;
+            targetCountInput.Text = targetCount.ToString();
+            targetCountInput.ForeColor = UiPalette.Ivory;
+            _updatingTargetCount = false;
+
+            if (save)
+            {
+                TrySaveSettings(targetCount);
+            }
         }
 
         private static void TrySaveSettings(int targetCount)

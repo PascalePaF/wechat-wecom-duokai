@@ -64,6 +64,9 @@
     <Compile Include="Core\InstanceManager.cs" />
     <Compile Include="Core\UserPreferences.cs" />
     <Compile Include="Core\WindowsHandleUnlocker.cs" />
+    <Compile Include="..\shared\PremiumControls.cs">
+      <Link>UI\PremiumControls.cs</Link>
+    </Compile>
     <Compile Include="Properties\AssemblyInfo.cs" />
     <EmbeddedResource Include="Home.resx">
       <DependentUpon>Home.cs</DependentUpon>

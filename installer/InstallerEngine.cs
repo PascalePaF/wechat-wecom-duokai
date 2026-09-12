@@ -16,7 +16,7 @@ namespace WechatDuokai.Installer
     internal static class InstallerEngine
     {
         internal const string ProductName = "微信 · 企业微信多开助手";
-        internal const string Version = "1.0.0";
+        internal const string Version = "1.0.1";
         internal const string SourceMarkerName = ".wechat-duokai-source-root";
         internal const string SourceMarkerValue = "wechat-duokai-source-root:8f8b922d-244d-45c6-b7a8-a47ab3073f7d";
         internal const string ArtifactMarkerName = ".wechat-duokai-artifacts";
@@ -32,12 +32,14 @@ namespace WechatDuokai.Installer
 
         internal static string InstallerExecutablePath => typeof(InstallerEngine).Assembly.Location;
 
-        internal static string InstallDirectory => Path.Combine(
+        internal static string DefaultInstallDirectory => Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Programs", "WechatDuokai");
 
-        internal static string InstalledExecutable => Path.Combine(InstallDirectory, "wechat_duokai.exe");
+        internal static string InstallDirectory => DefaultInstallDirectory;
 
-        internal static string InstalledUninstaller => Path.Combine(InstallDirectory, "uninstall.exe");
+        internal static string InstalledExecutable => GetInstalledExecutable(DefaultInstallDirectory);
+
+        internal static string InstalledUninstaller => GetInstalledUninstaller(DefaultInstallDirectory);
 
         internal static string UserDataDirectory => Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "WechatDuokai");
@@ -49,27 +51,76 @@ namespace WechatDuokai.Installer
         internal static string DesktopShortcut => Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), "微信企业微信多开助手.lnk");
 
+        internal static string SuggestedInstallDirectory
+        {
+            get
+            {
+                try
+                {
+                    using (var key = Registry.CurrentUser.OpenSubKey(UninstallRegistryPath, false))
+                    {
+                        var registered = key?.GetValue("InstallLocation") as string;
+                        if (ValidateInstallDirectory(registered))
+                        {
+                            return Path.GetFullPath(registered);
+                        }
+                    }
+                }
+                catch (Exception)
+                {
+                    // The default remains available if registry data is missing or invalid.
+                }
+
+                return DefaultInstallDirectory;
+            }
+        }
+
+        internal static string GetInstalledExecutable(string installDirectory)
+        {
+            return Path.Combine(installDirectory, "wechat_duokai.exe");
+        }
+
+        internal static string GetInstalledUninstaller(string installDirectory)
+        {
+            return Path.Combine(installDirectory, "uninstall.exe");
+        }
+
         internal static InstallResult Install(bool createDesktopShortcut)
         {
-            Directory.CreateDirectory(InstallDirectory);
+            return Install(DefaultInstallDirectory, createDesktopShortcut);
+        }
 
-            ExtractResource("Payload.wechat_duokai.exe", InstalledExecutable);
-            ExtractResource("Payload.wechat_duokai.exe.config", InstalledExecutable + ".config");
-            ExtractResource("Payload.LICENSE.txt", Path.Combine(InstallDirectory, "LICENSE.txt"));
-            File.WriteAllText(Path.Combine(InstallDirectory, InstallMarkerName), InstallMarkerValue, Encoding.UTF8);
+        internal static InstallResult Install(string requestedInstallDirectory, bool createDesktopShortcut)
+        {
+            string validationError;
+            string installDirectory;
+            if (!TryNormalizeInstallTarget(requestedInstallDirectory, out installDirectory, out validationError))
+            {
+                throw new InvalidOperationException(validationError);
+            }
 
-            File.Copy(InstallerExecutablePath, InstalledUninstaller, true);
+            Directory.CreateDirectory(installDirectory);
+            File.WriteAllText(Path.Combine(installDirectory, InstallMarkerName), InstallMarkerValue, Encoding.UTF8);
+
+            var installedExecutable = GetInstalledExecutable(installDirectory);
+            var installedUninstaller = GetInstalledUninstaller(installDirectory);
+
+            ExtractResource("Payload.wechat_duokai.exe", installedExecutable);
+            ExtractResource("Payload.wechat_duokai.exe.config", installedExecutable + ".config");
+            ExtractResource("Payload.LICENSE.txt", Path.Combine(installDirectory, "LICENSE.txt"));
+
+            File.Copy(InstallerExecutablePath, installedUninstaller, true);
 
             Directory.CreateDirectory(StartMenuDirectory);
-            Shortcut.Create(Path.Combine(StartMenuDirectory, "微信企业微信多开助手.lnk"), InstalledExecutable, string.Empty,
-                InstallDirectory, InstalledExecutable, "启动微信 · 企业微信多开助手");
-            Shortcut.Create(Path.Combine(StartMenuDirectory, "完全卸载.lnk"), InstalledUninstaller, "/uninstall",
-                InstallDirectory, InstalledUninstaller, "卸载并清理微信 · 企业微信多开助手");
+            Shortcut.Create(Path.Combine(StartMenuDirectory, "微信企业微信多开助手.lnk"), installedExecutable, string.Empty,
+                installDirectory, installedExecutable, "启动微信 · 企业微信多开助手");
+            Shortcut.Create(Path.Combine(StartMenuDirectory, "完全卸载.lnk"), installedUninstaller, "/uninstall",
+                installDirectory, installedUninstaller, "卸载并清理微信 · 企业微信多开助手");
 
             if (createDesktopShortcut)
             {
-                Shortcut.Create(DesktopShortcut, InstalledExecutable, string.Empty,
-                    InstallDirectory, InstalledExecutable, "微信 · 企业微信多开助手");
+                Shortcut.Create(DesktopShortcut, installedExecutable, string.Empty,
+                    installDirectory, installedExecutable, "微信 · 企业微信多开助手");
             }
             else if (File.Exists(DesktopShortcut))
             {
@@ -85,9 +136,9 @@ namespace WechatDuokai.Installer
                 key?.SetValue("DisplayName", ProductName);
                 key?.SetValue("DisplayVersion", Version);
                 key?.SetValue("Publisher", "wechat_duokai contributors");
-                key?.SetValue("InstallLocation", InstallDirectory);
-                key?.SetValue("DisplayIcon", InstalledExecutable);
-                key?.SetValue("UninstallString", Quote(InstalledUninstaller) + " /uninstall");
+                key?.SetValue("InstallLocation", installDirectory);
+                key?.SetValue("DisplayIcon", installedExecutable);
+                key?.SetValue("UninstallString", Quote(installedUninstaller) + " /uninstall");
                 key?.SetValue("NoModify", 1, RegistryValueKind.DWord);
                 key?.SetValue("NoRepair", 1, RegistryValueKind.DWord);
                 key?.SetValue("EstimatedSize", 2048, RegistryValueKind.DWord);
@@ -98,7 +149,9 @@ namespace WechatDuokai.Installer
 
             return new InstallResult
             {
-                InstallDirectory = InstallDirectory,
+                InstallDirectory = installDirectory,
+                ExecutablePath = installedExecutable,
+                UninstallerPath = installedUninstaller,
                 SourceRoot = sourceRoot,
                 ArtifactRoot = artifactRoot
             };
@@ -109,13 +162,13 @@ namespace WechatDuokai.Installer
             string sourceRoot = null;
             string artifactRoot = null;
             string packageRoot = null;
-            string installDirectory = InstallDirectory;
+            string installDirectory = null;
 
             try
             {
                 using (var key = Registry.CurrentUser.OpenSubKey(UninstallRegistryPath, false))
                 {
-                    installDirectory = key?.GetValue("InstallLocation") as string ?? InstallDirectory;
+                    installDirectory = key?.GetValue("InstallLocation") as string;
                     sourceRoot = key?.GetValue("SourceRoot") as string;
                     artifactRoot = key?.GetValue("ArtifactRoot") as string;
                     packageRoot = key?.GetValue("PackageRoot") as string;
@@ -138,10 +191,19 @@ namespace WechatDuokai.Installer
                 packageRoot,
                 FindMarkedParent(InstallerExecutablePath, PortableMarkerName, PortableMarkerValue),
                 ValidatePortableRoot);
+            installDirectory = FirstValid(
+                installDirectory,
+                FindMarkedParent(InstallerExecutablePath, InstallMarkerName, InstallMarkerValue),
+                ValidateInstallDirectory);
+
+            if (installDirectory == null && ValidateInstallDirectory(DefaultInstallDirectory))
+            {
+                installDirectory = Path.GetFullPath(DefaultInstallDirectory);
+            }
 
             return new CleanupLocations
             {
-                InstallDirectory = ValidateInstallDirectory(installDirectory) ? Path.GetFullPath(installDirectory) : InstallDirectory,
+                InstallDirectory = installDirectory,
                 SourceRoot = sourceRoot,
                 ArtifactRoot = artifactRoot,
                 PackageRoot = packageRoot
@@ -191,21 +253,29 @@ namespace WechatDuokai.Installer
 
         internal static bool ValidateInstallDirectory(string path)
         {
-            if (string.IsNullOrWhiteSpace(path))
+            if (!ValidateMarkedDirectory(path, InstallMarkerName, InstallMarkerValue))
             {
                 return false;
             }
 
             try
             {
-                var expected = Path.GetFullPath(InstallDirectory).TrimEnd(Path.DirectorySeparatorChar);
-                var actual = Path.GetFullPath(path).TrimEnd(Path.DirectorySeparatorChar);
-                return string.Equals(expected, actual, StringComparison.OrdinalIgnoreCase);
+                var fullPath = Path.GetFullPath(path);
+                var attributes = new DirectoryInfo(fullPath).Attributes;
+                return (attributes & FileAttributes.ReparsePoint) == 0 &&
+                       (File.Exists(GetInstalledExecutable(fullPath)) ||
+                        File.Exists(GetInstalledUninstaller(fullPath)));
             }
             catch (Exception)
             {
                 return false;
             }
+        }
+
+        internal static bool ValidateInstallTarget(string path, out string error)
+        {
+            string normalized;
+            return TryNormalizeInstallTarget(path, out normalized, out error);
         }
 
         internal static bool ValidateUserDataDirectory(string path)
@@ -261,7 +331,7 @@ namespace WechatDuokai.Installer
                 var directory = new DirectoryInfo(Path.GetFullPath(path));
                 return directory.Name.StartsWith("wechat_duokai-portable-", StringComparison.OrdinalIgnoreCase) &&
                        File.Exists(Path.Combine(directory.FullName, "wechat_duokai.exe")) &&
-                       File.Exists(Path.Combine(directory.FullName, "wechat_duokai-cleanup-v1.0.0.exe"));
+                       directory.EnumerateFiles("wechat_duokai-cleanup-v*.exe", SearchOption.TopDirectoryOnly).Any();
             }
             catch (Exception)
             {
@@ -340,6 +410,115 @@ namespace WechatDuokai.Installer
             }
 
             return validator(second) ? Path.GetFullPath(second) : null;
+        }
+
+        private static bool TryNormalizeInstallTarget(string path, out string normalizedPath, out string error)
+        {
+            normalizedPath = null;
+            error = null;
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                error = "请选择安装文件夹。";
+                return false;
+            }
+
+            try
+            {
+                normalizedPath = Path.GetFullPath(path.Trim()).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+                if (normalizedPath.Length > 210)
+                {
+                    error = "安装路径过长，请选择更短的文件夹。";
+                    return false;
+                }
+
+                var root = Path.GetPathRoot(normalizedPath)?.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+                if (string.Equals(normalizedPath, root, StringComparison.OrdinalIgnoreCase))
+                {
+                    error = "不能直接安装到磁盘根目录，请选择或新建一个专用文件夹。";
+                    return false;
+                }
+
+                var protectedLocations = new[]
+                {
+                    Environment.GetFolderPath(Environment.SpecialFolder.Windows),
+                    Environment.GetFolderPath(Environment.SpecialFolder.System),
+                    Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                    Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory),
+                    Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData)
+                };
+                var matchesProtectedLocation = false;
+                foreach (var protectedLocation in protectedLocations)
+                {
+                    if (PathsEqual(normalizedPath, protectedLocation))
+                    {
+                        matchesProtectedLocation = true;
+                        break;
+                    }
+                }
+                if (matchesProtectedLocation)
+                {
+                    error = "该位置是 Windows 或个人资料的关键目录，请选择其中的专用子文件夹。";
+                    return false;
+                }
+
+                if (Directory.Exists(normalizedPath))
+                {
+                    var attributes = new DirectoryInfo(normalizedPath).Attributes;
+                    if ((attributes & FileAttributes.ReparsePoint) != 0)
+                    {
+                        error = "为避免卸载时跨目录删除，不能安装到链接或联接目录。";
+                        return false;
+                    }
+
+                    if (ValidateSourceRoot(normalizedPath) ||
+                        ValidateArtifactRoot(normalizedPath) ||
+                        ValidatePortableRoot(normalizedPath))
+                    {
+                        error = "不能把程序安装到源码或发布包目录，请另选专用文件夹。";
+                        return false;
+                    }
+
+                    var hasEntries = Directory.EnumerateFileSystemEntries(normalizedPath).Any();
+                    var isExistingInstallation = ValidateInstallDirectory(normalizedPath);
+                    if (hasEntries && !isExistingInstallation)
+                    {
+                        error = "所选文件夹不是空文件夹。请新建一个专用文件夹，避免覆盖或卸载其他文件。";
+                        return false;
+                    }
+                }
+
+                return true;
+            }
+            catch (Exception ex) when (ex is ArgumentException || ex is NotSupportedException ||
+                                       ex is PathTooLongException || ex is IOException ||
+                                       ex is UnauthorizedAccessException)
+            {
+                error = "安装路径无效或无法访问：" + ex.Message;
+                normalizedPath = null;
+                return false;
+            }
+        }
+
+        private static bool PathsEqual(string left, string right)
+        {
+            if (string.IsNullOrWhiteSpace(left) || string.IsNullOrWhiteSpace(right))
+            {
+                return false;
+            }
+
+            try
+            {
+                return string.Equals(
+                    Path.GetFullPath(left).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar),
+                    Path.GetFullPath(right).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar),
+                    StringComparison.OrdinalIgnoreCase);
+            }
+            catch (Exception)
+            {
+                return false;
+            }
         }
 
         private static void ExtractResource(string resourceName, string targetPath)
@@ -721,6 +900,8 @@ namespace WechatDuokai.Installer
     internal sealed class InstallResult
     {
         public string InstallDirectory { get; set; }
+        public string ExecutablePath { get; set; }
+        public string UninstallerPath { get; set; }
         public string SourceRoot { get; set; }
         public string ArtifactRoot { get; set; }
     }

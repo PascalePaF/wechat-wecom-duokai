@@ -1,154 +1,150 @@
 using System;
 using System.Drawing;
-using System.IO;
 using System.Windows.Forms;
+using WechatDuokai.UI;
 
 namespace WechatDuokai.Installer
 {
-    internal sealed class UninstallForm : Form
+    internal sealed class UninstallForm : PremiumForm
     {
         private readonly CleanupLocations _locations;
         private readonly RadioButton _keepSourceOption;
         private readonly RadioButton _deleteSourceOption;
         private readonly CheckBox _confirmSourceDeletion;
-        private readonly Button _cleanupButton;
+        private readonly RoundedPanel _deleteSourceCard;
+        private readonly PremiumButton _cleanupButton;
         private readonly Label _pathLabel;
 
-        public UninstallForm()
+        internal UninstallForm()
         {
             _locations = InstallerEngine.GetCleanupLocations();
 
             Text = "完全卸载 · " + InstallerEngine.ProductName;
-            ClientSize = new Size(620, 452);
-            FormBorderStyle = FormBorderStyle.FixedDialog;
-            MaximizeBox = false;
-            MinimizeBox = false;
+            ClientSize = new Size(670, 520);
             StartPosition = FormStartPosition.CenterScreen;
-            BackColor = Color.FromArgb(242, 245, 248);
-            Font = new Font("微软雅黑", 9F);
+            BackColor = UiPalette.Border;
             Icon = Icon.ExtractAssociatedIcon(InstallerEngine.InstallerExecutablePath);
+            HeaderDragHeight = 98;
+            DragExclusionRight = 64;
 
             var header = new Panel
             {
                 Dock = DockStyle.Top,
-                Height = 80,
-                BackColor = Color.FromArgb(35, 43, 55)
+                Height = 104,
+                BackColor = UiPalette.Canvas
             };
-            header.Controls.Add(new Label
-            {
-                Text = "完全卸载与清理",
-                ForeColor = Color.White,
-                Font = new Font("微软雅黑", 17F, FontStyle.Bold),
-                AutoSize = true,
-                Location = new Point(24, 13)
-            });
-            header.Controls.Add(new Label
-            {
-                Text = "所有删除目标均经过项目标记校验，避免误删其他目录",
-                ForeColor = Color.FromArgb(190, 200, 212),
-                AutoSize = true,
-                Location = new Point(27, 51)
-            });
+            header.Controls.Add(CreateLabel("DUOKAI  /  CLEANUP", new Point(25, 12), new Size(220, 16),
+                new Font("Segoe UI", 7.5F, FontStyle.Bold), UiPalette.Gold));
+            header.Controls.Add(CreateLabel("完全卸载与清理", new Point(23, 33), new Size(350, 34),
+                new Font("Microsoft YaHei UI", 17F, FontStyle.Bold), UiPalette.Ivory));
+            header.Controls.Add(CreateLabel("所有目标均经过项目标记和路径校验，避免误删其他目录", new Point(25, 71), new Size(480, 20),
+                new Font("Microsoft YaHei UI", 8.5F), UiPalette.Muted));
+            var closeButton = CreateChromeButton("×", new Point(622, 15));
+            closeButton.Click += (sender, args) => Close();
+            header.Controls.Add(closeButton);
             Controls.Add(header);
 
-            var card = new Panel
+            var card = new RoundedPanel
             {
-                BackColor = Color.White,
-                BorderStyle = BorderStyle.FixedSingle,
-                Location = new Point(20, 100),
-                Size = new Size(580, 258)
+                Location = new Point(22, 118),
+                Size = new Size(626, 318),
+                BackColor = UiPalette.Surface,
+                BorderColor = UiPalette.Border,
+                CornerRadius = 17
             };
-            card.Controls.Add(new Label
-            {
-                Text = "请选择清理范围",
-                Font = new Font("微软雅黑", 11F, FontStyle.Bold),
-                AutoSize = true,
-                Location = new Point(22, 18)
-            });
+            card.Controls.Add(CreateLabel("选择清理范围", new Point(22, 17), new Size(220, 25),
+                new Font("Microsoft YaHei UI", 11F, FontStyle.Bold), UiPalette.Ivory));
 
-            _keepSourceOption = new RadioButton
+            var keepSourceCard = new RoundedPanel
             {
-                Text = "删除程序与全部发布包，保留源码",
-                Font = new Font("微软雅黑", 10F, FontStyle.Bold),
-                Checked = true,
-                AutoSize = true,
-                Location = new Point(24, 55)
+                Location = new Point(20, 53),
+                Size = new Size(586, 78),
+                BackColor = UiPalette.SurfaceRaised,
+                BorderColor = UiPalette.Border,
+                CornerRadius = 13
             };
+            _keepSourceOption = CreateRadioOption("删除程序与全部发布包，保留源码", new Point(17, 12), true, UiPalette.Ivory);
             _keepSourceOption.CheckedChanged += OptionChanged;
-            card.Controls.Add(_keepSourceOption);
-            card.Controls.Add(new Label
-            {
-                Text = "删除已安装程序、开始菜单/桌面快捷方式、安装包和绿色版；源码目录保留。",
-                ForeColor = Color.FromArgb(100, 108, 118),
-                AutoSize = true,
-                Location = new Point(47, 82)
-            });
+            keepSourceCard.Controls.Add(_keepSourceOption);
+            keepSourceCard.Controls.Add(CreateLabel("删除已安装程序、快捷方式、安装包和绿色版；源码目录继续保留。",
+                new Point(39, 42), new Size(520, 20), new Font("Microsoft YaHei UI", 8F), UiPalette.Muted));
+            card.Controls.Add(keepSourceCard);
 
-            _deleteSourceOption = new RadioButton
+            _deleteSourceCard = new RoundedPanel
             {
-                Text = "全部删除，包括源码与全部发布包",
-                Font = new Font("微软雅黑", 10F, FontStyle.Bold),
-                ForeColor = Color.FromArgb(180, 48, 48),
-                AutoSize = true,
-                Location = new Point(24, 117),
-                Enabled = InstallerEngine.ValidateSourceRoot(_locations.SourceRoot)
+                Location = new Point(20, 142),
+                Size = new Size(586, 105),
+                BackColor = Color.FromArgb(34, 27, 29),
+                BorderColor = Color.FromArgb(65, 42, 45),
+                CornerRadius = 13
             };
+            _deleteSourceOption = CreateRadioOption("全部删除，包括源码与全部发布包", new Point(17, 11), false, UiPalette.Danger);
+            _deleteSourceOption.Enabled = InstallerEngine.ValidateSourceRoot(_locations.SourceRoot);
             _deleteSourceOption.CheckedChanged += OptionChanged;
-            card.Controls.Add(_deleteSourceOption);
-            card.Controls.Add(new Label
-            {
-                Text = _deleteSourceOption.Enabled
-                    ? "永久删除安装程序、绿色版、发布包以及下方已确认的源码目录。此操作不可撤销。"
+            _deleteSourceCard.Controls.Add(_deleteSourceOption);
+            _deleteSourceCard.Controls.Add(CreateLabel(
+                _deleteSourceOption.Enabled
+                    ? "永久删除安装程序、绿色版、发布包和已确认的源码目录。此操作不可撤销。"
                     : "未发现带安全标记的源码目录，因此该选项已禁用。",
-                ForeColor = _deleteSourceOption.Enabled ? Color.FromArgb(160, 65, 65) : Color.FromArgb(120, 128, 138),
-                AutoSize = true,
-                Location = new Point(47, 144)
-            });
-
+                new Point(39, 41), new Size(520, 19), new Font("Microsoft YaHei UI", 8F),
+                _deleteSourceOption.Enabled ? Color.FromArgb(194, 126, 126) : UiPalette.MutedDark));
             _confirmSourceDeletion = new CheckBox
             {
-                Text = "我确认永久删除源码目录",
-                ForeColor = Color.FromArgb(180, 48, 48),
                 AutoSize = true,
-                Location = new Point(47, 174),
+                BackColor = _deleteSourceCard.BackColor,
+                FlatStyle = FlatStyle.Flat,
+                Font = new Font("Microsoft YaHei UI", 8F, FontStyle.Bold),
+                ForeColor = UiPalette.Danger,
+                Location = new Point(39, 72),
+                Text = "我确认永久删除源码目录",
+                UseVisualStyleBackColor = false,
                 Visible = false
             };
             _confirmSourceDeletion.CheckedChanged += OptionChanged;
-            card.Controls.Add(_confirmSourceDeletion);
+            _deleteSourceCard.Controls.Add(_confirmSourceDeletion);
+            card.Controls.Add(_deleteSourceCard);
 
-            _pathLabel = new Label
-            {
-                Text = "源码：" + (_locations.SourceRoot ?? "未关联") + "\r\n发布包：" +
-                       (_locations.ArtifactRoot ?? _locations.PackageRoot ?? "未关联"),
-                ForeColor = Color.FromArgb(80, 89, 100),
-                AutoEllipsis = true,
-                Location = new Point(24, 207),
-                Size = new Size(530, 42)
-            };
+            _pathLabel = CreateLabel(
+                "源码：" + (_locations.SourceRoot ?? "未关联") + "\r\n发布包：" +
+                (_locations.ArtifactRoot ?? _locations.PackageRoot ?? "未关联"),
+                new Point(22, 264), new Size(580, 42), new Font("Microsoft YaHei UI", 7.8F), UiPalette.MutedDark);
+            _pathLabel.AutoEllipsis = true;
             card.Controls.Add(_pathLabel);
             Controls.Add(card);
 
-            var cancelButton = new Button
+            var cancelButton = new PremiumButton
             {
                 Text = "取消",
                 DialogResult = DialogResult.Cancel,
-                Location = new Point(413, 382),
-                Size = new Size(82, 38)
+                Location = new Point(442, 458),
+                Size = new Size(92, 40),
+                CornerRadius = 11,
+                BackColor = UiPalette.Surface,
+                HoverBackColor = UiPalette.SurfaceHover,
+                PressedBackColor = UiPalette.Border,
+                BorderColor = UiPalette.Border,
+                BorderThickness = 1,
+                ForeColor = UiPalette.Ivory
             };
             Controls.Add(cancelButton);
 
-            _cleanupButton = new Button
+            _cleanupButton = new PremiumButton
             {
                 Text = "开始清理",
-                BackColor = Color.FromArgb(45, 105, 197),
-                ForeColor = Color.White,
-                FlatStyle = FlatStyle.Flat,
-                Location = new Point(506, 382),
-                Size = new Size(94, 38)
+                Location = new Point(544, 458),
+                Size = new Size(104, 40),
+                CornerRadius = 11,
+                BackColor = UiPalette.Gold,
+                HoverBackColor = UiPalette.GoldHover,
+                PressedBackColor = UiPalette.GoldPressed,
+                Font = new Font("Microsoft YaHei UI", 9F, FontStyle.Bold),
+                ForeColor = UiPalette.Canvas
             };
-            _cleanupButton.FlatAppearance.BorderSize = 0;
             _cleanupButton.Click += CleanupButton_Click;
             Controls.Add(_cleanupButton);
+
+            Controls.Add(CreateLabel("●  安全路径校验已启用", new Point(27, 467), new Size(300, 22),
+                new Font("Microsoft YaHei UI", 8F), UiPalette.Green, ContentAlignment.MiddleLeft));
 
             AcceptButton = _cleanupButton;
             CancelButton = cancelButton;
@@ -158,9 +154,16 @@ namespace WechatDuokai.Installer
         {
             _confirmSourceDeletion.Visible = _deleteSourceOption.Checked;
             _cleanupButton.Enabled = !_deleteSourceOption.Checked || _confirmSourceDeletion.Checked;
-            _cleanupButton.BackColor = _deleteSourceOption.Checked
-                ? Color.FromArgb(180, 48, 48)
-                : Color.FromArgb(45, 105, 197);
+            _cleanupButton.BackColor = _deleteSourceOption.Checked ? UiPalette.Danger : UiPalette.Gold;
+            _cleanupButton.HoverBackColor = _deleteSourceOption.Checked
+                ? Color.FromArgb(238, 127, 127)
+                : UiPalette.GoldHover;
+            _cleanupButton.PressedBackColor = _deleteSourceOption.Checked
+                ? Color.FromArgb(194, 77, 77)
+                : UiPalette.GoldPressed;
+            _deleteSourceCard.BorderColor = _deleteSourceOption.Checked
+                ? Color.FromArgb(116, 57, 62)
+                : Color.FromArgb(65, 42, 45);
         }
 
         private void CleanupButton_Click(object sender, EventArgs e)
@@ -193,6 +196,54 @@ namespace WechatDuokai.Installer
                 MessageBox.Show("无法启动清理程序：\r\n" + ex.Message,
                     "清理失败", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
+        }
+
+        private static RadioButton CreateRadioOption(string text, Point location, bool isChecked, Color color)
+        {
+            return new RadioButton
+            {
+                AutoSize = true,
+                BackColor = Color.Transparent,
+                Checked = isChecked,
+                FlatStyle = FlatStyle.Flat,
+                Font = new Font("Microsoft YaHei UI", 9F, FontStyle.Bold),
+                ForeColor = color,
+                Location = location,
+                Text = text,
+                UseVisualStyleBackColor = false
+            };
+        }
+
+        private static PremiumButton CreateChromeButton(string text, Point location)
+        {
+            return new PremiumButton
+            {
+                BackColor = UiPalette.Canvas,
+                HoverBackColor = Color.FromArgb(71, 37, 39),
+                PressedBackColor = Color.FromArgb(91, 43, 46),
+                DisabledBackColor = UiPalette.Canvas,
+                Font = new Font("Segoe UI", 12F),
+                ForeColor = UiPalette.Muted,
+                Location = location,
+                Size = new Size(32, 32),
+                CornerRadius = 10,
+                Text = text
+            };
+        }
+
+        private static Label CreateLabel(string text, Point location, Size size, Font font, Color color,
+            ContentAlignment alignment = ContentAlignment.TopLeft)
+        {
+            return new Label
+            {
+                BackColor = Color.Transparent,
+                Font = font,
+                ForeColor = color,
+                Location = location,
+                Size = size,
+                Text = text,
+                TextAlign = alignment
+            };
         }
     }
 }

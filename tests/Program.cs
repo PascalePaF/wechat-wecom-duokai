@@ -65,6 +65,8 @@ namespace WechatDuokai.Tests
                     Assert(InstallerEngine.ValidateSourceRoot(root), "Expected marked project root to validate.");
                 });
 
+                Run("Custom installation paths are validated safely", TestCustomInstallPathValidation);
+
                 Run("Installer embeds the exact Release application", TestEmbeddedPayload);
 
                 Run("Known WeChat mutex can be released without terminating its process", TestMutexRelease);
@@ -120,8 +122,6 @@ namespace WechatDuokai.Tests
 
         private static int SaveUiSnapshot(Form form, string outputPath)
         {
-            Application.EnableVisualStyles();
-            Application.SetCompatibleTextRenderingDefault(false);
             using (form)
             {
                 form.Show();
@@ -172,6 +172,41 @@ namespace WechatDuokai.Tests
                 built.Position = 0;
                 var builtHash = Convert.ToBase64String(sha.ComputeHash(built));
                 Assert(embeddedHash == builtHash, "Installer payload differs from the Release application.");
+            }
+        }
+
+        private static void TestCustomInstallPathValidation()
+        {
+            string validationError;
+            Assert(!InstallerEngine.ValidateInstallTarget(Path.GetPathRoot(Environment.SystemDirectory), out validationError),
+                "A drive root must never be accepted as an installation target.");
+
+            var testRoot = Path.Combine(Path.GetTempPath(), "wechat-duokai-install-target-" + Guid.NewGuid().ToString("N"));
+            var emptyTarget = Path.Combine(testRoot, "custom-app");
+            try
+            {
+                Directory.CreateDirectory(emptyTarget);
+                Assert(InstallerEngine.ValidateInstallTarget(emptyTarget, out validationError),
+                    "An empty custom folder should be accepted: " + validationError);
+
+                File.WriteAllText(Path.Combine(emptyTarget, "unrelated.txt"), "belongs to the user");
+                Assert(!InstallerEngine.ValidateInstallTarget(emptyTarget, out validationError),
+                    "A non-empty unmarked folder must be rejected.");
+
+                File.WriteAllText(Path.Combine(emptyTarget, InstallerEngine.InstallMarkerName),
+                    InstallerEngine.InstallMarkerValue);
+                File.WriteAllText(Path.Combine(emptyTarget, "wechat_duokai.exe"), string.Empty);
+                Assert(InstallerEngine.ValidateInstallTarget(emptyTarget, out validationError),
+                    "A marked existing installation should be accepted for an update.");
+                Assert(InstallerEngine.ValidateInstallDirectory(emptyTarget),
+                    "A marked custom installation should be recognized during cleanup.");
+            }
+            finally
+            {
+                if (Directory.Exists(testRoot))
+                {
+                    Directory.Delete(testRoot, true);
+                }
             }
         }
 
