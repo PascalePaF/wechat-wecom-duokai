@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Windows.Forms;
 
+using WechatDuokai.UI;
+
 namespace shuangkai
 {
     static class Program
@@ -16,6 +18,7 @@ namespace shuangkai
                 MessageBox.Show(args.Exception.Message, "程序发生错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
+            ThemeManager.Initialize();
             Application.Run(new Home());
         }
     }

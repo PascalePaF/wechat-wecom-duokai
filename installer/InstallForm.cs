@@ -9,8 +9,8 @@ namespace WechatDuokai.Installer
 {
     internal sealed class InstallForm : PremiumForm
     {
-        private readonly CheckBox _desktopShortcut;
-        private readonly CheckBox _runAfterInstall;
+        private readonly PremiumCheckBox _desktopShortcut;
+        private readonly PremiumCheckBox _runAfterInstall;
         private readonly PremiumButton _browseButton;
         private readonly PremiumButton _installButton;
         private readonly TextBox _installPathTextBox;
@@ -23,48 +23,88 @@ namespace WechatDuokai.Installer
             _selectedInstallDirectory = InstallerEngine.SuggestedInstallDirectory;
 
             Text = InstallerEngine.ProductName + " V" + InstallerEngine.Version + " 安装程序";
-            ClientSize = new Size(650, 430);
+            ClientSize = new Size(684, 430);
             StartPosition = FormStartPosition.CenterScreen;
-            BackColor = UiPalette.Border;
+            BackColor = UiPalette.Canvas;
+            FormBorderStyle = FormBorderStyle.FixedDialog;
+            MaximizeBox = false;
+            MinimizeBox = false;
             Icon = Icon.ExtractAssociatedIcon(InstallerEngine.InstallerExecutablePath);
-            HeaderDragHeight = 98;
-            DragExclusionRight = 64;
 
-            var header = new Panel
+            var background = new GradientPanel
             {
-                Dock = DockStyle.Top,
-                Height = 104,
-                BackColor = UiPalette.Canvas
+                Dock = DockStyle.Fill,
+                TopColor = UiPalette.CanvasTop,
+                BottomColor = UiPalette.Canvas,
+                GradientAngle = 112F
             };
-            header.Controls.Add(CreateLabel("DUOKAI  /  INSTALLER", new Point(25, 12), new Size(220, 16),
-                new Font("Segoe UI", 7.5F, FontStyle.Bold), UiPalette.Gold));
-            header.Controls.Add(CreateLabel("安装微信 · 企业微信多开助手", new Point(23, 33), new Size(420, 34),
-                new Font("Microsoft YaHei UI", 17F, FontStyle.Bold), UiPalette.Ivory));
-            header.Controls.Add(CreateLabel("V1.0.1  ·  当前用户安装，无需管理员权限", new Point(25, 71), new Size(400, 20),
+            Controls.Add(background);
+
+            var brandTile = new RoundedPanel
+            {
+                Location = new Point(24, 17),
+                Size = new Size(48, 48),
+                BackColor = UiPalette.GoldSurface,
+                BorderColor = UiPalette.GoldBorder,
+                CornerRadius = 14
+            };
+            var brandMark = CreateLabel("装", Point.Empty, brandTile.Size,
+                new Font("Microsoft YaHei UI", 17F, FontStyle.Bold), UiPalette.Gold,
+                ContentAlignment.MiddleCenter);
+            brandMark.Dock = DockStyle.Fill;
+            brandTile.Controls.Add(brandMark);
+
+            background.Controls.Add(brandTile);
+            background.Controls.Add(CreateLabel("安装多开助手", new Point(87, 16), new Size(310, 30),
+                new Font("Microsoft YaHei UI", 16F, FontStyle.Bold), UiPalette.Ivory));
+            background.Controls.Add(CreateLabel("选择安装位置，一步完成当前用户安装 · 无需管理员权限", new Point(88, 48), new Size(390, 19),
                 new Font("Microsoft YaHei UI", 8.5F), UiPalette.Muted));
 
-            var closeButton = CreateChromeButton("×", new Point(602, 15));
-            closeButton.Click += (sender, args) => Close();
-            header.Controls.Add(closeButton);
-            Controls.Add(header);
+            var versionPill = new RoundedPanel
+            {
+                Location = new Point(488, 27),
+                Size = new Size(82, 28),
+                BackColor = UiPalette.SurfaceRaised,
+                BorderColor = UiPalette.GoldBorder,
+                CornerRadius = 13
+            };
+            var versionText = CreateLabel("V1.0.1", Point.Empty, versionPill.Size,
+                new Font("Microsoft YaHei UI", 7.5F), UiPalette.Gold, ContentAlignment.MiddleCenter);
+            versionText.Dock = DockStyle.Fill;
+            versionPill.Controls.Add(versionText);
+            background.Controls.Add(versionPill);
+
+            var themeToggle = new ThemeToggleButton
+            {
+                Location = new Point(578, 27),
+                Size = new Size(82, 28)
+            };
+            background.Controls.Add(themeToggle);
+
+            background.Controls.Add(new Panel
+            {
+                BackColor = UiPalette.BorderSoft,
+                Location = new Point(24, 84),
+                Size = new Size(636, 1)
+            });
 
             var card = new RoundedPanel
             {
-                Location = new Point(22, 118),
-                Size = new Size(606, 224),
+                Location = new Point(24, 101),
+                Size = new Size(636, 250),
                 BackColor = UiPalette.Surface,
-                BorderColor = UiPalette.Border,
-                CornerRadius = 17
+                BorderColor = UiPalette.BorderSoft,
+                CornerRadius = 18
             };
-            card.Controls.Add(CreateLabel("安装到您的电脑", new Point(22, 18), new Size(250, 24),
-                new Font("Microsoft YaHei UI", 11F, FontStyle.Bold), UiPalette.Ivory));
-            card.Controls.Add(CreateLabel("安装文件夹", new Point(22, 50), new Size(100, 18),
-                new Font("Microsoft YaHei UI", 8F), UiPalette.Muted));
+            card.Controls.Add(CreateLabel("安装位置", new Point(20, 17), new Size(180, 25),
+                new Font("Microsoft YaHei UI", 11.5F, FontStyle.Bold), UiPalette.Ivory));
+            card.Controls.Add(CreateLabel("请选择一个专用文件夹", new Point(21, 43), new Size(240, 18),
+                new Font("Microsoft YaHei UI", 8F), UiPalette.MutedDark));
 
             var pathPanel = new RoundedPanel
             {
-                Location = new Point(22, 73),
-                Size = new Size(562, 50),
+                Location = new Point(20, 68),
+                Size = new Size(596, 52),
                 BackColor = UiPalette.SurfaceRaised,
                 BorderColor = UiPalette.Border,
                 CornerRadius = 12
@@ -75,70 +115,80 @@ namespace WechatDuokai.Installer
                 BorderStyle = BorderStyle.None,
                 Font = new Font("Microsoft YaHei UI", 8.5F),
                 ForeColor = UiPalette.Ivory,
-                Location = new Point(14, 16),
+                Location = new Point(14, 17),
                 ReadOnly = true,
-                Size = new Size(443, 20),
+                Size = new Size(472, 20),
                 TabStop = false,
                 Text = _selectedInstallDirectory
             };
             _browseButton = new PremiumButton
             {
-                BackColor = UiPalette.SurfaceHover,
-                HoverBackColor = Color.FromArgb(48, 51, 58),
-                PressedBackColor = UiPalette.Border,
-                BorderColor = UiPalette.Border,
+                BackColor = UiPalette.ActionSurface,
+                HoverBackColor = UiPalette.Gold,
+                PressedBackColor = UiPalette.GoldPressed,
+                BorderColor = UiPalette.GoldBorder,
                 BorderThickness = 1,
                 CornerRadius = 9,
                 Font = new Font("Microsoft YaHei UI", 8.5F, FontStyle.Bold),
-                ForeColor = UiPalette.Ivory,
-                Location = new Point(469, 7),
-                Size = new Size(84, 36),
-                Text = "浏览…"
+                ForeColor = UiPalette.Gold,
+                HoverForeColor = UiPalette.Canvas,
+                PressedForeColor = UiPalette.Canvas,
+                Location = new Point(495, 8),
+                Size = new Size(92, 36),
+                Text = "选择文件夹"
             };
             _browseButton.Click += BrowseButton_Click;
             pathPanel.Controls.Add(_installPathTextBox);
             pathPanel.Controls.Add(_browseButton);
             card.Controls.Add(pathPanel);
 
-            card.Controls.Add(CreateLabel("请通过“浏览”选择或新建专用文件夹；为保护已有文件，不允许安装到非空的普通目录。",
-                new Point(23, 132), new Size(558, 20), new Font("Microsoft YaHei UI", 7.8F), UiPalette.MutedDark));
+            card.Controls.Add(CreateLabel("为保护已有文件，不能安装到含有其他内容的普通文件夹。",
+                new Point(21, 128), new Size(570, 19), new Font("Microsoft YaHei UI", 7.8F), UiPalette.MutedDark));
+            card.Controls.Add(new Panel
+            {
+                BackColor = UiPalette.BorderSoft,
+                Location = new Point(20, 156),
+                Size = new Size(596, 1)
+            });
 
-            _desktopShortcut = CreateOption("创建桌面快捷方式", new Point(23, 164), true);
-            _runAfterInstall = CreateOption("安装完成后启动程序", new Point(225, 164), true);
+            _desktopShortcut = CreateOption("创建桌面快捷方式", new Point(21, 171), new Size(220, 26), true);
+            _runAfterInstall = CreateOption("安装完成后启动程序", new Point(276, 171), new Size(230, 26), true);
             card.Controls.Add(_desktopShortcut);
             card.Controls.Add(_runAfterInstall);
-            card.Controls.Add(CreateLabel("不会安装微信或企业微信，也不会修改它们的程序文件。",
-                new Point(23, 197), new Size(520, 18), new Font("Microsoft YaHei UI", 7.8F), UiPalette.MutedDark));
-            Controls.Add(card);
+            card.Controls.Add(CreateLabel("✓  仅安装本助手，不会下载、替换或修改微信与企业微信文件",
+                new Point(21, 214), new Size(570, 20), new Font("Microsoft YaHei UI", 8F), UiPalette.Green));
+            background.Controls.Add(card);
 
-            _statusDot = CreateLabel("●", new Point(25, 377), new Size(13, 18),
+            _statusDot = CreateLabel("●", new Point(26, 388), new Size(13, 18),
                 new Font("Segoe UI", 8F), UiPalette.Green);
-            _statusLabel = CreateLabel("准备安装", new Point(43, 369), new Size(315, 32),
+            _statusLabel = CreateLabel("准备安装", new Point(44, 380), new Size(315, 32),
                 new Font("Microsoft YaHei UI", 8.5F), UiPalette.Muted, ContentAlignment.MiddleLeft);
             _statusLabel.AutoEllipsis = true;
-            Controls.Add(_statusDot);
-            Controls.Add(_statusLabel);
+            background.Controls.Add(_statusDot);
+            background.Controls.Add(_statusLabel);
 
             var cancelButton = new PremiumButton
             {
                 Text = "取消",
                 DialogResult = DialogResult.Cancel,
-                Location = new Point(430, 364),
-                Size = new Size(86, 40),
+                Location = new Point(458, 374),
+                Size = new Size(90, 40),
                 CornerRadius = 11,
                 BackColor = UiPalette.Surface,
                 HoverBackColor = UiPalette.SurfaceHover,
                 PressedBackColor = UiPalette.Border,
                 BorderColor = UiPalette.Border,
                 BorderThickness = 1,
-                ForeColor = UiPalette.Ivory
+                ForeColor = UiPalette.Ivory,
+                HoverForeColor = UiPalette.Ivory,
+                PressedForeColor = UiPalette.Ivory
             };
-            Controls.Add(cancelButton);
+            background.Controls.Add(cancelButton);
 
             _installButton = new PremiumButton
             {
                 Text = "立即安装",
-                Location = new Point(526, 364),
+                Location = new Point(558, 374),
                 Size = new Size(102, 40),
                 CornerRadius = 11,
                 BackColor = UiPalette.Gold,
@@ -148,7 +198,7 @@ namespace WechatDuokai.Installer
                 ForeColor = UiPalette.Canvas
             };
             _installButton.Click += InstallButton_Click;
-            Controls.Add(_installButton);
+            background.Controls.Add(_installButton);
 
             AcceptButton = _installButton;
             CancelButton = cancelButton;
@@ -261,35 +311,15 @@ namespace WechatDuokai.Installer
             }
         }
 
-        private static CheckBox CreateOption(string text, Point location, bool isChecked)
+        private static PremiumCheckBox CreateOption(string text, Point location, Size size, bool isChecked)
         {
-            return new CheckBox
+            return new PremiumCheckBox
             {
-                AutoSize = true,
-                BackColor = UiPalette.Surface,
                 Checked = isChecked,
-                FlatStyle = FlatStyle.Flat,
                 Font = new Font("Microsoft YaHei UI", 8.5F),
                 ForeColor = UiPalette.Ivory,
                 Location = location,
-                Text = text,
-                UseVisualStyleBackColor = false
-            };
-        }
-
-        private static PremiumButton CreateChromeButton(string text, Point location)
-        {
-            return new PremiumButton
-            {
-                BackColor = UiPalette.Canvas,
-                HoverBackColor = Color.FromArgb(71, 37, 39),
-                PressedBackColor = Color.FromArgb(91, 43, 46),
-                DisabledBackColor = UiPalette.Canvas,
-                Font = new Font("Segoe UI", 12F),
-                ForeColor = UiPalette.Muted,
-                Location = location,
-                Size = new Size(32, 32),
-                CornerRadius = 10,
+                Size = size,
                 Text = text
             };
         }

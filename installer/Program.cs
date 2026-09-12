@@ -3,6 +3,8 @@ using System.IO;
 using System.Linq;
 using System.Windows.Forms;
 
+using WechatDuokai.UI;
+
 namespace WechatDuokai.Installer
 {
     internal static class Program
@@ -18,6 +20,7 @@ namespace WechatDuokai.Installer
 
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
+            ThemeManager.Initialize();
 
             var ownName = Path.GetFileNameWithoutExtension(Application.ExecutablePath) ?? string.Empty;
             var uninstallMode = args.Any(arg => string.Equals(arg, "/uninstall", StringComparison.OrdinalIgnoreCase)) ||

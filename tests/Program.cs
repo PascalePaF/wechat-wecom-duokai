@@ -2,6 +2,7 @@ using System;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
+using System.Reflection;
 using System.Security.Cryptography;
 using System.Threading;
 using System.Windows.Forms;
@@ -18,6 +19,9 @@ namespace WechatDuokai.Tests
         [STAThread]
         private static int Main(string[] args)
         {
+            Application.EnableVisualStyles();
+            Application.SetCompatibleTextRenderingDefault(false);
+
             if (args.Length == 2 && args[0] == "--hold-mutex")
             {
                 return HoldMutex(args[1]);
@@ -33,13 +37,31 @@ namespace WechatDuokai.Tests
                 return SaveUiSnapshot(new Home(), args[1]);
             }
 
+            if (args.Length == 2 && args[0] == "--snapshot-light")
+            {
+                SetAssemblyTheme(typeof(Home), "Light");
+                return SaveUiSnapshot(new Home(), args[1]);
+            }
+
             if (args.Length == 2 && args[0] == "--snapshot-installer")
             {
                 return SaveUiSnapshot(new InstallForm(), args[1]);
             }
 
+            if (args.Length == 2 && args[0] == "--snapshot-installer-light")
+            {
+                SetAssemblyTheme(typeof(InstallForm), "Light");
+                return SaveUiSnapshot(new InstallForm(), args[1]);
+            }
+
             if (args.Length == 2 && args[0] == "--snapshot-uninstaller")
             {
+                return SaveUiSnapshot(new UninstallForm(), args[1]);
+            }
+
+            if (args.Length == 2 && args[0] == "--snapshot-uninstaller-light")
+            {
+                SetAssemblyTheme(typeof(UninstallForm), "Light");
                 return SaveUiSnapshot(new UninstallForm(), args[1]);
             }
 
@@ -71,6 +93,8 @@ namespace WechatDuokai.Tests
                 });
 
                 Run("Custom installation paths are validated safely", TestCustomInstallPathValidation);
+
+                Run("All release windows use native movable title bars", TestNativeWindowChrome);
 
                 Run("Installer embeds the exact Release application", TestEmbeddedPayload);
 
@@ -141,6 +165,56 @@ namespace WechatDuokai.Tests
                 form.Close();
             }
             return 0;
+        }
+
+        private static void SetAssemblyTheme(Type anchorType, string themeName)
+        {
+            var managerType = anchorType.Assembly.GetType("WechatDuokai.UI.ThemeManager", true);
+            var themeType = anchorType.Assembly.GetType("WechatDuokai.UI.AppTheme", true);
+            var themeValue = Enum.Parse(themeType, themeName);
+            var method = managerType.GetMethod("SetTheme", BindingFlags.Static | BindingFlags.NonPublic);
+            Assert(method != null, "Theme manager entry point is missing.");
+            method.Invoke(null, new[] { themeValue, (object)false });
+        }
+
+        private static void TestNativeWindowChrome()
+        {
+            using (var home = new Home())
+            using (var installer = new InstallForm())
+            using (var uninstaller = new UninstallForm())
+            {
+                Assert(home.FormBorderStyle != FormBorderStyle.None,
+                    "Main window must use a native draggable title bar.");
+                Assert(home.ControlBox && home.MinimizeBox,
+                    "Main window must expose native close and minimize controls.");
+                Assert(installer.FormBorderStyle != FormBorderStyle.None && installer.ControlBox,
+                    "Installer must use a native draggable title bar.");
+                Assert(uninstaller.FormBorderStyle != FormBorderStyle.None && uninstaller.ControlBox,
+                    "Uninstaller must use a native draggable title bar.");
+
+                Assert(FindThemeToggle(home) != null, "Main window theme switch is missing.");
+                Assert(FindThemeToggle(installer) != null, "Installer theme switch is missing.");
+                Assert(FindThemeToggle(uninstaller) != null, "Uninstaller theme switch is missing.");
+            }
+        }
+
+        private static Control FindThemeToggle(Control root)
+        {
+            foreach (Control control in root.Controls)
+            {
+                if (string.Equals(control.AccessibleName, "切换日间或夜间主题", StringComparison.Ordinal))
+                {
+                    return control;
+                }
+
+                var nested = FindThemeToggle(control);
+                if (nested != null)
+                {
+                    return nested;
+                }
+            }
+
+            return null;
         }
 
         private static int TestInstall()

@@ -8,39 +8,22 @@ namespace shuangkai
     partial class Home
     {
         private System.ComponentModel.IContainer components;
-        private Panel headerPanel;
-        private PremiumButton closeButton;
-        private PremiumButton minimizeButton;
-        private RoundedPanel versionPanel;
-        private Label versionLabel;
-        private Label subtitleLabel;
-        private Label titleLabel;
-        private Label brandLabel;
+        private GradientPanel backgroundPanel;
+        private RoundedPanel applicationsPanel;
         private RoundedPanel wechatPanel;
         private PremiumButton wechatStartButton;
         private Label wechatPathLabel;
         private Label wechatCountLabel;
-        private Label wechatNameLabel;
-        private RoundedPanel wechatIconPanel;
         private PictureBox wechatIcon;
         private RoundedPanel wecomPanel;
         private PremiumButton wecomStartButton;
         private Label wecomPathLabel;
         private Label wecomCountLabel;
-        private Label wecomNameLabel;
-        private RoundedPanel wecomIconPanel;
         private PictureBox wecomIcon;
         private RoundedPanel quantityPanel;
-        private Label targetHintLabel;
-        private Label savedLabel;
-        private RoundedPanel targetEntryPanel;
+        private TextBox targetCountInput;
         private PremiumButton increaseButton;
         private PremiumButton decreaseButton;
-        private TextBox targetCountInput;
-        private Label targetLabel;
-        private Label targetEyebrowLabel;
-        private Panel footerPanel;
-        private Panel footerLine;
         private LinkLabel sourceLink;
         private Label statusDotLabel;
         private Label statusLabel;
@@ -62,106 +45,137 @@ namespace shuangkai
             var resources = new System.ComponentModel.ComponentResourceManager(typeof(Home));
             SuspendLayout();
 
-            headerPanel = new Panel
+            backgroundPanel = new GradientPanel
             {
-                BackColor = UiPalette.Canvas,
-                Dock = DockStyle.Top,
-                Height = 88
+                Dock = DockStyle.Fill,
+                TopColor = UiPalette.CanvasTop,
+                BottomColor = UiPalette.Canvas,
+                GradientAngle = 112F
             };
-            brandLabel = CreateLabel("DUOKAI  /  WINDOWS", new Point(25, 10), new Size(160, 16),
-                new Font("Segoe UI", 7.5F, FontStyle.Bold), UiPalette.Gold);
-            titleLabel = CreateLabel("微信 · 企业微信多开助手", new Point(23, 29), new Size(320, 32),
-                new Font("Microsoft YaHei UI", 17F, FontStyle.Bold), UiPalette.Ivory);
-            subtitleLabel = CreateLabel("精确识别运行实例，只补开缺少的窗口", new Point(25, 62), new Size(300, 18),
+
+            var brandTile = new RoundedPanel
+            {
+                Location = new Point(24, 18),
+                Size = new Size(50, 50),
+                BackColor = UiPalette.GoldSurface,
+                BorderColor = UiPalette.GoldBorder,
+                CornerRadius = 15
+            };
+            var brandMark = CreateLabel("双", Point.Empty, brandTile.Size,
+                new Font("Microsoft YaHei UI", 18F, FontStyle.Bold), UiPalette.Gold,
+                ContentAlignment.MiddleCenter);
+            brandMark.Dock = DockStyle.Fill;
+            brandTile.Controls.Add(brandMark);
+
+            var titleLabel = CreateLabel("微信 · 企业微信多开助手", new Point(90, 17), new Size(390, 31),
+                new Font("Microsoft YaHei UI", 16.5F, FontStyle.Bold), UiPalette.Ivory);
+            var subtitleLabel = CreateLabel("智能补足缺少的窗口，数量设置会自动记住", new Point(91, 49), new Size(430, 20),
                 new Font("Microsoft YaHei UI", 8.5F), UiPalette.Muted);
 
-            versionPanel = new RoundedPanel
+            var versionPanel = new RoundedPanel
             {
-                Location = new Point(612, 18),
-                Size = new Size(76, 27),
+                Location = new Point(626, 27),
+                Size = new Size(78, 28),
                 BackColor = UiPalette.SurfaceRaised,
-                BorderColor = UiPalette.Border,
-                CornerRadius = 12
+                BorderColor = UiPalette.GoldBorder,
+                CornerRadius = 13
             };
-            versionLabel = CreateLabel("V1.0.1", Point.Empty, versionPanel.Size,
+            var versionLabel = CreateLabel("V1.0.1", Point.Empty, versionPanel.Size,
                 new Font("Segoe UI", 8F, FontStyle.Bold), UiPalette.Gold, ContentAlignment.MiddleCenter);
             versionLabel.Dock = DockStyle.Fill;
             versionPanel.Controls.Add(versionLabel);
 
-            minimizeButton = CreateChromeButton("−", new Point(704, 15), UiPalette.SurfaceRaised, UiPalette.SurfaceHover);
-            minimizeButton.Click += minimizeButton_Click;
-            closeButton = CreateChromeButton("×", new Point(742, 15), Color.FromArgb(71, 37, 39), Color.FromArgb(91, 43, 46));
-            closeButton.Click += closeButton_Click;
-            headerPanel.Controls.AddRange(new Control[]
+            var themeToggle = new ThemeToggleButton
             {
-                brandLabel, titleLabel, subtitleLabel, versionPanel, minimizeButton, closeButton
-            });
+                Location = new Point(710, 27),
+                Size = new Size(84, 28)
+            };
 
-            CreateApplicationCard(
-                new Point(24, 103),
+            var headerLine = new Panel
+            {
+                BackColor = UiPalette.BorderSoft,
+                Location = new Point(24, 85),
+                Size = new Size(772, 1)
+            };
+
+            applicationsPanel = new RoundedPanel
+            {
+                Location = new Point(24, 104),
+                Size = new Size(552, 270),
+                BackColor = UiPalette.Surface,
+                BorderColor = UiPalette.BorderSoft,
+                CornerRadius = 18
+            };
+            applicationsPanel.Controls.Add(CreateLabel("应用", new Point(18, 17), new Size(120, 25),
+                new Font("Microsoft YaHei UI", 11.5F, FontStyle.Bold), UiPalette.Ivory));
+            applicationsPanel.Controls.Add(CreateLabel("选择客户端后，系统只会补开未达到数量的窗口", new Point(19, 43), new Size(430, 19),
+                new Font("Microsoft YaHei UI", 8F), UiPalette.MutedDark));
+
+            CreateApplicationRow(
+                new Point(16, 72),
                 "微信",
                 global::duokai.Properties.Resources.WeChat,
-                Color.FromArgb(34, 38, 39),
-                Color.FromArgb(48, 60, 52),
+                UiPalette.WechatSurface,
+                UiPalette.WechatBorder,
                 wechatStartButton_Click,
                 wechatIcon_Click,
                 out wechatPanel,
                 out wechatStartButton,
                 out wechatPathLabel,
                 out wechatCountLabel,
-                out wechatNameLabel,
-                out wechatIconPanel,
                 out wechatIcon);
+            applicationsPanel.Controls.Add(wechatPanel);
 
-            CreateApplicationCard(
-                new Point(24, 231),
+            CreateApplicationRow(
+                new Point(16, 164),
                 "企业微信",
                 global::duokai.Properties.Resources.WXWork,
-                Color.FromArgb(31, 36, 43),
-                Color.FromArgb(43, 57, 72),
+                UiPalette.WecomSurface,
+                UiPalette.WecomBorder,
                 wecomStartButton_Click,
                 wecomIcon_Click,
                 out wecomPanel,
                 out wecomStartButton,
                 out wecomPathLabel,
                 out wecomCountLabel,
-                out wecomNameLabel,
-                out wecomIconPanel,
                 out wecomIcon);
+            applicationsPanel.Controls.Add(wecomPanel);
 
             quantityPanel = new RoundedPanel
             {
-                Location = new Point(570, 103),
-                Size = new Size(196, 244),
+                Location = new Point(592, 104),
+                Size = new Size(204, 270),
                 BackColor = UiPalette.Surface,
-                BorderColor = UiPalette.Border,
-                CornerRadius = 17
+                BorderColor = UiPalette.BorderSoft,
+                CornerRadius = 18
             };
-            targetEyebrowLabel = CreateLabel("TARGET INSTANCES", new Point(18, 15), new Size(160, 17),
-                new Font("Segoe UI", 7.5F, FontStyle.Bold), UiPalette.Gold, ContentAlignment.MiddleCenter);
-            targetLabel = CreateLabel("目标窗口数", new Point(18, 36), new Size(160, 28),
-                new Font("Microsoft YaHei UI", 12F, FontStyle.Bold), UiPalette.Ivory, ContentAlignment.MiddleCenter);
-            targetEntryPanel = new RoundedPanel
+            quantityPanel.Controls.Add(CreateLabel("双开数量", new Point(18, 17), new Size(168, 27),
+                new Font("Microsoft YaHei UI", 11.5F, FontStyle.Bold), UiPalette.Ivory,
+                ContentAlignment.MiddleCenter));
+            quantityPanel.Controls.Add(CreateLabel("目标窗口数", new Point(18, 44), new Size(168, 18),
+                new Font("Microsoft YaHei UI", 8F), UiPalette.MutedDark, ContentAlignment.MiddleCenter));
+
+            var targetEntryPanel = new RoundedPanel
             {
-                Location = new Point(16, 79),
-                Size = new Size(164, 62),
+                Location = new Point(17, 79),
+                Size = new Size(170, 66),
                 BackColor = UiPalette.SurfaceRaised,
                 BorderColor = UiPalette.Border,
-                CornerRadius = 14
+                CornerRadius = 15
             };
-            decreaseButton = CreateCounterButton("−", new Point(10, 10));
+            decreaseButton = CreateCounterButton("−", new Point(10, 12));
             decreaseButton.Click += decreaseButton_Click;
-            increaseButton = CreateCounterButton("+", new Point(114, 10));
+            increaseButton = CreateCounterButton("+", new Point(120, 12));
             increaseButton.Click += increaseButton_Click;
             targetCountInput = new TextBox
             {
                 BackColor = UiPalette.SurfaceRaised,
                 BorderStyle = BorderStyle.None,
-                Font = new Font("Segoe UI", 24F, FontStyle.Bold),
+                Font = new Font("Segoe UI", 23F, FontStyle.Bold),
                 ForeColor = UiPalette.Ivory,
-                Location = new Point(52, 10),
+                Location = new Point(51, 12),
                 MaxLength = 2,
-                Size = new Size(60, 43),
+                Size = new Size(68, 42),
                 Text = "2",
                 TextAlign = HorizontalAlignment.Center
             };
@@ -169,45 +183,51 @@ namespace shuangkai
             targetCountInput.KeyPress += targetCountInput_KeyPress;
             targetCountInput.Leave += targetCountInput_Leave;
             targetEntryPanel.Controls.AddRange(new Control[] { decreaseButton, targetCountInput, increaseButton });
-            savedLabel = CreateLabel("●  设置自动保存", new Point(30, 157), new Size(136, 23),
-                new Font("Microsoft YaHei UI", 8F), UiPalette.Green, ContentAlignment.MiddleCenter);
-            targetHintLabel = CreateLabel("再次点击时，仅补足\r\n已关闭的实例", new Point(20, 190), new Size(156, 39),
-                new Font("Microsoft YaHei UI", 8F), UiPalette.MutedDark, ContentAlignment.TopCenter);
-            quantityPanel.Controls.AddRange(new Control[]
-            {
-                targetEyebrowLabel, targetLabel, targetEntryPanel, savedLabel, targetHintLabel
-            });
+            quantityPanel.Controls.Add(targetEntryPanel);
 
-            footerPanel = new Panel
-            {
-                BackColor = UiPalette.Canvas,
-                Dock = DockStyle.Bottom,
-                Height = 68
-            };
-            footerLine = new Panel
+            quantityPanel.Controls.Add(CreateLabel("●  数量已自动保存", new Point(21, 158), new Size(162, 23),
+                new Font("Microsoft YaHei UI", 8F), UiPalette.Green, ContentAlignment.MiddleCenter));
+            quantityPanel.Controls.Add(new Panel
             {
                 BackColor = UiPalette.BorderSoft,
-                Location = new Point(23, 1),
-                Size = new Size(742, 1)
+                Location = new Point(20, 194),
+                Size = new Size(164, 1)
+            });
+            quantityPanel.Controls.Add(CreateLabel("窗口误关后再次点击\r\n即可单独补开", new Point(20, 207), new Size(164, 39),
+                new Font("Microsoft YaHei UI", 8F), UiPalette.Muted, ContentAlignment.TopCenter));
+            quantityPanel.Controls.Add(CreateLabel("支持 1–10 个窗口", new Point(20, 246), new Size(164, 17),
+                new Font("Microsoft YaHei UI", 7.5F), UiPalette.MutedDark, ContentAlignment.TopCenter));
+
+            var footerLine = new Panel
+            {
+                BackColor = UiPalette.BorderSoft,
+                Location = new Point(24, 397),
+                Size = new Size(772, 1)
             };
-            statusDotLabel = CreateLabel("●", new Point(25, 27), new Size(12, 15),
+            statusDotLabel = CreateLabel("●", new Point(26, 419), new Size(12, 15),
                 new Font("Segoe UI", 8F), UiPalette.Green);
-            statusLabel = CreateLabel("就绪 · 选择目标窗口数，然后启动或补开", new Point(43, 21), new Size(635, 27),
+            statusLabel = CreateLabel("就绪 · 选择数量后启动，关闭的窗口可随时补开", new Point(44, 412), new Size(640, 28),
                 new Font("Microsoft YaHei UI", 8.5F), UiPalette.Muted, ContentAlignment.MiddleLeft);
             statusLabel.AutoEllipsis = true;
             sourceLink = new LinkLabel
             {
                 AutoSize = true,
+                BackColor = Color.Transparent,
                 Font = new Font("Microsoft YaHei UI", 8F),
                 LinkBehavior = LinkBehavior.HoverUnderline,
                 LinkColor = UiPalette.Gold,
                 ActiveLinkColor = UiPalette.GoldHover,
                 VisitedLinkColor = UiPalette.Gold,
-                Location = new Point(699, 25),
-                Text = "GitHub"
+                Location = new Point(748, 419),
+                Text = "开源项目"
             };
             sourceLink.LinkClicked += sourceLink_LinkClicked;
-            footerPanel.Controls.AddRange(new Control[] { footerLine, statusDotLabel, statusLabel, sourceLink });
+
+            backgroundPanel.Controls.AddRange(new Control[]
+            {
+                brandTile, titleLabel, subtitleLabel, versionPanel, themeToggle, headerLine,
+                applicationsPanel, quantityPanel, footerLine, statusDotLabel, statusLabel, sourceLink
+            });
 
             statusTimer = new Timer(components) { Interval = 2000 };
             statusTimer.Tick += statusTimer_Tick;
@@ -217,16 +237,18 @@ namespace shuangkai
                 InitialDelay = 350,
                 ReshowDelay = 100
             };
+            pathToolTip.SetToolTip(themeToggle, "切换日间 / 夜间主题");
 
             AutoScaleDimensions = new SizeF(96F, 96F);
             AutoScaleMode = AutoScaleMode.Dpi;
-            BackColor = UiPalette.Border;
-            ClientSize = new Size(790, 458);
-            Controls.AddRange(new Control[] { footerPanel, quantityPanel, wecomPanel, wechatPanel, headerPanel });
+            BackColor = UiPalette.Canvas;
+            ClientSize = new Size(820, 452);
+            Controls.Add(backgroundPanel);
             Font = new Font("Microsoft YaHei UI", 9F);
+            FormBorderStyle = FormBorderStyle.FixedSingle;
             Icon = (Icon)resources.GetObject("$this.Icon");
             MaximizeBox = false;
-            MinimizeBox = false;
+            MinimizeBox = true;
             Name = "Home";
             StartPosition = FormStartPosition.CenterScreen;
             Text = "微信 · 企业微信多开助手 V1.0.1";
@@ -250,23 +272,6 @@ namespace shuangkai
             };
         }
 
-        private static PremiumButton CreateChromeButton(string text, Point location, Color hover, Color pressed)
-        {
-            return new PremiumButton
-            {
-                BackColor = UiPalette.Canvas,
-                HoverBackColor = hover,
-                PressedBackColor = pressed,
-                DisabledBackColor = UiPalette.Canvas,
-                Font = new Font("Segoe UI", 12F),
-                ForeColor = UiPalette.Muted,
-                Location = location,
-                Size = new Size(32, 32),
-                CornerRadius = 10,
-                Text = text
-            };
-        }
-
         private static PremiumButton CreateCounterButton(string text, Point location)
         {
             return new PremiumButton
@@ -278,15 +283,17 @@ namespace shuangkai
                 BorderColor = UiPalette.Border,
                 BorderThickness = 1,
                 CornerRadius = 10,
-                Font = new Font("Segoe UI", 16F),
+                Font = new Font("Segoe UI", 15F),
                 ForeColor = UiPalette.Ivory,
+                HoverForeColor = UiPalette.Ivory,
+                PressedForeColor = UiPalette.Ivory,
                 Location = location,
                 Size = new Size(40, 42),
                 Text = text
             };
         }
 
-        private static void CreateApplicationCard(
+        private static void CreateApplicationRow(
             Point location,
             string displayName,
             Image image,
@@ -298,55 +305,59 @@ namespace shuangkai
             out PremiumButton startButton,
             out Label pathLabel,
             out Label countLabel,
-            out Label nameLabel,
-            out RoundedPanel iconPanel,
             out PictureBox icon)
         {
             panel = new RoundedPanel
             {
                 Location = location,
-                Size = new Size(530, 116),
-                BackColor = UiPalette.Surface,
-                BorderColor = UiPalette.Border,
-                CornerRadius = 17
+                Size = new Size(520, 78),
+                BackColor = UiPalette.SurfaceRaised,
+                BorderColor = UiPalette.BorderSoft,
+                CornerRadius = 14
             };
-            iconPanel = new RoundedPanel
+            var iconPanel = new RoundedPanel
             {
-                Location = new Point(18, 23),
-                Size = new Size(70, 70),
+                Location = new Point(13, 13),
+                Size = new Size(52, 52),
                 BackColor = iconBackground,
                 BorderColor = iconBorder,
-                CornerRadius = 16
+                CornerRadius = 13
             };
             icon = new PictureBox
             {
                 BackColor = Color.Transparent,
                 Cursor = Cursors.Hand,
                 Image = image,
-                Location = new Point(9, 9),
-                Size = new Size(52, 52),
+                Location = new Point(7, 7),
+                Size = new Size(38, 38),
                 SizeMode = PictureBoxSizeMode.Zoom
             };
             icon.Click += iconHandler;
             iconPanel.Controls.Add(icon);
-            nameLabel = CreateLabel(displayName, new Point(102, 22), new Size(160, 25),
-                new Font("Microsoft YaHei UI", 12F, FontStyle.Bold), UiPalette.Ivory);
-            countLabel = CreateLabel("当前未运行", new Point(104, 51), new Size(250, 20),
-                new Font("Microsoft YaHei UI", 8.5F), UiPalette.Muted);
-            pathLabel = CreateLabel("正在检测安装路径…", new Point(104, 78), new Size(276, 19),
-                new Font("Microsoft YaHei UI", 8F), UiPalette.MutedDark);
+
+            var nameLabel = CreateLabel(displayName, new Point(81, 9), new Size(130, 24),
+                new Font("Microsoft YaHei UI", 10.5F, FontStyle.Bold), UiPalette.Ivory);
+            countLabel = CreateLabel("当前未运行", new Point(82, 34), new Size(245, 19),
+                new Font("Microsoft YaHei UI", 8F), UiPalette.Muted);
+            pathLabel = CreateLabel("正在检测安装路径…", new Point(82, 54), new Size(295, 17),
+                new Font("Microsoft YaHei UI", 7.5F), UiPalette.MutedDark);
             pathLabel.AutoEllipsis = true;
+
             startButton = new PremiumButton
             {
-                BackColor = UiPalette.Gold,
-                HoverBackColor = UiPalette.GoldHover,
+                BackColor = UiPalette.ActionSurface,
+                HoverBackColor = UiPalette.Gold,
                 PressedBackColor = UiPalette.GoldPressed,
-                DisabledBackColor = UiPalette.SurfaceRaised,
-                CornerRadius = 12,
-                Font = new Font("Microsoft YaHei UI", 9F, FontStyle.Bold),
-                ForeColor = UiPalette.Canvas,
-                Location = new Point(396, 35),
-                Size = new Size(113, 46),
+                DisabledBackColor = UiPalette.Surface,
+                BorderColor = UiPalette.GoldBorder,
+                BorderThickness = 1,
+                CornerRadius = 11,
+                Font = new Font("Microsoft YaHei UI", 8.5F, FontStyle.Bold),
+                ForeColor = UiPalette.Gold,
+                HoverForeColor = UiPalette.Canvas,
+                PressedForeColor = UiPalette.Canvas,
+                Location = new Point(393, 19),
+                Size = new Size(111, 40),
                 Text = "启动 / 补开"
             };
             startButton.Click += startHandler;
