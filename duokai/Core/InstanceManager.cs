@@ -133,19 +133,22 @@ namespace shuangkai.Core
 
                         if (!string.IsNullOrWhiteSpace(application.ExecutablePath))
                         {
+                            string runningPath;
                             try
                             {
-                                var runningPath = process.MainModule?.FileName;
-                                if (!string.IsNullOrWhiteSpace(runningPath) &&
-                                    !PathsEqual(runningPath, application.ExecutablePath))
-                                {
-                                    continue;
-                                }
+                                runningPath = process.MainModule?.FileName;
                             }
                             catch (Exception)
                             {
-                                // The file name and user session are still useful when an elevated
-                                // process prevents querying its full path.
+                                // Fail closed: a matching file name is not enough to prove that this
+                                // is the Tencent client selected by ApplicationLocator.
+                                continue;
+                            }
+
+                            if (string.IsNullOrWhiteSpace(runningPath) ||
+                                !PathsEqual(runningPath, application.ExecutablePath))
+                            {
+                                continue;
                             }
                         }
 

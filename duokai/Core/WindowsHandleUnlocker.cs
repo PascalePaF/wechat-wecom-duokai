@@ -32,6 +32,7 @@ namespace shuangkai.Core
         internal static UnlockAttempt ReleaseSingleInstanceLocks(AppKind kind, IEnumerable<int> applicationProcessIds, string lockFile)
         {
             var allowedProcessIds = new HashSet<int>(applicationProcessIds ?? Enumerable.Empty<int>());
+            var lockFileOnlyProcessIds = new HashSet<int>();
             var result = new UnlockAttempt();
 
             if (!string.IsNullOrWhiteSpace(lockFile) && File.Exists(lockFile))
@@ -43,11 +44,11 @@ namespace shuangkai.Core
                 }
                 catch (IOException)
                 {
-                    AddRundll32ProcessesInCurrentSession(allowedProcessIds);
+                    AddRundll32ProcessesInCurrentSession(allowedProcessIds, lockFileOnlyProcessIds);
                 }
                 catch (UnauthorizedAccessException)
                 {
-                    AddRundll32ProcessesInCurrentSession(allowedProcessIds);
+                    AddRundll32ProcessesInCurrentSession(allowedProcessIds, lockFileOnlyProcessIds);
                 }
             }
 
@@ -94,7 +95,9 @@ namespace shuangkai.Core
                             matches = PathsEqual(openPath, lockFile);
                         }
 
-                        if (!matches)
+                        // rundll32 is considered only for the exact modern WeChat lock-file path.
+                        // Never apply mutex-name matching to an unrelated helper process.
+                        if (!matches && !lockFileOnlyProcessIds.Contains(handle.ProcessId))
                         {
                             var typeName = QueryObjectString(localHandle, ObjectTypeInformation);
                             if (string.Equals(typeName, "Mutant", StringComparison.OrdinalIgnoreCase) ||
@@ -117,8 +120,10 @@ namespace shuangkai.Core
 
                     // The target and output pointers are intentionally null. Windows permits this
                     // exact form when DUPLICATE_CLOSE_SOURCE is supplied.
-                    DuplicateHandleClose(sourceProcess, handle.HandleValue, IntPtr.Zero, IntPtr.Zero, 0, false, DuplicateCloseSource);
-                    result.ClosedHandleCount++;
+                    if (DuplicateHandleClose(sourceProcess, handle.HandleValue, IntPtr.Zero, IntPtr.Zero, 0, false, DuplicateCloseSource))
+                    {
+                        result.ClosedHandleCount++;
+                    }
                 }
             }
             finally
@@ -174,7 +179,7 @@ namespace shuangkai.Core
                 : Path.Combine(roaming, "Tencent", "xwechat", "lock", "lock.ini");
         }
 
-        private static void AddRundll32ProcessesInCurrentSession(ISet<int> processIds)
+        private static void AddRundll32ProcessesInCurrentSession(ISet<int> processIds, ISet<int> lockFileOnlyProcessIds)
         {
             var currentSession = Process.GetCurrentProcess().SessionId;
             foreach (var process in Process.GetProcessesByName("rundll32"))
@@ -184,6 +189,7 @@ namespace shuangkai.Core
                     if (process.SessionId == currentSession)
                     {
                         processIds.Add(process.Id);
+                        lockFileOnlyProcessIds.Add(process.Id);
                     }
                 }
                 catch (Exception)

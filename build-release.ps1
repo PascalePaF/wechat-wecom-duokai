@@ -45,6 +45,10 @@ if (Test-Path -LiteralPath $artifactRoot) {
     if (-not $resolvedArtifactRoot.StartsWith($artifactParent + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) {
         throw '现有发布目录未通过路径校验，拒绝清理。'
     }
+    $artifactItem = Get-Item -LiteralPath $resolvedArtifactRoot -Force
+    if (($artifactItem.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
+        throw '现有发布目录是目录联接或符号链接，拒绝递归清理。'
+    }
     Remove-Item -LiteralPath $resolvedArtifactRoot -Recurse -Force
 }
 
@@ -73,6 +77,10 @@ Copy-Item -LiteralPath (Join-Path $sourceRoot 'packaging\PORTABLE-README.txt') -
 $hardcodedPathReport = Join-Path $sourceRoot 'docs\旧版EXE硬编码路径说明与风险评估报告.txt'
 if (Test-Path -LiteralPath $hardcodedPathReport) {
     Copy-Item -LiteralPath $hardcodedPathReport -Destination (Join-Path $portableDirectory '安全说明-旧版EXE硬编码路径报告.txt')
+}
+$completeSecurityReport = Join-Path $sourceRoot 'docs\微信企业微信多开助手_V1.0.1_完整安全审计报告.txt'
+if (Test-Path -LiteralPath $completeSecurityReport) {
+    Copy-Item -LiteralPath $completeSecurityReport -Destination (Join-Path $portableDirectory '完整安全审计与卡巴斯基告警调查报告.txt')
 }
 
 $portableZip = Join-Path (Split-Path -Parent $portableDirectory) ("wechat_duokai-portable-" + $versionSuffix + '.zip')

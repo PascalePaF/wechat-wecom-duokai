@@ -356,7 +356,13 @@ namespace WechatDuokai.Installer
                 }
 
                 var markerPath = Path.Combine(fullPath, markerName);
-                return Directory.Exists(fullPath) &&
+                if (!Directory.Exists(fullPath) ||
+                    (new DirectoryInfo(fullPath).Attributes & FileAttributes.ReparsePoint) != 0)
+                {
+                    return false;
+                }
+
+                return
                        File.Exists(markerPath) &&
                        string.Equals(File.ReadAllText(markerPath, Encoding.UTF8).Trim(), markerValue, StringComparison.Ordinal);
             }
@@ -556,20 +562,27 @@ namespace WechatDuokai.Installer
     {
         internal static void Execute(string planPath)
         {
-            ExecuteCore(planPath, true, true);
+            ExecuteCore(planPath, true, true, true);
         }
 
         internal static void ExecuteForTests(string planPath)
         {
-            ExecuteCore(planPath, false, false);
+            ExecuteCore(planPath, false, false, false);
         }
 
-        private static void ExecuteCore(string planPath, bool showMessages, bool scheduleSelfDeletion)
+        private static void ExecuteCore(string planPath, bool showMessages, bool scheduleSelfDeletion, bool verifyWorkerIdentity)
         {
             CleanupPlan plan = null;
             try
             {
                 plan = CleanupPlan.Read(planPath);
+                if (verifyWorkerIdentity &&
+                    (!PathsEqual(plan.PlanPath, planPath) ||
+                     !PathsEqual(plan.WorkerPath, Application.ExecutablePath)))
+                {
+                    throw new InvalidDataException("清理计划与工作进程不匹配。未删除任何文件。");
+                }
+
                 WaitForParent(plan.ParentProcessId);
 
                 StopOwnedProcesses(plan);
@@ -779,8 +792,7 @@ namespace WechatDuokai.Installer
             {
                 try
                 {
-                    ClearReadOnlyAttributes(path);
-                    Directory.Delete(path, true);
+                    DeleteDirectoryWithoutFollowingLinks(path);
                     return;
                 }
                 catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
@@ -796,45 +808,35 @@ namespace WechatDuokai.Installer
             }
         }
 
-        private static void ClearReadOnlyAttributes(string directory)
+        private static void DeleteDirectoryWithoutFollowingLinks(string directory)
         {
-            var pending = new Stack<DirectoryInfo>();
-            pending.Push(new DirectoryInfo(directory));
-
-            while (pending.Count > 0)
+            var root = new DirectoryInfo(directory);
+            if ((root.Attributes & FileAttributes.ReparsePoint) != 0)
             {
-                var current = pending.Pop();
-                foreach (var file in current.EnumerateFiles())
+                throw new IOException("拒绝删除目录联接或符号链接：" + directory);
+            }
+
+            foreach (var file in root.EnumerateFiles())
+            {
+                if ((file.Attributes & FileAttributes.ReadOnly) != 0)
                 {
-                    try
-                    {
-                        if ((file.Attributes & FileAttributes.ReadOnly) != 0)
-                        {
-                            file.Attributes &= ~FileAttributes.ReadOnly;
-                        }
-                    }
-                    catch (Exception)
-                    {
-                        // Directory.Delete will report a useful error if this matters.
-                    }
+                    file.Attributes &= ~FileAttributes.ReadOnly;
+                }
+                file.Delete();
+            }
+
+            foreach (var child in root.EnumerateDirectories())
+            {
+                if ((child.Attributes & FileAttributes.ReparsePoint) != 0)
+                {
+                    child.Delete(false);
+                    continue;
                 }
 
-                foreach (var child in current.EnumerateDirectories())
-                {
-                    try
-                    {
-                        // Do not traverse junctions or symbolic links while preparing deletion.
-                        if ((child.Attributes & FileAttributes.ReparsePoint) == 0)
-                        {
-                            pending.Push(child);
-                        }
-                    }
-                    catch (Exception)
-                    {
-                        // Directory.Delete will report a useful error if this matters.
-                    }
-                }
+                DeleteDirectoryWithoutFollowingLinks(child.FullName);
             }
+
+            root.Delete(false);
         }
 
         [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
