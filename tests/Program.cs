@@ -48,6 +48,11 @@ namespace WechatDuokai.Tests
                 return TestInstall();
             }
 
+            if (args.Length == 1 && args[0] == "--cleanup-test-install")
+            {
+                return CleanupTestInstall();
+            }
+
             try
             {
                 Run("Null application has zero instances", () =>
@@ -155,6 +160,41 @@ namespace WechatDuokai.Tests
                 "Start menu uninstall shortcut is missing.");
             Assert(!File.Exists(InstallerEngine.DesktopShortcut), "Desktop shortcut should not be created in this test.");
             Console.WriteLine("PASS: Installer writes application, uninstaller, registry data and shortcuts");
+            return 0;
+        }
+
+        private static int CleanupTestInstall()
+        {
+            var locations = InstallerEngine.GetCleanupLocations();
+            Assert(InstallerEngine.ValidateInstallDirectory(locations.InstallDirectory),
+                "No safely marked test installation was found.");
+            Assert(string.Equals(Path.GetFullPath(locations.InstallDirectory).TrimEnd(Path.DirectorySeparatorChar),
+                    Path.GetFullPath(InstallerEngine.DefaultInstallDirectory).TrimEnd(Path.DirectorySeparatorChar),
+                    StringComparison.OrdinalIgnoreCase),
+                "Cleanup test only accepts the exact default test installation directory.");
+
+            var planPath = Path.Combine(Path.GetTempPath(), "wechat-duokai-cleanup-test-" + Guid.NewGuid().ToString("N") + ".plan");
+            var plan = new CleanupPlan
+            {
+                ParentProcessId = 0,
+                DeleteSource = false,
+                InstallDirectory = locations.InstallDirectory,
+                SourceRoot = null,
+                ArtifactRoot = null,
+                PackageRoot = null,
+                DesktopShortcut = InstallerEngine.DesktopShortcut,
+                StartMenuDirectory = InstallerEngine.StartMenuDirectory,
+                UserDataDirectory = null,
+                WorkerPath = null,
+                PlanPath = planPath
+            };
+            plan.Write(planPath);
+            CleanupWorker.ExecuteForTests(planPath);
+
+            Assert(!Directory.Exists(InstallerEngine.DefaultInstallDirectory), "Test installation directory was not removed.");
+            Assert(!Directory.Exists(InstallerEngine.StartMenuDirectory), "Test start-menu directory was not removed.");
+            Assert(!InstallerEngine.ValidateInstallDirectory(locations.InstallDirectory), "Test installation still validates after cleanup.");
+            Console.WriteLine("PASS: Complete cleanup removes the verified test installation");
             return 0;
         }
 

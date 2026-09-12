@@ -556,6 +556,16 @@ namespace WechatDuokai.Installer
     {
         internal static void Execute(string planPath)
         {
+            ExecuteCore(planPath, true, true);
+        }
+
+        internal static void ExecuteForTests(string planPath)
+        {
+            ExecuteCore(planPath, false, false);
+        }
+
+        private static void ExecuteCore(string planPath, bool showMessages, bool scheduleSelfDeletion)
+        {
             CleanupPlan plan = null;
             try
             {
@@ -594,13 +604,21 @@ namespace WechatDuokai.Installer
                     DeleteDirectoryWithRetries(plan.SourceRoot);
                 }
 
-                MessageBox.Show(plan.DeleteSource
-                        ? "已删除安装程序、发布包和已确认的源码目录。"
-                        : "已删除安装程序和发布包，源码已保留。",
-                    "清理完成", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                if (showMessages)
+                {
+                    MessageBox.Show(plan.DeleteSource
+                            ? "已删除安装程序、发布包和已确认的源码目录。"
+                            : "已删除安装程序和发布包，源码已保留。",
+                        "清理完成", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
             }
             catch (Exception ex)
             {
+                if (!showMessages)
+                {
+                    throw;
+                }
+
                 MessageBox.Show("清理未能全部完成：\r\n" + ex.Message,
                     "清理提示", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
@@ -618,11 +636,14 @@ namespace WechatDuokai.Installer
                     // Best effort only.
                 }
 
-                MoveFileEx(Application.ExecutablePath, null, 0x4);
-                var workerDirectory = Path.GetDirectoryName(Application.ExecutablePath);
-                if (!string.IsNullOrWhiteSpace(workerDirectory))
+                if (scheduleSelfDeletion)
                 {
-                    MoveFileEx(workerDirectory, null, 0x4);
+                    MoveFileEx(Application.ExecutablePath, null, 0x4);
+                    var workerDirectory = Path.GetDirectoryName(Application.ExecutablePath);
+                    if (!string.IsNullOrWhiteSpace(workerDirectory))
+                    {
+                        MoveFileEx(workerDirectory, null, 0x4);
+                    }
                 }
             }
         }
