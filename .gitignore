@@ -42,6 +42,13 @@
 *.idb
 *.pdb
 
+# Visual Studio and local build outputs
+.vs/
+.vscode/
+**/bin/
+**/obj/
+/artifacts/
+
 # Kernel Module Compile Results
 *.mod*
 *.cmd

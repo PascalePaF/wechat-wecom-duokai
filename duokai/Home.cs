@@ -1,220 +1,216 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
+using System;
 using System.Diagnostics;
 using System.Drawing;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.IO;
+using System.Threading;
 using System.Windows.Forms;
-using Microsoft.Win32;
+using shuangkai.Core;
 
 namespace shuangkai
 {
     public partial class Home : Form
     {
+        private readonly InstanceManager _instanceManager = new InstanceManager();
+        private AppDefinition _wechat;
+        private AppDefinition _wecom;
+        private bool _launchInProgress;
+
         public Home()
         {
             InitializeComponent();
         }
 
-        #region 定义
-        string jisuanjishijian = DateTime.Now.ToLocalTime().ToString();//检测当前电脑时间
-        #endregion
-
-        #region 判断微信和企业微信是否安装
-        public void wechat_wework() 
-        {
-            #region 判断微信是否安装
-            Object wechat = Registry.GetValue(@"HKEY_CURRENT_USER\SOFTWARE\Tencent\WeChat", "InstallPath", null);
-            if (wechat != null)
-            {//注册表键值存在
-                
-            }
-            else
-            {//注册表键值不存在
-                wechat_shuangkai.Hide();
-                MessageBox.Show("未安装微信,因此该功能暂不可用", "提示：");
-            }  
-            #endregion
-
-            #region 判断企微是否安装
-            Object wework = Registry.GetValue(@"HKEY_CURRENT_USER\SOFTWARE\Tencent\WXWork", "Executable", null);
-            if (wework != null)
-            {//注册表键值存在
-                
-            }
-            else
-            {//注册表键值不存在
-                wework_shuangkai.Hide();
-                MessageBox.Show("未安装企微,因此该功能暂不可用", "提示：");
-            }
-            #endregion
-        }
-        #endregion
-
-        #region 修改企业微信双开注册表
-        string qywxsk = "0";
-        public void xgqywxzcb() 
-        {
-            #region 修改企业微信双开注册表
-            string strNum1 = textBox1.Text;
-            string strNum2 = "3";
-            float flNum1 = Convert.ToSingle(strNum1);
-            float flNum2 = Convert.ToSingle(strNum2);
-            float sum = flNum1 + flNum2;
-            qywxsk = Convert.ToString(sum);
-
-            RegistryKey key = Registry.CurrentUser;
-            RegistryKey software = key.OpenSubKey("SOFTWARE\\Tencent\\WXWork", true); //该项必须已存在
-            software.SetValue("multi_instances", qywxsk);
-            //HKEY_CURRENT_USER\SOFTWARE\Tencent\WXWork下创建一个名为“multi_instances”，值为“3”的键值。
-            //如果该键值原本已经存在，则会修改替换原来的键值，如果不存在则是创建该键值。
-            // 注意：SetValue()还有第三个参数，主要是用于设置键值的类型，如：字符串，二进制，Dword等等~~默认是字符串。如：
-            // software.SetValue("test", "0", RegistryValueKind.DWord); //二进制信息
-            key.Close();
-            #endregion
-        }
-        #endregion
-
-        #region 加载主页
         private void Home_Load(object sender, EventArgs e)
         {
-            #region 判断微信和企微是否安装
-            wechat_wework();
-            #endregion
+            var cachedCount = Math.Max((int)targetCountInput.Minimum,
+                Math.Min((int)targetCountInput.Maximum, UserPreferences.LoadTargetCount()));
+            targetCountInput.Value = cachedCount;
 
-            #region 控件居中
-            base.OnResize(e);//控件居中
-            int x1 = (int)(0.5 * (this.Width - banquan.Width));
-            int y1 = banquan.Location.Y;
-            banquan.Location = new System.Drawing.Point(x1, y1);
-            #endregion
-
-            #region 获取年份
-            string nianfen = jisuanjishijian.Substring(0,4);//截取字符串前4位字符
-            time_nian.Text = nianfen;
-            #endregion
-
-            #region 读取企微安装路径
-            RegistryKey registryKeywework = Registry.CurrentUser.OpenSubKey(@"SOFTWARE\Tencent\WXWork");
-            string wework_path = (string)registryKeywework.GetValue("Executable".ToUpper());
-            textBox3.Text = wework_path;
-            #endregion
-
-            #region 读取微信安装路径
-            RegistryKey registryKeywechat = Registry.CurrentUser.OpenSubKey(@"SOFTWARE\Tencent\WeChat");
-            string wechat_path = (string)registryKeywechat.GetValue("InstallPath".ToUpper());
-            textBox2.Text = wechat_path + "\\WeChat.exe";
-            #endregion
+            ReloadApplications();
+            RefreshInstanceStatus();
+            statusTimer.Start();
         }
-        #endregion
 
-        #region 前往官网
-        private void rootlink_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
+        private void ReloadApplications()
         {
-            Process.Start("https://www.root.tax/", "Open web site");  //打开网站
-        }
-        #endregion
+            _wechat = ApplicationLocator.FindWeChat();
+            _wecom = ApplicationLocator.FindWeCom();
 
-        #region 限制textbox只能输入数字,且首字不能为0
-        private void textBox1_KeyPress(object sender, KeyPressEventArgs e)
+            ConfigureApplicationRow(_wechat, wechatStartButton, wechatPathLabel, wechatIcon);
+            ConfigureApplicationRow(_wecom, wecomStartButton, wecomPathLabel, wecomIcon);
+        }
+
+        private void ConfigureApplicationRow(AppDefinition application, Button actionButton, Label pathLabel, PictureBox icon)
         {
-            if (e.KeyChar != '\b')//这是允许输入退格键 
+            var available = application != null && application.IsAvailable;
+            actionButton.Enabled = available;
+            icon.Enabled = available;
+
+            if (available)
             {
-                int len = textBox1.Text.Length;
-                if (len < 1 && e.KeyChar == '0')
-                {
-                    e.Handled = true;
-                }
-                else if ((e.KeyChar < '0') || (e.KeyChar > '9'))//这是允许输入0-9数字 
-                {
-                    e.Handled = true;
-                }
-            }
-        }
-        #endregion
-
-        #region 多开
-        string chat_shu = "0";
-        private void wechat_shuangkai_Click(object sender, EventArgs e)
-        {//微信
-            #region 判断微信是否安装,如安装,及执行多开
-            Object obj = Registry.GetValue(@"HKEY_CURRENT_USER\SOFTWARE\Tencent\WeChat", "InstallPath", null);
-            if (obj != null)
-            {//注册表键值存在
-                wechat_time.Enabled = true;//开启计时器
-            }
-            else
-            {//注册表键值不存在
-                MessageBox.Show("未安装微信,因此该功能暂不可用", "提示：");
-            }
-            #endregion
-        }
-
-        string work_shu = "0";
-        private void wework_shuangkai_Click(object sender, EventArgs e)
-        {//企业微信
-            xgqywxzcb();//修改企业微信双开注册表
-
-            #region 判断企微是否安装,如安装,及执行多开
-            Object obj = Registry.GetValue(@"HKEY_CURRENT_USER\SOFTWARE\Tencent\WXWork", "Executable", null);
-            if (obj != null)
-            {//注册表键值存在
-                wework_time.Enabled = true;//开启计时器
-            }
-            else
-            {//注册表键值不存在
-                MessageBox.Show("未安装企微,因此该功能暂不可用", "提示：");
-            }
-            #endregion
-        }
-        #endregion
-
-        #region 循环开启微信&企业微信
-        string jieguo = "";
-        private void wechat_time_Tick(object sender, EventArgs e)
-        {//循环开启微信
-            if (chat_shu == textBox1.Text)
-            {
-                wechat_time.Enabled = false;//关闭计时器
-                chat_shu = "0";
+                pathLabel.Text = ShortenPath(application.ExecutablePath, 48);
+                pathToolTip.SetToolTip(pathLabel, application.ExecutablePath);
+                pathToolTip.SetToolTip(icon, $"点击启动或补足{application.DisplayName}");
             }
             else
             {
-                string strNum1 = chat_shu;
-                string strNum2 = "1";
-                float flNum1 = Convert.ToSingle(strNum1);
-                float flNum2 = Convert.ToSingle(strNum2);
-                float sum = flNum1 + flNum2;
-                chat_shu = Convert.ToString(sum);
-
-                Process.Start(@textBox2.Text, "Open program");//打开程序 
+                pathLabel.Text = "未检测到安装路径";
+                pathToolTip.SetToolTip(pathLabel, "请先安装官方客户端，然后重新打开本工具。该工具不会下载或替换客户端。");
             }
         }
 
-        private void wework_time_Tick(object sender, EventArgs e)
-        {//循环开启企业微信
-            xgqywxzcb();//修改企业微信双开注册表
+        private void targetCountInput_ValueChanged(object sender, EventArgs e)
+        {
+            TrySaveSettings((int)targetCountInput.Value);
+        }
 
-            if (work_shu == textBox1.Text)
+        private void wechatStartButton_Click(object sender, EventArgs e)
+        {
+            StartOrRestoreAsync(_wechat);
+        }
+
+        private void wecomStartButton_Click(object sender, EventArgs e)
+        {
+            StartOrRestoreAsync(_wecom);
+        }
+
+        private void wechatIcon_Click(object sender, EventArgs e)
+        {
+            StartOrRestoreAsync(_wechat);
+        }
+
+        private void wecomIcon_Click(object sender, EventArgs e)
+        {
+            StartOrRestoreAsync(_wecom);
+        }
+
+        private async void StartOrRestoreAsync(AppDefinition application)
+        {
+            if (_launchInProgress)
             {
-                wework_time.Enabled = false;//关闭计时器
-                work_shu = "0";
+                return;
             }
-            else 
-            {
-                string strNum1 = work_shu;
-                string strNum2 = "1";
-                float flNum1 = Convert.ToSingle(strNum1);
-                float flNum2 = Convert.ToSingle(strNum2);
-                float sum = flNum1 + flNum2;
-                work_shu = Convert.ToString(sum);
 
-                Process.Start(@textBox3.Text, "Open program");//打开程序 
+            if (application == null || !application.IsAvailable)
+            {
+                MessageBox.Show("没有检测到对应的官方客户端，请先完成客户端安装。", "未找到程序",
+                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            _launchInProgress = true;
+            SetActionsEnabled(false);
+            targetCountInput.Enabled = false;
+            statusTimer.Stop();
+
+            try
+            {
+                var targetCount = (int)targetCountInput.Value;
+                TrySaveSettings(targetCount);
+
+                var result = await _instanceManager.EnsureTargetCountAsync(
+                    application,
+                    targetCount,
+                    message => BeginInvoke(new Action(() => SetStatus(message, Color.FromArgb(44, 91, 160)))),
+                    CancellationToken.None);
+
+                SetStatus(result.Message, result.Success ? Color.FromArgb(31, 122, 70) : Color.FromArgb(184, 92, 20));
+            }
+            catch (Exception ex)
+            {
+                SetStatus("启动失败：" + ex.Message, Color.FromArgb(190, 50, 50));
+                MessageBox.Show(ex.Message, "启动失败", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            finally
+            {
+                _launchInProgress = false;
+                targetCountInput.Enabled = true;
+                SetActionsEnabled(true);
+                RefreshInstanceStatus();
+                statusTimer.Start();
             }
         }
-        #endregion
+
+        private void statusTimer_Tick(object sender, EventArgs e)
+        {
+            if (!_launchInProgress)
+            {
+                RefreshInstanceStatus();
+            }
+        }
+
+        private void RefreshInstanceStatus()
+        {
+            SetApplicationStatus(_wechat, wechatCountLabel);
+            SetApplicationStatus(_wecom, wecomCountLabel);
+        }
+
+        private void SetApplicationStatus(AppDefinition application, Label countLabel)
+        {
+            if (application == null || !application.IsAvailable)
+            {
+                countLabel.Text = "不可用";
+                countLabel.ForeColor = Color.FromArgb(135, 142, 150);
+                return;
+            }
+
+            var count = _instanceManager.GetInstanceCount(application);
+            countLabel.Text = count == 0 ? "当前未运行" : $"当前运行 {count} 个实例";
+            countLabel.ForeColor = count == 0
+                ? Color.FromArgb(105, 113, 122)
+                : Color.FromArgb(31, 122, 70);
+        }
+
+        private void SetActionsEnabled(bool enabled)
+        {
+            wechatStartButton.Enabled = enabled && _wechat != null && _wechat.IsAvailable;
+            wechatIcon.Enabled = wechatStartButton.Enabled;
+            wecomStartButton.Enabled = enabled && _wecom != null && _wecom.IsAvailable;
+            wecomIcon.Enabled = wecomStartButton.Enabled;
+        }
+
+        private void SetStatus(string message, Color color)
+        {
+            statusLabel.Text = message;
+            statusLabel.ForeColor = color;
+        }
+
+        private void sourceLink_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
+        {
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = "https://github.com/CN-Root/wechat-wecom-duokai",
+                UseShellExecute = true
+            });
+        }
+
+        private void Home_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            TrySaveSettings((int)targetCountInput.Value);
+        }
+
+        private static void TrySaveSettings(int targetCount)
+        {
+            try
+            {
+                UserPreferences.SaveTargetCount(targetCount);
+            }
+            catch (Exception)
+            {
+                // Failure to persist a preference must not prevent launching the clients.
+            }
+        }
+
+        private static string ShortenPath(string path, int maximumLength)
+        {
+            if (string.IsNullOrWhiteSpace(path) || path.Length <= maximumLength)
+            {
+                return path ?? string.Empty;
+            }
+
+            var fileName = Path.GetFileName(path);
+            var availablePrefix = Math.Max(6, maximumLength - fileName.Length - 4);
+            return path.Substring(0, Math.Min(availablePrefix, path.Length)) + "…\\" + fileName;
+        }
     }
 }

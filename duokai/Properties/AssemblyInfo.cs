@@ -2,15 +2,17 @@
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
+[assembly: InternalsVisibleTo("WechatDuokai.Tests")]
+
 // 有关程序集的一般信息由以下
 // 控制。更改这些特性值可修改
 // 与程序集关联的信息。
-[assembly: AssemblyTitle("微信&企业微信双开神器")]
-[assembly: AssemblyDescription("微信&企业微信双开神器")]
+[assembly: AssemblyTitle("微信 · 企业微信多开助手")]
+[assembly: AssemblyDescription("按目标数量启动和补开微信、企业微信实例")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("root.tax(根目录)")]
-[assembly: AssemblyProduct("微信&企业微信双开神器")]
-[assembly: AssemblyCopyright("Copyright © root.tax(根目录) 2022")]
+[assembly: AssemblyCompany("wechat_duokai contributors")]
+[assembly: AssemblyProduct("微信 · 企业微信多开助手")]
+[assembly: AssemblyCopyright("Copyright © CN-Root and contributors 2022-2026")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 

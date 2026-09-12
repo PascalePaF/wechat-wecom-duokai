@@ -1,0 +1,121 @@
+# V1.0.0 安全审计报告
+
+审计日期：2026-09-12  
+审计对象：上游源码、用户提供的旧版 `duokai.exe`、本次 V1.0.0 修改与发布流程
+
+## 结论摘要
+
+**上游源码与旧版 EXE 的反编译代码中未发现后门、凭据窃取、聊天记录读取、远程控制、静默下载、开机自启或代码注入行为。**
+
+但“未发现”不等同于数学意义上的绝对安全。用户提供的旧版 EXE 没有数字签名，而且内容与 GitHub 当前源码并不完全一致，因此它的**静态行为风险较低、来源与供应链可信度为中等**。不建议继续分发该旧 EXE；应优先使用本仓库从可审计源码重新构建的版本，并核对 SHA-256。
+
+本机 Microsoft Defender 服务处于禁用状态，无法完成本机杀毒引擎扫描。此限制已明确记录，不以“零检出”代替未完成的扫描。
+
+## 1. 上游源码审计
+
+原始仓库：[CN-Root/wechat-wecom-duokai](https://github.com/CN-Root/wechat-wecom-duokai)
+
+检查了全部 C# 源码、项目文件、资源声明和配置文件。上游程序的有效行为为：
+
+- 从当前用户注册表读取微信、企业微信安装路径。
+- 向 `HKCU\SOFTWARE\Tencent\WXWork` 写入 `multi_instances`。
+- 按用户输入数量调用客户端可执行文件。
+- 用户主动点击版权链接时打开 `https://www.root.tax/`。
+- 使用两个 WinForms 计时器连续发起启动请求。
+
+未发现以下行为：
+
+- HTTP/WebSocket/原始套接字通信或后台数据上传。
+- 读取浏览器、凭据库、聊天数据库、剪贴板或用户文档。
+- `Run`/`RunOnce`、计划任务、服务、驱动或其他持久化机制。
+- PowerShell、命令提示符或隐藏脚本执行。
+- DLL 注入、远程线程、内存修改、二进制补丁或反调试。
+- 混淆代码、加密载荷、嵌入的第三方 EXE/DLL。
+
+原代码存在的工程风险不是后门，但应修复：空注册表项可能导致崩溃；安装路径可信度未验证；数量使用浮点转换；1 毫秒计时器会产生竞争；没有判断当前实例；没有错误处理；外部站点链接与核心功能无关。
+
+## 2. 用户提供的旧版 EXE 静态检查
+
+文件：`duokai\bin\Release\duokai.exe`  
+大小：282,624 字节  
+SHA-256：`a4bd0344e17116592b7d6805f386d55ca26d0d17c849e76b8ba215d832499260`  
+SHA-1：`a2c4369d9643f2687c3118ee102e6b3ab465e3c7`
+
+检查结果：
+
+- Authenticode：**未签名**。
+- 目标：.NET Framework 4.7 WinForms。
+- 第三方程序集：未发现。
+- 混淆：未发现；ILSpy 11.0 可完整还原类型和方法。
+- 网络相关代码：仅有用户点击后打开 `https://www.root.tax/` 的一处调用，没有后台联网实现。
+- 注册表：只读写企业微信的安装路径和 `multi_instances`。
+- 进程：只启动微信/企业微信路径；未发现结束进程、注入或执行命令解释器。
+- 持久化、凭据、聊天数据访问：未发现。
+
+### 与 GitHub 源码不一致
+
+反编译确认旧 EXE 将微信路径硬编码为：
+
+```text
+D:\中文安装地址\微信\Weixin\Weixin.exe
+```
+
+而 GitHub 当前源码通过注册表读取路径；旧 EXE 还省略了上游源码中的一部分微信安装检查。这说明该二进制来自一份本地修改过、目前未保留的源码，而不是上游提交的可复现产物。该差异本身不是恶意行为，但削弱了来源验证。
+
+### 杀毒与在线信誉限制
+
+- 本机 Windows Defender 报告产品/功能已禁用，未能执行扫描。
+- 用 SHA-256 进行公开网页检索未找到已有信誉记录。
+- 未将文件上传给任何第三方扫描服务，以免未经确认上传本地样本。
+
+因此对旧 EXE 的结论是：**未发现后门证据，但由于未签名、不可复现且缺少可用杀毒引擎复核，不应把它视为已被完全证明安全。**
+
+## 3. V1.0.0 新增敏感能力审计
+
+为实现“关闭一个后单独补开”，V1.0.0 必须解除客户端的单实例锁。实现遵循最小范围原则：
+
+- 旧版微信只匹配 `_WeChat_App_Instance_Identity_Mutex_Name` / `WeChat_App_Instance_Identity_Mutex_Name` 及对应 `Weixin` 名称。
+- 企业微信只匹配 `Tencent.WeWork.ExclusiveObject`。
+- 微信 4.x 只匹配当前用户 `%APPDATA%\Tencent\xwechat\lock\lock.ini` 的规范化完整路径。
+- 只对当前 Windows 会话中的微信/企业微信候选进程操作；现代文件锁兼容逻辑可能检查当前会话的 `rundll32`，但也只有在其句柄精确指向上述 `lock.ini` 时才会关闭。
+- 使用 Windows `DuplicateHandle(..., DUPLICATE_CLOSE_SOURCE)` 关闭精确匹配的句柄。
+- 不使用 `CreateRemoteThread`，不注入代码，不修改客户端内存或磁盘程序文件，也不终止微信/企业微信进程。
+
+Windows 文档说明 `DUPLICATE_CLOSE_SOURCE` 会关闭源句柄；系统句柄枚举使用的 `NtQuerySystemInformation` 属于可能变化的内部接口，因此已提供失败保护，客户端或 Windows 更新后可能需要适配：
+
+- [DuplicateHandle — Microsoft Learn](https://learn.microsoft.com/windows/win32/api/handleapi/nf-handleapi-duplicatehandle)
+- [NtQuerySystemInformation — Microsoft Learn](https://learn.microsoft.com/windows/win32/api/winternl/nf-winternl-ntquerysysteminformation)
+
+自动化测试使用独立测试进程分别持有已知命名互斥锁和临时文件锁，验证锁可释放、持锁进程不会被终止，并验证清理器拒绝把磁盘根目录识别为源码。
+
+本机还对已安装的微信 `4.1.15.6` 做了非破坏性验收：15 个 `Weixin.exe` 子进程被正确归并为 3 个客户端实例；从 3 个实例增量启动 1 次后出现第 4 个窗口，随后仅正常关闭该测试窗口，原有 3 个实例保持运行。该版本未出现旧版 `%APPDATA%\Tencent\xwechat\lock\lock.ini`，因此 V1.0.0 在没有白名单锁可释放时会直接使用增量启动，不会猜测或关闭聊天数据目录中的其他 `lock.ini`。
+
+## 4. 安装与完全卸载安全设计
+
+安装版为当前用户安装，只写入：
+
+- `%LOCALAPPDATA%\Programs\WechatDuokai`
+- `%LOCALAPPDATA%\WechatDuokai`（仅保存目标数量，并带独立清理标记）
+- 当前用户的桌面/开始菜单快捷方式
+- `HKCU\Software\Microsoft\Windows\CurrentVersion\Uninstall\WechatDuokai`
+
+完全卸载的递归删除必须通过以下校验：
+
+- 源码目录必须包含不可混淆的专用标记、`duokai.sln` 和 `duokai` 源码目录。
+- 发布目录和绿色版目录必须包含各自独立的专用标记。
+- 发布目录还必须包含版本目录名、哈希清单及预期的安装版/绿色版结构；绿色目录必须包含预期程序和清理器。
+- 安装目录必须与 `%LOCALAPPDATA%\Programs\WechatDuokai` 的规范化完整路径完全一致。
+- 数量缓存目录必须与 `%LOCALAPPDATA%\WechatDuokai` 完全一致，且包含专用用户数据标记。
+- 磁盘根目录、用户主目录和没有标记的任意目录不会被递归删除。
+- 递归清理准备阶段不会遍历目录联接或符号链接。
+- “删除源码”默认不选中，只有源码校验成功才启用；用户必须额外勾选永久删除确认，并通过最后一次确认对话框。
+
+清理工作进程只关闭路径位于上述已验证目录内的本项目进程，不会结束微信或企业微信。
+
+## 5. 剩余风险与建议
+
+- V1.0.0 尚未使用商业代码签名证书，Windows SmartScreen 或安全软件可能提示未知发布者。
+- 句柄枚举/关闭行为与部分恶意软件使用的底层接口有表面相似性，安全软件可能产生启发式误报；源码、精确白名单和 SHA-256 用于降低供应链风险。
+- 关闭客户端单实例锁属于兼容性技巧。客户端升级可能改变锁名或行为，也可能带来闪退、登录状态冲突或账号风险。
+- 多开可能受到微信/企业微信许可协议、组织安全策略或账号规则限制。请先用测试账号验证，勿在未经授权的企业环境中部署。
+- 正式对外分发前，建议购买代码签名证书，在启用且签名库为最新的 Microsoft Defender 环境复扫，并使用至少一个独立信誉扫描服务按哈希复核。
