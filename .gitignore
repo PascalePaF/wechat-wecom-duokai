@@ -49,6 +49,10 @@
 **/obj/
 /artifacts/
 
+# Local review/scanner intermediates; final versioned evidence has no suffix.
+/docs/assets/*-preview.png
+/docs/*-candidate.txt
+
 # Kernel Module Compile Results
 *.mod*
 *.cmd

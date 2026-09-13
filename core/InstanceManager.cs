@@ -4,22 +4,28 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Win32;
 
 namespace WechatDuokai.Core
 {
     public sealed class InstanceManager
     {
         private readonly IProcessEnvironment _environment;
+        private readonly IWeComLaunchPolicy _weComLaunchPolicy;
 
         public InstanceManager()
-            : this(new WindowsProcessEnvironment())
+            : this(new WindowsProcessEnvironment(), new WindowsWeComLaunchPolicy())
         {
         }
 
         public InstanceManager(IProcessEnvironment environment)
+            : this(environment, new WindowsWeComLaunchPolicy())
+        {
+        }
+
+        public InstanceManager(IProcessEnvironment environment, IWeComLaunchPolicy weComLaunchPolicy)
         {
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
+            _weComLaunchPolicy = weComLaunchPolicy ?? throw new ArgumentNullException(nameof(weComLaunchPolicy));
         }
 
         public int GetInstanceCount(AppDefinition application)
@@ -75,38 +81,52 @@ namespace WechatDuokai.Core
                 return result;
             }
 
-            if (application.Kind == AppKind.WeCom)
+            if (application.Kind == AppKind.WeCom && targetCount > 2)
             {
-                ConfigureWeComMultiInstance(targetCount);
+                reportStatus?.Invoke("正在启用企业微信三开兼容模式；原注册表设置会自动恢复…");
             }
 
-            var missing = targetCount - result.BeforeCount;
-            for (var index = 0; index < missing; index++)
+            var launchScope = application.Kind == AppKind.WeCom
+                ? await Task.Run(() => _weComLaunchPolicy.BeginLaunchSession(targetCount), cancellationToken)
+                : EmptyLaunchScope.Instance;
+
+            using (launchScope ?? EmptyLaunchScope.Instance)
             {
-                cancellationToken.ThrowIfCancellationRequested();
-                var currentCount = GetInstanceCount(application);
-                if (currentCount >= targetCount)
+                var missing = targetCount - result.BeforeCount;
+                for (var index = 0; index < missing; index++)
                 {
-                    break;
+                    cancellationToken.ThrowIfCancellationRequested();
+                    var currentCount = GetInstanceCount(application);
+                    if (currentCount >= targetCount)
+                    {
+                        break;
+                    }
+
+                    reportStatus?.Invoke($"正在准备第 {currentCount + 1} 个{application.DisplayName}实例…");
+
+                    var processIds = GetApplicationProcessIds(application);
+                    if (processIds.Count > 0)
+                    {
+                        var unlock = await Task.Run(
+                            () => WindowsHandleUnlocker.ReleaseSingleInstanceLocks(application.Kind, processIds),
+                            cancellationToken);
+                        result.ReleasedLockCount += unlock.ClosedHandleCount + (unlock.RemovedLockFile ? 1 : 0);
+
+                        if (application.Kind == AppKind.WeCom)
+                        {
+                            // Current WeCom needs a short hand-off after its exact exclusive
+                            // mutex is closed. This mirrors the sequence verified on 5.0.11.6018.
+                            await _environment.DelayAsync(TimeSpan.FromMilliseconds(100), cancellationToken);
+                        }
+                    }
+
+                    var beforeLaunch = GetInstanceCount(application);
+                    _environment.StartApplication(application.ExecutablePath);
+                    result.StartedCount++;
+
+                    reportStatus?.Invoke($"已发出启动请求，等待{application.DisplayName}窗口出现…");
+                    await WaitForInstanceIncreaseAsync(application, beforeLaunch, cancellationToken);
                 }
-
-                reportStatus?.Invoke($"正在准备第 {currentCount + 1} 个{application.DisplayName}实例…");
-
-                var processIds = GetApplicationProcessIds(application);
-                if (processIds.Count > 0)
-                {
-                    var unlock = await Task.Run(
-                        () => WindowsHandleUnlocker.ReleaseSingleInstanceLocks(application.Kind, processIds),
-                        cancellationToken);
-                    result.ReleasedLockCount += unlock.ClosedHandleCount + (unlock.RemovedLockFile ? 1 : 0);
-                }
-
-                var beforeLaunch = GetInstanceCount(application);
-                _environment.StartApplication(application.ExecutablePath);
-                result.StartedCount++;
-
-                reportStatus?.Invoke($"已发出启动请求，等待{application.DisplayName}窗口出现…");
-                await WaitForInstanceIncreaseAsync(application, beforeLaunch, cancellationToken);
             }
 
             result.AfterCount = GetInstanceCount(application);
@@ -114,7 +134,7 @@ namespace WechatDuokai.Core
             result.Message = result.Success
                 ? $"{application.DisplayName}已达到目标数量：{result.AfterCount} 个。"
                 : $"已请求补开 {result.StartedCount} 个，但目前检测到 {result.AfterCount}/{targetCount} 个。" +
-                  " 如果窗口稍后出现，状态会自动刷新；若仍未补开，请尝试以管理员身份运行本工具。";
+                  " 如果窗口稍后出现，状态会自动刷新；若仍未补开，请打开本地诊断并核对官方客户端版本。";
             return result;
         }
 
@@ -163,24 +183,10 @@ namespace WechatDuokai.Core
                 {
                     // Give the client enough time to establish its single-instance lock before
                     // the next loop tries to release it.
-                    await _environment.DelayAsync(TimeSpan.FromMilliseconds(350), cancellationToken);
+                    var settleDelay = application.Kind == AppKind.WeCom ? 800 : 350;
+                    await _environment.DelayAsync(TimeSpan.FromMilliseconds(settleDelay), cancellationToken);
                     return;
                 }
-            }
-        }
-
-        private static void ConfigureWeComMultiInstance(int targetCount)
-        {
-            try
-            {
-                using (var key = Registry.CurrentUser.CreateSubKey(@"SOFTWARE\Tencent\WXWork"))
-                {
-                    key?.SetValue("multi_instances", targetCount, RegistryValueKind.DWord);
-                }
-            }
-            catch (Exception)
-            {
-                // The mutex release path can still work when this optional registry hint fails.
             }
         }
 
@@ -193,6 +199,15 @@ namespace WechatDuokai.Core
             catch (Exception)
             {
                 return false;
+            }
+        }
+
+        private sealed class EmptyLaunchScope : IDisposable
+        {
+            internal static readonly EmptyLaunchScope Instance = new EmptyLaunchScope();
+
+            public void Dispose()
+            {
             }
         }
 

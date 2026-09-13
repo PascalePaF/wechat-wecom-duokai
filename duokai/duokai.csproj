@@ -11,14 +11,19 @@
     <LangVersion>latest</LangVersion>
     <Deterministic>true</Deterministic>
     <ApplicationIcon>favicon.ico</ApplicationIcon>
-    <AssemblyVersion>1.0.3.0</AssemblyVersion>
-    <FileVersion>1.0.3.0</FileVersion>
-    <Version>1.0.3</Version>
+    <AssemblyVersion>1.0.4.0</AssemblyVersion>
+    <FileVersion>1.0.4.0</FileVersion>
+    <Version>1.0.4</Version>
     <Company>wechat_duokai contributors</Company>
     <Product>微信 · 企业微信多开助手</Product>
     <Description>按目标数量启动和补开微信、企业微信实例</Description>
     <Copyright>Copyright © CN-Root and contributors 2022-2026</Copyright>
   </PropertyGroup>
+  <ItemGroup>
+    <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
+      <_Parameter1>WechatDuokai.Tests</_Parameter1>
+    </AssemblyAttribute>
+  </ItemGroup>
   <PropertyGroup>
     <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>

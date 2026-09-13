@@ -16,7 +16,9 @@ namespace WechatDuokai.App
 {
     public partial class MainWindow : Window
     {
-        private const string CurrentVersion = "1.0.3";
+        internal const double MinimumWindowWidth = 901d;
+        internal const double MinimumWindowHeight = 513d;
+        private const string CurrentVersion = "1.0.4";
         private static readonly Regex DigitsOnly = new Regex("^[0-9]+$", RegexOptions.Compiled);
         private readonly InstanceManager _instanceManager = new InstanceManager();
         private readonly DiagnosticReportService _diagnostics = new DiagnosticReportService();
@@ -27,7 +29,6 @@ namespace WechatDuokai.App
         private AppDefinition _weCom;
         private bool _busy;
         private bool _updatingCount;
-        private bool _compactLayout;
 
         public MainWindow()
         {
@@ -47,7 +48,7 @@ namespace WechatDuokai.App
             {
                 LocateClients();
                 UpdateThemeButton();
-                ApplyResponsiveLayout(ActualWidth);
+                ApplyProportionalScale();
                 RefreshClientStatus();
                 _refreshTimer.Start();
                 await CheckForUpdatesAsync();
@@ -65,46 +66,50 @@ namespace WechatDuokai.App
             WindowChromeHelper.Apply(this);
         }
 
-        private void Window_SizeChanged(object sender, SizeChangedEventArgs e)
+        private void ScaleViewport_SizeChanged(object sender, SizeChangedEventArgs e)
         {
-            ApplyResponsiveLayout(e.NewSize.Width);
+            ApplyProportionalScale(e.NewSize.Width, e.NewSize.Height);
         }
 
-        private void ApplyResponsiveLayout(double width)
+        internal static double CalculateInterfaceScale(double windowWidth, double windowHeight)
         {
-            if (WorkspaceGrid == null) return;
-            var compact = width < 790;
-            if (_compactLayout == compact && IsLoaded) return;
-            _compactLayout = compact;
+            if (double.IsNaN(windowWidth) || double.IsInfinity(windowWidth) ||
+                double.IsNaN(windowHeight) || double.IsInfinity(windowHeight) ||
+                windowWidth <= 0 || windowHeight <= 0)
+            {
+                return 1d;
+            }
 
-            if (compact)
+            return Math.Max(1d, Math.Min(windowWidth / MinimumWindowWidth,
+                windowHeight / MinimumWindowHeight));
+        }
+
+        private void ApplyProportionalScale()
+        {
+            if (ScaleViewport == null)
             {
-                Grid.SetRow(ApplicationsPanel, 0);
-                Grid.SetColumn(ApplicationsPanel, 0);
-                Grid.SetColumnSpan(ApplicationsPanel, 3);
-                Grid.SetRow(CountPanel, 1);
-                Grid.SetColumn(CountPanel, 0);
-                Grid.SetColumnSpan(CountPanel, 3);
-                CountPanel.Margin = new Thickness(0, 18, 0, 0);
-                ApplicationsColumn.Width = new GridLength(1, GridUnitType.Star);
-                WorkspaceGapColumn.Width = new GridLength(0);
-                CountColumn.Width = new GridLength(0);
-                VersionBadge.Visibility = Visibility.Collapsed;
+                return;
             }
-            else
+
+            ApplyProportionalScale(ScaleViewport.ActualWidth, ScaleViewport.ActualHeight);
+        }
+
+        private void ApplyProportionalScale(double viewportWidth, double viewportHeight)
+        {
+            if (ScaledRoot == null || InterfaceScaleTransform == null ||
+                viewportWidth <= 0 || viewportHeight <= 0)
             {
-                Grid.SetRow(ApplicationsPanel, 0);
-                Grid.SetColumn(ApplicationsPanel, 0);
-                Grid.SetColumnSpan(ApplicationsPanel, 1);
-                Grid.SetRow(CountPanel, 0);
-                Grid.SetColumn(CountPanel, 2);
-                Grid.SetColumnSpan(CountPanel, 1);
-                CountPanel.Margin = new Thickness(0);
-                ApplicationsColumn.Width = new GridLength(1, GridUnitType.Star);
-                WorkspaceGapColumn.Width = new GridLength(18);
-                CountColumn.Width = new GridLength(238);
-                VersionBadge.Visibility = Visibility.Visible;
+                return;
             }
+
+            var windowWidth = ActualWidth > 0 ? ActualWidth : Width;
+            var windowHeight = ActualHeight > 0 ? ActualHeight : Height;
+            var scale = CalculateInterfaceScale(windowWidth, windowHeight);
+
+            InterfaceScaleTransform.ScaleX = scale;
+            InterfaceScaleTransform.ScaleY = scale;
+            ScaledRoot.Width = viewportWidth / scale;
+            ScaledRoot.Height = viewportHeight / scale;
         }
 
         private void LocateClients()

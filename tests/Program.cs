@@ -12,6 +12,7 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
+using Microsoft.Win32;
 using WechatDuokai.App;
 using WechatDuokai.Core;
 using WechatDuokai.Installer;
@@ -41,6 +42,7 @@ namespace WechatDuokai.Tests
                 Run("Target count cache survives a restart", TestPreferenceRoundTrip);
                 Run("Renamed executables cannot impersonate an official client", TestClientExecutableValidation);
                 Run("Process environment groups roots and supports deterministic launch tests", TestProcessEnvironmentAbstraction);
+                Run("WeCom extended launch policy is temporary and reaches three instances", TestWeComExtendedLaunchPolicy);
                 Run("Diagnostics stay inside the selected local application directory", TestLocalDiagnostics);
                 Run("GitHub release metadata never performs an in-app update", TestReleaseMetadataParsing);
                 Run("Cleanup refuses drive roots", () =>
@@ -217,13 +219,17 @@ namespace WechatDuokai.Tests
             var window = new MainWindow();
             try
             {
-                Assert(window.MinWidth <= 680 && window.MinHeight <= 520, "Minimum main-window size is too large.");
+                Assert(Math.Abs(window.MinWidth - 901d) < 0.01 && Math.Abs(window.MinHeight - 513d) < 0.01,
+                    "The reference 901x513 interface must be the exact minimum window size.");
                 Assert(double.IsPositiveInfinity(window.MaxWidth) && double.IsPositiveInfinity(window.MaxHeight),
                     "Main window must not impose a fixed maximum size.");
-                var method = typeof(MainWindow).GetMethod("ApplyResponsiveLayout",
-                    BindingFlags.Instance | BindingFlags.NonPublic);
-                Assert(method != null, "Responsive layout method is missing.");
                 var panel = (FrameworkElement)window.FindName("CountPanel");
+                var viewport = (FrameworkElement)window.FindName("ScaleViewport");
+                var scaledRoot = (FrameworkElement)window.FindName("ScaledRoot");
+                var workspace = (FrameworkElement)window.FindName("WorkspaceGrid");
+                var weChatCard = (FrameworkElement)window.FindName("WeChatClientCard");
+                var weComCard = (FrameworkElement)window.FindName("WeComClientCard");
+                var transform = (ScaleTransform)window.FindName("InterfaceScaleTransform");
                 window.WindowStartupLocation = WindowStartupLocation.Manual;
                 window.Left = -10000;
                 window.Top = -10000;
@@ -231,26 +237,32 @@ namespace WechatDuokai.Tests
                 window.Show();
                 foreach (var size in new[]
                 {
-                    new System.Windows.Size(680, 520), new System.Windows.Size(790, 600),
-                    new System.Windows.Size(960, 640), new System.Windows.Size(1280, 800),
+                    new System.Windows.Size(901, 513), new System.Windows.Size(1280, 720),
                     new System.Windows.Size(1920, 1080)
                 })
                 {
                     window.Width = size.Width;
                     window.Height = size.Height;
-                    method.Invoke(window, new object[] { size.Width });
                     window.Dispatcher.Invoke(() => { }, DispatcherPriority.ContextIdle);
                     window.UpdateLayout();
                     Assert(panel.ActualWidth > 0 && panel.ActualHeight > 0,
                         "Count panel disappeared at " + size.Width + "x" + size.Height + ".");
+                    Assert(weChatCard.ActualHeight >= 80d && weComCard.ActualHeight >= 80d,
+                        "An application card was clipped at " + size.Width + "x" + size.Height + ".");
+                    Assert(Math.Abs(transform.ScaleX - transform.ScaleY) < 0.001 && transform.ScaleX >= 1d,
+                        "The interface must use one non-shrinking uniform scale.");
+                    Assert(Math.Abs(scaledRoot.ActualWidth * transform.ScaleX - viewport.ActualWidth) < 2d &&
+                           Math.Abs(scaledRoot.ActualHeight * transform.ScaleY - viewport.ActualHeight) < 2d,
+                        "The scaled interface did not fill the available window.");
                 }
 
-                method.Invoke(window, new object[] { 700d });
-                Assert(Grid.GetRow(panel) == 1 && Grid.GetColumnSpan(panel) == 3,
-                    "Compact layout must stack the count panel.");
-                method.Invoke(window, new object[] { 1200d });
-                Assert(Grid.GetRow(panel) == 0 && Grid.GetColumn(panel) == 2,
-                    "Wide layout must keep the count panel on the right.");
+                Assert(Grid.GetRow(panel) == 0 && Grid.GetColumn(panel) == 2 && Grid.GetColumnSpan(panel) == 1,
+                    "The count panel must stay on the right at every supported size.");
+                Assert(ReferenceEquals(VisualTreeHelper.GetParent(workspace), scaledRoot),
+                    "The workspace must be placed directly in the scaled root without an outer ScrollViewer.");
+                var ultraWideScale = MainWindow.CalculateInterfaceScale(3440d, 1392d);
+                Assert(ultraWideScale > 2.7d && ultraWideScale < 2.72d,
+                    "The 3440x1392 layout must proportionally enlarge all controls.");
             }
             finally
             {
@@ -266,6 +278,77 @@ namespace WechatDuokai.Tests
             var app = new AppDefinition(AppKind.WeChat, "微信", path);
             Assert(manager.GetApplicationProcessIds(app).Count == 3, "Exact-path processes were not selected.");
             Assert(manager.GetInstanceCount(app) == 2, "Parent/child process roots were not grouped correctly.");
+        }
+
+        private static void TestWeComExtendedLaunchPolicy()
+        {
+            var registryPath = @"SOFTWARE\WechatDuokai\Tests\" + Guid.NewGuid().ToString("N");
+            var gateName = @"Local\WechatDuokai.Tests." + Guid.NewGuid().ToString("N");
+            try
+            {
+                using (var key = Registry.CurrentUser.CreateSubKey(registryPath))
+                {
+                    key.SetValue("multi_instances", "keep-original-kind", RegistryValueKind.String);
+                }
+
+                var policy = new WindowsWeComLaunchPolicy(registryPath, gateName);
+                using (policy.BeginLaunchSession(3))
+                using (var key = Registry.CurrentUser.OpenSubKey(registryPath))
+                {
+                    Assert(key != null && !key.GetValueNames().Contains("multi_instances"),
+                        "The two-instance registry hint must be absent only during an extended launch.");
+                }
+
+                using (var key = Registry.CurrentUser.OpenSubKey(registryPath))
+                {
+                    Assert((string)key.GetValue("multi_instances") == "keep-original-kind" &&
+                           key.GetValueKind("multi_instances") == RegistryValueKind.String,
+                        "The original WeCom registry value and kind were not restored.");
+                }
+
+                using (var key = Registry.CurrentUser.OpenSubKey(registryPath, true))
+                {
+                    key.DeleteValue("multi_instances", false);
+                }
+
+                using (policy.BeginLaunchSession(2))
+                using (var key = Registry.CurrentUser.OpenSubKey(registryPath))
+                {
+                    Assert(Convert.ToInt32(key.GetValue("multi_instances")) == 2 &&
+                           key.GetValueKind("multi_instances") == RegistryValueKind.DWord,
+                        "The official two-instance registry hint was not applied temporarily.");
+                }
+
+                using (var key = Registry.CurrentUser.OpenSubKey(registryPath))
+                {
+                    Assert(key != null && !key.GetValueNames().Contains("multi_instances"),
+                        "A registry value that did not exist before launch must not remain afterwards.");
+                }
+
+                var environment = new LaunchingFakeProcessEnvironment(Process.GetCurrentProcess().MainModule.FileName, 1);
+                var trackingPolicy = new TrackingWeComLaunchPolicy();
+                var manager = new InstanceManager(environment, trackingPolicy);
+                var application = new AppDefinition(AppKind.WeCom, "企业微信", environment.ExecutablePath);
+                var result = manager.EnsureTargetCountAsync(application, 3, null, CancellationToken.None)
+                    .GetAwaiter().GetResult();
+                Assert(result.Success && result.BeforeCount == 1 && result.AfterCount == 3 && result.StartedCount == 2,
+                    "The deterministic WeCom launch loop did not reach three root instances.");
+                Assert(trackingPolicy.RequestedTarget == 3 && trackingPolicy.DisposeCount == 1,
+                    "The temporary WeCom launch session was not entered and disposed exactly once.");
+                Assert(environment.Delays.Any(delay => delay == TimeSpan.FromMilliseconds(100)) &&
+                       environment.Delays.Any(delay => delay == TimeSpan.FromMilliseconds(800)),
+                    "The verified WeCom unlock and settle timings are missing.");
+            }
+            finally
+            {
+                try
+                {
+                    Registry.CurrentUser.DeleteSubKeyTree(registryPath, false);
+                }
+                catch (Exception)
+                {
+                }
+            }
         }
 
         private static void TestClientExecutableValidation()
@@ -307,10 +390,10 @@ namespace WechatDuokai.Tests
 
         private static void TestReleaseMetadataParsing()
         {
-            var newer = ReleaseUpdateChecker.ParseResponse("{\"tag_name\":\"v1.1.0\"}", "1.0.3");
+            var newer = ReleaseUpdateChecker.ParseResponse("{\"tag_name\":\"v1.1.0\"}", "1.0.4");
             Assert(newer.CheckSucceeded && newer.IsUpdateAvailable && newer.LatestVersion == "1.1.0",
                 "Newer release metadata was not recognized.");
-            var same = ReleaseUpdateChecker.ParseResponse("{\"tag_name\":\"v1.0.3\"}", "1.0.3");
+            var same = ReleaseUpdateChecker.ParseResponse("{\"tag_name\":\"v1.0.4\"}", "1.0.4");
             Assert(same.CheckSucceeded && !same.IsUpdateAvailable,
                 "Current version must not be presented as an update.");
             Assert(ReleaseUpdateChecker.ReleasesUrl.StartsWith("https://github.com/", StringComparison.Ordinal),
@@ -333,14 +416,14 @@ namespace WechatDuokai.Tests
             AssertEmbeddedEquals("Payload.WechatDuokai.Core.dll",
                 Path.Combine(root, "duokai", "bin", "Release", "net48", "WechatDuokai.Core.dll"));
             AssertEmbeddedEquals("Payload.wechat_duokai-cleanup.exe",
-                Path.Combine(root, "cleanup", "bin", "Release", "net48", "wechat_duokai-cleanup-v1.0.3.exe"));
+                Path.Combine(root, "cleanup", "bin", "Release", "net48", "wechat_duokai-cleanup-v1.0.4.exe"));
         }
 
         private static void TestSeparateInstallerIdentities()
         {
             var root = FindProjectRoot();
-            var setup = Path.Combine(root, "installer", "bin", "Release", "net48", "wechat_duokai-setup-v1.0.3.exe");
-            var cleanup = Path.Combine(root, "cleanup", "bin", "Release", "net48", "wechat_duokai-cleanup-v1.0.3.exe");
+            var setup = Path.Combine(root, "installer", "bin", "Release", "net48", "wechat_duokai-setup-v1.0.4.exe");
+            var cleanup = Path.Combine(root, "cleanup", "bin", "Release", "net48", "wechat_duokai-cleanup-v1.0.4.exe");
             Assert(File.Exists(setup) && File.Exists(cleanup), "Setup or cleanup output is missing.");
             Assert(!File.ReadAllBytes(setup).SequenceEqual(File.ReadAllBytes(cleanup)),
                 "Setup and cleanup must not be byte-identical copies.");
@@ -353,7 +436,7 @@ namespace WechatDuokai.Tests
         private static Type LoadCleanupWindowType()
         {
             var path = Path.Combine(FindProjectRoot(), "cleanup", "bin", "Release", "net48",
-                "wechat_duokai-cleanup-v1.0.3.exe");
+                "wechat_duokai-cleanup-v1.0.4.exe");
             var assembly = Assembly.LoadFrom(path);
             return assembly.GetType("WechatDuokai.Installer.UninstallWindow", true);
         }
@@ -583,6 +666,79 @@ namespace WechatDuokai.Tests
         private static void Assert(bool condition, string message)
         {
             if (!condition) throw new InvalidOperationException(message);
+        }
+
+        private sealed class TrackingWeComLaunchPolicy : IWeComLaunchPolicy
+        {
+            internal int RequestedTarget { get; private set; }
+
+            internal int DisposeCount { get; private set; }
+
+            public IDisposable BeginLaunchSession(int targetCount)
+            {
+                RequestedTarget = targetCount;
+                return new DelegateDisposable(() => DisposeCount++);
+            }
+        }
+
+        private sealed class DelegateDisposable : IDisposable
+        {
+            private Action _dispose;
+
+            internal DelegateDisposable(Action dispose)
+            {
+                _dispose = dispose;
+            }
+
+            public void Dispose()
+            {
+                Interlocked.Exchange(ref _dispose, null)?.Invoke();
+            }
+        }
+
+        private sealed class LaunchingFakeProcessEnvironment : IProcessEnvironment
+        {
+            private int _count;
+
+            internal LaunchingFakeProcessEnvironment(string executablePath, int initialCount)
+            {
+                ExecutablePath = executablePath;
+                _count = initialCount;
+            }
+
+            internal string ExecutablePath { get; }
+
+            internal List<TimeSpan> Delays { get; } = new List<TimeSpan>();
+
+            public int CurrentSessionId => 7;
+
+            public IReadOnlyList<ProcessSnapshot> FindProcesses(IEnumerable<string> processNames)
+            {
+                return Enumerable.Range(1, _count).Select(index => new ProcessSnapshot
+                {
+                    Id = 900000 + index,
+                    SessionId = CurrentSessionId,
+                    ExecutablePath = ExecutablePath
+                }).ToArray();
+            }
+
+            public IReadOnlyDictionary<int, int> GetParentProcessMap()
+            {
+                return new Dictionary<int, int>();
+            }
+
+            public void StartApplication(string executablePath)
+            {
+                Assert(string.Equals(executablePath, ExecutablePath, StringComparison.OrdinalIgnoreCase),
+                    "Unexpected executable path in deterministic launch test.");
+                _count++;
+            }
+
+            public System.Threading.Tasks.Task DelayAsync(TimeSpan delay, CancellationToken cancellationToken)
+            {
+                Delays.Add(delay);
+                return System.Threading.Tasks.Task.CompletedTask;
+            }
         }
 
         private sealed class FakeProcessEnvironment : IProcessEnvironment

@@ -16,7 +16,7 @@ namespace WechatDuokai.Installer
     internal static class InstallerEngine
     {
         internal const string ProductName = "微信 · 企业微信多开助手";
-        internal const string Version = "1.0.3";
+        internal const string Version = "1.0.4";
         internal const string SourceMarkerName = ".wechat-duokai-source-root";
         internal const string SourceMarkerValue = "wechat-duokai-source-root:8f8b922d-244d-45c6-b7a8-a47ab3073f7d";
         internal const string ArtifactMarkerName = ".wechat-duokai-artifacts";
