@@ -2,9 +2,9 @@ using System;
 using System.IO;
 using System.Text;
 
-namespace shuangkai.Core
+namespace WechatDuokai.Core
 {
-    internal static class UserPreferences
+    public static class UserPreferences
     {
         internal const string DataMarkerName = ".wechat-duokai-user-data";
         internal const string DataMarkerValue = "wechat-duokai-user-data:b492a149-7644-42ca-b815-a0c11b69d07b";

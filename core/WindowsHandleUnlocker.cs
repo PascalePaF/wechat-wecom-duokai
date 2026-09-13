@@ -6,7 +6,7 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 
-namespace shuangkai.Core
+namespace WechatDuokai.Core
 {
     /// <summary>
     /// Releases only the documented, product-specific single-instance handles used by

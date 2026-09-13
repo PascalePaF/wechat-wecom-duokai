@@ -2,15 +2,15 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 
-namespace shuangkai.Core
+namespace WechatDuokai.Core
 {
-    internal enum AppKind
+    public enum AppKind
     {
         WeChat,
         WeCom
     }
 
-    internal sealed class AppDefinition
+    public sealed class AppDefinition
     {
         public AppDefinition(AppKind kind, string displayName, string executablePath)
         {
@@ -41,7 +41,7 @@ namespace shuangkai.Core
         }
     }
 
-    internal sealed class LaunchResult
+    public sealed class LaunchResult
     {
         public bool Success { get; set; }
 

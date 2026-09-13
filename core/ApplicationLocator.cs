@@ -4,9 +4,9 @@ using System.Diagnostics;
 using System.IO;
 using Microsoft.Win32;
 
-namespace shuangkai.Core
+namespace WechatDuokai.Core
 {
-    internal static class ApplicationLocator
+    public static class ApplicationLocator
     {
         private static readonly string[] WeChatExecutableNames = { "Weixin.exe", "WeChat.exe" };
         private static readonly string[] WeComExecutableNames = { "WXWork.exe", "WeCom.exe", "企业微信.exe" };

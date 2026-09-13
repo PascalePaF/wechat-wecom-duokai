@@ -1,75 +1,47 @@
-<?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
-    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{6D83A6D8-B42C-4F66-B063-F6D42779855A}</ProjectGuid>
     <OutputType>WinExe</OutputType>
+    <TargetFramework>net48</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <AssemblyName>wechat_duokai-setup-v1.0.2</AssemblyName>
     <RootNamespace>WechatDuokai.Installer</RootNamespace>
-    <AssemblyName>wechat_duokai-setup-v1.0.1</AssemblyName>
-    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
-    <FileAlignment>512</FileAlignment>
-    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+    <StartupObject>WechatDuokai.Installer.Program</StartupObject>
+    <PlatformTarget>x64</PlatformTarget>
+    <Prefer32Bit>false</Prefer32Bit>
+    <LangVersion>latest</LangVersion>
     <Deterministic>true</Deterministic>
-    <LangVersion>7.3</LangVersion>
     <ApplicationIcon>..\duokai\favicon.ico</ApplicationIcon>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
-    <PlatformTarget>AnyCPU</PlatformTarget>
-    <DebugSymbols>true</DebugSymbols>
-    <DebugType>full</DebugType>
-    <Optimize>false</Optimize>
-    <OutputPath>bin\Debug\</OutputPath>
-    <DefineConstants>DEBUG;TRACE</DefineConstants>
-    <WarningLevel>4</WarningLevel>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
-    <PlatformTarget>AnyCPU</PlatformTarget>
-    <DebugType>pdbonly</DebugType>
-    <Optimize>true</Optimize>
-    <OutputPath>bin\Release\</OutputPath>
-    <DefineConstants>TRACE</DefineConstants>
-    <WarningLevel>4</WarningLevel>
+    <AssemblyVersion>1.0.2.0</AssemblyVersion>
+    <FileVersion>1.0.2.0</FileVersion>
+    <Version>1.0.2</Version>
+    <Company>wechat_duokai contributors</Company>
+    <Product>微信 · 企业微信多开助手安装程序</Product>
+    <Description>微信与企业微信多开助手的安装与完整清理程序</Description>
+    <Copyright>Copyright © CN-Root and contributors 2022-2026</Copyright>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="System" />
-    <Reference Include="System.Core" />
-    <Reference Include="System.Drawing" />
-    <Reference Include="System.Windows.Forms" />
-    <Reference Include="Microsoft.CSharp" />
+    <Compile Include="..\shared\WpfPresentation.cs" Link="Presentation\WpfPresentation.cs" />
+    <Page Include="..\shared\ThemeResources.xaml" Link="Themes\ThemeResources.xaml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Program.cs" />
-    <Compile Include="InstallerEngine.cs" />
-    <Compile Include="InstallForm.cs" />
-    <Compile Include="UninstallForm.cs" />
-    <Compile Include="..\shared\PremiumControls.cs">
-      <Link>UI\PremiumControls.cs</Link>
-    </Compile>
-    <Compile Include="Properties\AssemblyInfo.cs" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="App.config" />
-    <Content Include="..\duokai\favicon.ico">
-      <Link>favicon.ico</Link>
-    </Content>
-    <EmbeddedResource Include="..\duokai\bin\Release\duokai.exe">
+    <EmbeddedResource Include="..\duokai\bin\Release\net48\wechat_duokai.exe">
       <LogicalName>Payload.wechat_duokai.exe</LogicalName>
     </EmbeddedResource>
-    <EmbeddedResource Include="..\duokai\bin\Release\duokai.exe.config">
+    <EmbeddedResource Include="..\duokai\bin\Release\net48\wechat_duokai.exe.config">
       <LogicalName>Payload.wechat_duokai.exe.config</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="..\duokai\bin\Release\net48\WechatDuokai.Core.dll">
+      <LogicalName>Payload.WechatDuokai.Core.dll</LogicalName>
     </EmbeddedResource>
     <EmbeddedResource Include="..\LICENSE">
       <LogicalName>Payload.LICENSE.txt</LogicalName>
     </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\duokai\duokai.csproj">
-      <Project>{8A52B192-7A9A-4287-81BA-9485400FF306}</Project>
-      <Name>duokai</Name>
-      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
-    </ProjectReference>
+    <ProjectReference Include="..\duokai\duokai.csproj" ReferenceOutputAssembly="false" />
   </ItemGroup>
-  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <ItemGroup>
+    <InternalsVisibleTo Include="WechatDuokai.Tests" />
+  </ItemGroup>
 </Project>

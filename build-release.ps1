@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [string]$Version = '1.0.1'
+    [string]$Version = '1.0.2'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -30,12 +30,12 @@ if (-not $msbuild) {
     throw '未找到 Visual Studio MSBuild。请安装 Visual Studio 2019 或更高版本及 .NET Framework 4.8 开发工具。'
 }
 
-& $msbuild (Join-Path $sourceRoot 'duokai.sln') /t:Rebuild /p:Configuration=Release /m /v:minimal
+& $msbuild (Join-Path $sourceRoot 'duokai.sln') /restore /t:Rebuild /p:Configuration=Release /m /v:minimal
 if ($LASTEXITCODE -ne 0) {
     throw "Release 编译失败，退出码：$LASTEXITCODE"
 }
 
-& (Join-Path $sourceRoot 'tests\bin\Release\WechatDuokai.Tests.exe')
+& (Join-Path $sourceRoot 'tests\bin\Release\net48\WechatDuokai.Tests.exe')
 if ($LASTEXITCODE -ne 0) {
     throw "自动化验证失败，退出码：$LASTEXITCODE"
 }
@@ -60,15 +60,16 @@ New-Item -ItemType Directory -Path $portableDirectory -Force | Out-Null
 Set-Content -LiteralPath (Join-Path $artifactRoot '.wechat-duokai-artifacts') -Value 'wechat-duokai-artifacts:6f5919ee-24d0-43df-8de5-6b0558d79a98' -Encoding UTF8 -NoNewline
 Set-Content -LiteralPath (Join-Path $portableDirectory '.wechat-duokai-portable') -Value 'wechat-duokai-portable:c4ad4e76-7449-4f7b-9ab7-5b9379dd3631' -Encoding UTF8 -NoNewline
 
-$appOutput = Join-Path $sourceRoot 'duokai\bin\Release'
-$setupOutput = Join-Path $sourceRoot ("installer\bin\Release\wechat_duokai-setup-" + $versionSuffix + '.exe')
+$appOutput = Join-Path $sourceRoot 'duokai\bin\Release\net48'
+$setupOutput = Join-Path $sourceRoot ("installer\bin\Release\net48\wechat_duokai-setup-" + $versionSuffix + '.exe')
 $setupTarget = Join-Path $installerDirectory ("wechat_duokai-setup-" + $versionSuffix + '.exe')
 $cleanupTarget = Join-Path $installerDirectory ("wechat_duokai-cleanup-" + $versionSuffix + '.exe')
 
 Copy-Item -LiteralPath $setupOutput -Destination $setupTarget
 Copy-Item -LiteralPath $setupOutput -Destination $cleanupTarget
-Copy-Item -LiteralPath (Join-Path $appOutput 'duokai.exe') -Destination (Join-Path $portableDirectory 'wechat_duokai.exe')
-Copy-Item -LiteralPath (Join-Path $appOutput 'duokai.exe.config') -Destination (Join-Path $portableDirectory 'wechat_duokai.exe.config')
+Copy-Item -LiteralPath (Join-Path $appOutput 'wechat_duokai.exe') -Destination (Join-Path $portableDirectory 'wechat_duokai.exe')
+Copy-Item -LiteralPath (Join-Path $appOutput 'wechat_duokai.exe.config') -Destination (Join-Path $portableDirectory 'wechat_duokai.exe.config')
+Copy-Item -LiteralPath (Join-Path $appOutput 'WechatDuokai.Core.dll') -Destination (Join-Path $portableDirectory 'WechatDuokai.Core.dll')
 Copy-Item -LiteralPath $setupOutput -Destination (Join-Path $portableDirectory ("wechat_duokai-cleanup-" + $versionSuffix + '.exe'))
 Copy-Item -LiteralPath (Join-Path $sourceRoot 'LICENSE') -Destination (Join-Path $portableDirectory 'LICENSE.txt')
 Copy-Item -LiteralPath (Join-Path $sourceRoot 'README.md') -Destination (Join-Path $portableDirectory 'README.md')
@@ -78,15 +79,25 @@ $hardcodedPathReport = Join-Path $sourceRoot 'docs\旧版EXE硬编码路径说�
 if (Test-Path -LiteralPath $hardcodedPathReport) {
     Copy-Item -LiteralPath $hardcodedPathReport -Destination (Join-Path $portableDirectory '安全说明-旧版EXE硬编码路径报告.txt')
 }
-$completeSecurityReport = Join-Path $sourceRoot 'docs\微信企业微信多开助手_V1.0.1_完整安全审计报告.txt'
+$completeSecurityReport = Join-Path $sourceRoot 'docs\微信企业微信多开助手_V1.0.2_完整安全审计报告.txt'
 if (Test-Path -LiteralPath $completeSecurityReport) {
     Copy-Item -LiteralPath $completeSecurityReport -Destination (Join-Path $portableDirectory '完整安全审计与卡巴斯基告警调查报告.txt')
+}
+$architectureReport = Join-Path $sourceRoot 'docs\V1.0.2-架构评估与GitHub开源项目对比报告.md'
+if (Test-Path -LiteralPath $architectureReport) {
+    Copy-Item -LiteralPath $architectureReport -Destination (Join-Path $portableDirectory '架构评估与GitHub开源项目对比报告.md')
 }
 
 $portableZip = Join-Path (Split-Path -Parent $portableDirectory) ("wechat_duokai-portable-" + $versionSuffix + '.zip')
 Compress-Archive -Path (Join-Path $portableDirectory '*') -DestinationPath $portableZip -CompressionLevel Optimal -Force
 
-$hashTargets = @($setupTarget, $cleanupTarget, $portableZip, (Join-Path $portableDirectory 'wechat_duokai.exe'))
+$hashTargets = @(
+    $setupTarget,
+    $cleanupTarget,
+    $portableZip,
+    (Join-Path $portableDirectory 'wechat_duokai.exe'),
+    (Join-Path $portableDirectory 'WechatDuokai.Core.dll')
+)
 $hashLines = foreach ($file in $hashTargets) {
     $hash = Get-FileHash -LiteralPath $file -Algorithm SHA256
     $relativePath = $file.Substring($artifactRoot.Length).TrimStart([IO.Path]::DirectorySeparatorChar).Replace('\', '/')
@@ -98,6 +109,8 @@ $manifest = @(
     "Product=$Version",
     'Framework=.NET Framework 4.8',
     'Platform=Windows 10/11 x64',
+    'UI=WPF with native Windows title bars',
+    'LaunchPolicy=Explicit confirmation after install',
     ("Installer=installer/wechat_duokai-setup-" + $versionSuffix + '.exe'),
     ("Cleanup=installer/wechat_duokai-cleanup-" + $versionSuffix + '.exe'),
     ("Portable=portable/wechat_duokai-portable-" + $versionSuffix + '.zip'),

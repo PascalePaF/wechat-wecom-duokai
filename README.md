@@ -11,12 +11,12 @@
 > 本项目基于 [CN-Root/wechat-wecom-duokai](https://github.com/CN-Root/wechat-wecom-duokai)
 > 持续改进。不会下载、替换或修改微信和企业微信客户端文件。
 
-![V1.0.1 日间主题主界面](docs/assets/v1.0.1-main-light.png)
+![V1.0.2 日间主题主界面](docs/assets/v1.0.2-main-light.png)
 
 <details>
 <summary>查看夜间主题</summary>
 
-![V1.0.1 夜间主题主界面](docs/assets/v1.0.1-main-dark.png)
+![V1.0.2 夜间主题主界面](docs/assets/v1.0.2-main-dark.png)
 
 </details>
 
@@ -33,17 +33,16 @@
 | 可核验发布 | 每个正式版本提供源码标签、SHA-256、自动测试结果和卡巴斯基扫描日志 |
 | 安全完整卸载 | 可保留源码清理全部程序，也可在严格校验和二次确认后删除整个项目 |
 
-## V1.0.1 更新重点
+## V1.0.2 更新重点
 
-- 主程序、安装器和完整卸载器采用统一的简约视觉体系，支持日间/夜间主题即时切换并记忆选择。
-- 三个窗口全部恢复 Windows 原生标题栏，可直接拖动、最小化和关闭，不再使用不可移动的无边框窗口。
-- 安装地址改为只读显示框和“浏览…”按钮，通过系统文件夹选择器设置。
-- 自定义安装位置加入防误删规则：拒绝磁盘根目录、系统关键目录、目录联接、源码目录、
-  发布目录和未标记的非空目录。
-- 新增《旧版 EXE 硬编码路径说明与风险评估报告》，说明固定本机路径的含义、影响和风险。
-- 对上游源码、旧版 EXE、当前源码、构建链、运行端点和删除边界完成扩展安全审计。
-- 公开记录一次 `VHO:Trojan.Win32.Convagent.gen` 中间构建告警及后续调查，不把启发式判定简单写成“已确认误报”。
-- 构建脚本改为按版本号统一生成文件名、清单和校验值。
+- 主程序、安装器和完整卸载器从 WinForms 自绘迁移到 WPF 矢量界面，圆角与阴影更自然，
+  125%/150% DPI 下也能自动缩放。
+- 保留 Windows 原生标题栏和系统窗口阴影，窗口可拖动、最小化和关闭；日间/夜间主题可即时切换并记忆。
+- 安装完成后应用保持未启动状态；只有用户再次点击“确认并启动”才会运行，也可以选择“稍后启动”。
+- 多开、定位、计数与偏好设置拆分为独立 `WechatDuokai.Core`，展示层不再直接包含底层句柄实现。
+- 主程序、Core、安装器和测试统一为 .NET Framework 4.8 x64；不引入第三方 UI/NuGet 运行依赖。
+- 新增 10 个代表性 GitHub 项目的机制、依赖、许可证、安全边界和架构对比报告。
+- 自动验证扩展到原生可移动窗口、明确启动确认、安装器内嵌 Core DLL 及原有安全边界。
 
 完整变更记录见 [CHANGELOG.md](CHANGELOG.md)。
 
@@ -53,39 +52,44 @@
 
 | 文件 | 适用场景 |
 | --- | --- |
-| `wechat_duokai-setup-v1.0.1.exe` | 推荐；可选择本机安装地址，并加入开始菜单和“已安装的应用” |
-| `wechat_duokai-portable-v1.0.1.zip` | 绿色版；解压后直接运行，不写入安装注册信息 |
-| `wechat_duokai-cleanup-v1.0.1.exe` | 独立完整卸载与清理工具 |
+| `wechat_duokai-setup-v1.0.2.exe` | 推荐；可选择本机安装地址，并加入开始菜单和“已安装的应用” |
+| `wechat_duokai-portable-v1.0.2.zip` | 绿色版；解压后直接运行，不写入安装注册信息 |
+| `wechat_duokai-cleanup-v1.0.2.exe` | 独立完整卸载与清理工具 |
 | `SHA256SUMS.txt` | 核对下载文件是否完整、是否与发布者提供的文件一致 |
-| `kaspersky-scan-v1.0.1.txt` | Kaspersky 对该版本发布目录的完整扫描日志（同时查看日志内病毒库日期） |
+| `kaspersky-scan-v1.0.2.txt` | Kaspersky 对该版本发布目录的完整原始日志；病毒库日期见同版本安全报告与 Release 说明 |
 
 本项目暂未配置商业代码签名证书。首次运行时，Windows 或安全软件可能显示未知发布者/信誉提示；
 请只从本项目 Release 下载，并先核对 SHA-256。审计期间曾出现一次通用启发式云端告警，后续
-源码、反编译、运行观察和强制扫描没有找到恶意链条；详情、证据和病毒库限制请先阅读
-[完整安全审计报告](SECURITY-AUDIT.md)。不要为了运行本工具而关闭安全软件或设置永久白名单。
-本次最终发布目录门禁处理 30 个对象：30 正常、0 检测、0 可疑、0 跳过、0 错误；扫描时
-完整病毒库日期为 `2026-09-11 00:57:00`，产品同时提示病毒库已过期且在线更新 TLS 失败。
+源码、反编译、运行观察和强制扫描没有找到恶意链条；V1.0.2 的当前结论、代码边界与本机
+卡巴斯基复扫证据见 [V1.0.2 完整安全审计报告](docs/微信企业微信多开助手_V1.0.2_完整安全审计报告.txt)。
+不要为了运行本工具而关闭安全软件或设置永久白名单。正式发布目录的扫描结果和病毒库日期见
+随 Release 提供的日志；不会把一次“零检出”写成绝对安全证明。
 
 ## 快速开始
 
 ### 安装版
 
-1. 下载并运行 `wechat_duokai-setup-v1.0.1.exe`。
+1. 下载并运行 `wechat_duokai-setup-v1.0.2.exe`。
 2. 点击“浏览…”，选择或新建一个专用安装文件夹。
-3. 选择是否创建桌面快捷方式、安装后是否启动，然后点击“立即安装”。
+3. 选择是否创建桌面快捷方式，然后点击“立即安装”。
+4. 安装完成后确认状态显示“应用尚未启动”；点击“确认并启动”才会运行，也可以选择“稍后启动”。
 
-![V1.0.1 日间主题安装器](docs/assets/v1.0.1-installer-light.png)
+![V1.0.2 日间主题安装器](docs/assets/v1.0.2-installer-light.png)
+
+安装完成后会停留在确认页，不会先行启动应用：
+
+![V1.0.2 安装完成等待确认](docs/assets/v1.0.2-installer-complete-light.png)
 
 <details>
 <summary>查看夜间主题安装器</summary>
 
-![V1.0.1 夜间主题安装器](docs/assets/v1.0.1-installer-dark.png)
+![V1.0.2 夜间主题安装器](docs/assets/v1.0.2-installer-dark.png)
 
 </details>
 
 ### 绿色版
 
-1. 解压 `wechat_duokai-portable-v1.0.1.zip` 到独立文件夹。
+1. 解压 `wechat_duokai-portable-v1.0.2.zip` 到独立文件夹。
 2. 运行 `wechat_duokai.exe`。
 3. 不要只把 EXE 单独移出绿色版目录；保留标记和清理工具，才能使用完整卸载功能。
 
@@ -133,9 +137,11 @@
 
 安全资料：
 
-- [源码与旧版二进制安全审计](SECURITY-AUDIT.md)
-- [完整安全审计与卡巴斯基告警调查报告（TXT）](docs/微信企业微信多开助手_V1.0.1_完整安全审计报告.txt)
+- [V1.0.2 完整安全审计报告（当前版本）](docs/微信企业微信多开助手_V1.0.2_完整安全审计报告.txt)
+- [V1.0.1 源码与旧版二进制安全审计（历史）](SECURITY-AUDIT.md)
+- [V1.0.1 卡巴斯基告警调查报告（历史 TXT）](docs/微信企业微信多开助手_V1.0.1_完整安全审计报告.txt)
 - [旧版 EXE 硬编码路径说明与风险评估报告](docs/旧版EXE硬编码路径说明与风险评估报告.txt)
+- [V1.0.2 架构评估与 GitHub 开源项目对比报告](docs/V1.0.2-架构评估与GitHub开源项目对比报告.md)
 
 反病毒“未检出”是重要参考，但不等于绝对安全保证。源码、标签、构建脚本、哈希和扫描日志同时
 公开，是为了让每个发布文件都能够被独立复核。
@@ -144,12 +150,12 @@
 
 可以从开始菜单的“完全卸载”、Windows“已安装的应用”，或独立清理工具进入：
 
-![V1.0.1 日间主题完整卸载器](docs/assets/v1.0.1-uninstaller-light.png)
+![V1.0.2 日间主题完整卸载器](docs/assets/v1.0.2-uninstaller-light.png)
 
 <details>
 <summary>查看夜间主题完整卸载器</summary>
 
-![V1.0.1 夜间主题完整卸载器](docs/assets/v1.0.1-uninstaller-dark.png)
+![V1.0.2 夜间主题完整卸载器](docs/assets/v1.0.2-uninstaller-dark.png)
 
 </details>
 
@@ -172,18 +178,18 @@
 ### 编译与测试
 
 ```powershell
-MSBuild .\duokai.sln /t:Rebuild /p:Configuration=Release
-.\tests\bin\Release\WechatDuokai.Tests.exe
+MSBuild .\duokai.sln /restore /t:Rebuild /p:Configuration=Release
+.\tests\bin\Release\net48\WechatDuokai.Tests.exe
 ```
 
 ### 生成完整发布包
 
 ```powershell
-PowerShell -ExecutionPolicy Bypass -File .\build-release.ps1 -Version 1.0.1
+PowerShell -ExecutionPolicy Bypass -File .\build-release.ps1 -Version 1.0.2
 ```
 
 脚本会依次重新编译、执行自动验证、创建安装版和绿色版、生成发布清单与 SHA-256。
-输出目录为 `artifacts\V1.0.1`。
+输出目录为 `artifacts\V1.0.2`。
 
 ## 兼容性与限制
 
@@ -205,6 +211,7 @@ PowerShell -ExecutionPolicy Bypass -File .\build-release.ps1 -Version 1.0.1
 - 改进项目：[PascalePaF/wechat-wecom-duokai](https://github.com/PascalePaF/wechat-wecom-duokai)
 - V1.0.0：目标数量缓存、按需补开、安装版/绿色版与完整清理
 - V1.0.1：可视化选择安装地址、原生可移动窗口、日间/夜间主题、扩展安全审计与版本化发布流程
+- V1.0.2：WPF 矢量界面与自然阴影、明确确认后启动、Core 分层、x64 统一构建与同类项目架构研究
 
 ## 许可证
 

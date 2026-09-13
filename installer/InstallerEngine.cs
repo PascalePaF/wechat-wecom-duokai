@@ -16,7 +16,7 @@ namespace WechatDuokai.Installer
     internal static class InstallerEngine
     {
         internal const string ProductName = "微信 · 企业微信多开助手";
-        internal const string Version = "1.0.1";
+        internal const string Version = "1.0.2";
         internal const string SourceMarkerName = ".wechat-duokai-source-root";
         internal const string SourceMarkerValue = "wechat-duokai-source-root:8f8b922d-244d-45c6-b7a8-a47ab3073f7d";
         internal const string ArtifactMarkerName = ".wechat-duokai-artifacts";
@@ -107,6 +107,7 @@ namespace WechatDuokai.Installer
 
             ExtractResource("Payload.wechat_duokai.exe", installedExecutable);
             ExtractResource("Payload.wechat_duokai.exe.config", installedExecutable + ".config");
+            ExtractResource("Payload.WechatDuokai.Core.dll", Path.Combine(installDirectory, "WechatDuokai.Core.dll"));
             ExtractResource("Payload.LICENSE.txt", Path.Combine(installDirectory, "LICENSE.txt"));
 
             File.Copy(InstallerExecutablePath, installedUninstaller, true);
@@ -141,7 +142,7 @@ namespace WechatDuokai.Installer
                 key?.SetValue("UninstallString", Quote(installedUninstaller) + " /uninstall");
                 key?.SetValue("NoModify", 1, RegistryValueKind.DWord);
                 key?.SetValue("NoRepair", 1, RegistryValueKind.DWord);
-                key?.SetValue("EstimatedSize", 2048, RegistryValueKind.DWord);
+                key?.SetValue("EstimatedSize", 4096, RegistryValueKind.DWord);
                 key?.SetValue("SourceRoot", sourceRoot ?? string.Empty);
                 key?.SetValue("ArtifactRoot", artifactRoot ?? string.Empty);
                 key?.SetValue("PackageRoot", packageRoot ?? string.Empty);

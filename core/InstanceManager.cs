@@ -8,9 +8,9 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Win32;
 
-namespace shuangkai.Core
+namespace WechatDuokai.Core
 {
-    internal sealed class InstanceManager
+    public sealed class InstanceManager
     {
         private const uint SnapshotProcesses = 0x00000002;
         private const uint InvalidHandleValue = 0xFFFFFFFF;

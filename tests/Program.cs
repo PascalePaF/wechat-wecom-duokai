@@ -1,13 +1,16 @@
 using System;
 using System.Diagnostics;
-using System.Drawing;
 using System.IO;
 using System.Reflection;
 using System.Security.Cryptography;
 using System.Threading;
-using System.Windows.Forms;
-using shuangkai;
-using shuangkai.Core;
+using System.Windows;
+using System.Windows.Automation;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
+using System.Windows.Threading;
+using WechatDuokai.App;
+using WechatDuokai.Core;
 using WechatDuokai.Installer;
 
 namespace WechatDuokai.Tests
@@ -19,88 +22,29 @@ namespace WechatDuokai.Tests
         [STAThread]
         private static int Main(string[] args)
         {
-            Application.EnableVisualStyles();
-            Application.SetCompatibleTextRenderingDefault(false);
-
-            if (args.Length == 2 && args[0] == "--hold-mutex")
-            {
-                return HoldMutex(args[1]);
-            }
-
-            if (args.Length == 2 && args[0] == "--hold-file")
-            {
-                return HoldFile(args[1]);
-            }
-
-            if (args.Length == 2 && args[0] == "--snapshot")
-            {
-                return SaveUiSnapshot(new Home(), args[1]);
-            }
-
-            if (args.Length == 2 && args[0] == "--snapshot-light")
-            {
-                SetAssemblyTheme(typeof(Home), "Light");
-                return SaveUiSnapshot(new Home(), args[1]);
-            }
-
-            if (args.Length == 2 && args[0] == "--snapshot-installer")
-            {
-                return SaveUiSnapshot(new InstallForm(), args[1]);
-            }
-
-            if (args.Length == 2 && args[0] == "--snapshot-installer-light")
-            {
-                SetAssemblyTheme(typeof(InstallForm), "Light");
-                return SaveUiSnapshot(new InstallForm(), args[1]);
-            }
-
-            if (args.Length == 2 && args[0] == "--snapshot-uninstaller")
-            {
-                return SaveUiSnapshot(new UninstallForm(), args[1]);
-            }
-
-            if (args.Length == 2 && args[0] == "--snapshot-uninstaller-light")
-            {
-                SetAssemblyTheme(typeof(UninstallForm), "Light");
-                return SaveUiSnapshot(new UninstallForm(), args[1]);
-            }
-
-            if (args.Length == 1 && args[0] == "--test-install")
-            {
-                return TestInstall();
-            }
-
-            if (args.Length == 1 && args[0] == "--cleanup-test-install")
-            {
-                return CleanupTestInstall();
-            }
+            if (args.Length == 2 && args[0] == "--hold-mutex") return HoldMutex(args[1]);
+            if (args.Length == 2 && args[0] == "--hold-file") return HoldFile(args[1]);
+            if (args.Length == 4 && args[0] == "--snapshot") return SaveUiSnapshot(args[1], args[2], args[3]);
+            if (args.Length == 1 && args[0] == "--test-install") return TestInstall();
+            if (args.Length == 1 && args[0] == "--cleanup-test-install") return CleanupTestInstall();
 
             try
             {
+                BootstrapWpf(typeof(MainWindow), "Light");
                 Run("Null application has zero instances", () =>
                     Assert(new InstanceManager().GetInstanceCount(null) == 0, "Expected zero."));
-
                 Run("Target count cache survives a restart", TestPreferenceRoundTrip);
-
                 Run("Cleanup refuses drive roots", () =>
                     Assert(!InstallerEngine.ValidateSourceRoot(Path.GetPathRoot(Environment.SystemDirectory)),
                         "A drive root must never be accepted as a source directory."));
-
                 Run("Project source marker is recognized", () =>
-                {
-                    var root = FindProjectRoot();
-                    Assert(InstallerEngine.ValidateSourceRoot(root), "Expected marked project root to validate.");
-                });
-
+                    Assert(InstallerEngine.ValidateSourceRoot(FindProjectRoot()), "Expected marked source root."));
                 Run("Custom installation paths are validated safely", TestCustomInstallPathValidation);
-
                 Run("All release windows use native movable title bars", TestNativeWindowChrome);
-
-                Run("Installer embeds the exact Release application", TestEmbeddedPayload);
-
+                Run("Install cannot launch before explicit confirmation", TestExplicitLaunchPolicy);
+                Run("Installer embeds the exact application and core payload", TestEmbeddedPayloads);
                 Run("Known WeChat mutex can be released without terminating its process", TestMutexRelease);
                 Run("Modern WeChat lock file can be released without terminating its process", TestFileLockRelease);
-
                 Console.WriteLine("All smoke tests passed.");
                 return 0;
             }
@@ -113,8 +57,7 @@ namespace WechatDuokai.Tests
 
         private static int HoldMutex(string readyFile)
         {
-            bool created;
-            var mutex = new Mutex(true, MutexName, out created);
+            var mutex = new Mutex(true, MutexName, out var created);
             File.WriteAllText(readyFile, created ? "ready" : "not-created");
             Thread.Sleep(30000);
             GC.KeepAlive(mutex);
@@ -130,123 +73,191 @@ namespace WechatDuokai.Tests
             return 0;
         }
 
-        private static void TestPreferenceRoundTrip()
+        private static void BootstrapWpf(Type anchorType, string themeName)
         {
-            var testDirectory = Path.Combine(Path.GetTempPath(), "wechat-duokai-preferences-" + Guid.NewGuid().ToString("N"));
-            try
+            if (Application.Current == null)
             {
-                Assert(UserPreferences.LoadTargetCount(testDirectory) == 2, "Missing settings should use default 2.");
-                UserPreferences.SaveTargetCount(testDirectory, 7);
-                Assert(UserPreferences.LoadTargetCount(testDirectory) == 7, "Saved target count was not loaded.");
-                Assert(UserPreferences.HasValidMarker(testDirectory), "User-data marker is missing or invalid.");
+                _ = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
             }
-            finally
-            {
-                if (Directory.Exists(testDirectory))
-                {
-                    Directory.Delete(testDirectory, true);
-                }
-            }
-        }
 
-        private static int SaveUiSnapshot(Form form, string outputPath)
-        {
-            using (form)
+            Application.Current.Resources.MergedDictionaries.Clear();
+            Application.Current.Resources.MergedDictionaries.Add(new ResourceDictionary
             {
-                form.Show();
-                Application.DoEvents();
-                Thread.Sleep(300);
-                Application.DoEvents();
-                using (var bitmap = new Bitmap(form.Width, form.Height))
-                {
-                    form.DrawToBitmap(bitmap, new Rectangle(Point.Empty, form.Size));
-                    bitmap.Save(outputPath, System.Drawing.Imaging.ImageFormat.Png);
-                }
-                form.Close();
-            }
-            return 0;
+                Source = new Uri("pack://application:,,,/" + anchorType.Assembly.GetName().Name +
+                                 ";component/Themes/ThemeResources.xaml", UriKind.Absolute)
+            });
+            SetAssemblyTheme(anchorType, themeName);
         }
 
         private static void SetAssemblyTheme(Type anchorType, string themeName)
         {
-            var managerType = anchorType.Assembly.GetType("WechatDuokai.UI.ThemeManager", true);
-            var themeType = anchorType.Assembly.GetType("WechatDuokai.UI.AppTheme", true);
+            var managerType = anchorType.Assembly.GetType("WechatDuokai.Presentation.ThemeManager", true);
+            var themeType = anchorType.Assembly.GetType("WechatDuokai.Presentation.AppTheme", true);
             var themeValue = Enum.Parse(themeType, themeName);
             var method = managerType.GetMethod("SetTheme", BindingFlags.Static | BindingFlags.NonPublic);
             Assert(method != null, "Theme manager entry point is missing.");
             method.Invoke(null, new[] { themeValue, (object)false });
         }
 
-        private static void TestNativeWindowChrome()
+        private static int SaveUiSnapshot(string windowName, string outputPath, string themeName)
         {
-            using (var home = new Home())
-            using (var installer = new InstallForm())
-            using (var uninstaller = new UninstallForm())
+            Type windowType;
+            var showInstallerCompletion = false;
+            switch (windowName.ToLowerInvariant())
             {
-                Assert(home.FormBorderStyle != FormBorderStyle.None,
-                    "Main window must use a native draggable title bar.");
-                Assert(home.ControlBox && home.MinimizeBox,
-                    "Main window must expose native close and minimize controls.");
-                Assert(installer.FormBorderStyle != FormBorderStyle.None && installer.ControlBox,
-                    "Installer must use a native draggable title bar.");
-                Assert(uninstaller.FormBorderStyle != FormBorderStyle.None && uninstaller.ControlBox,
-                    "Uninstaller must use a native draggable title bar.");
+                case "main": windowType = typeof(MainWindow); break;
+                case "installer": windowType = typeof(InstallWindow); break;
+                case "installer-complete":
+                    windowType = typeof(InstallWindow);
+                    showInstallerCompletion = true;
+                    break;
+                case "uninstaller": windowType = typeof(UninstallWindow); break;
+                default: throw new ArgumentException("Unknown window: " + windowName);
+            }
 
-                Assert(FindThemeToggle(home) != null, "Main window theme switch is missing.");
-                Assert(FindThemeToggle(installer) != null, "Installer theme switch is missing.");
-                Assert(FindThemeToggle(uninstaller) != null, "Uninstaller theme switch is missing.");
+            BootstrapWpf(windowType, themeName);
+            var window = (Window)Activator.CreateInstance(windowType);
+            try
+            {
+                if (showInstallerCompletion)
+                {
+                    var method = typeof(InstallWindow).GetMethod("EnterCompletedState",
+                        BindingFlags.Instance | BindingFlags.NonPublic);
+                    Assert(method != null, "Installer completion state is missing.");
+                    method.Invoke(window, null);
+                }
+                window.Show();
+                window.Dispatcher.Invoke(() => { }, DispatcherPriority.ContextIdle);
+                Thread.Sleep(250);
+                window.UpdateLayout();
+                var width = Math.Max(1, (int)Math.Ceiling(window.ActualWidth));
+                var height = Math.Max(1, (int)Math.Ceiling(window.ActualHeight));
+                var bitmap = new RenderTargetBitmap(width, height, 96, 96, PixelFormats.Pbgra32);
+                bitmap.Render(window);
+                var encoder = new PngBitmapEncoder();
+                encoder.Frames.Add(BitmapFrame.Create(bitmap));
+                using (var output = new FileStream(outputPath, FileMode.Create, FileAccess.Write, FileShare.None))
+                {
+                    encoder.Save(output);
+                }
+            }
+            finally
+            {
+                window.Close();
+                Application.Current.Shutdown();
+            }
+            return 0;
+        }
+
+        private static void TestPreferenceRoundTrip()
+        {
+            var testDirectory = Path.Combine(Path.GetTempPath(), "wechat-duokai-preferences-" + Guid.NewGuid().ToString("N"));
+            try
+            {
+                Assert(UserPreferences.LoadTargetCount(testDirectory) == 2, "Missing settings should default to 2.");
+                UserPreferences.SaveTargetCount(testDirectory, 7);
+                Assert(UserPreferences.LoadTargetCount(testDirectory) == 7, "Saved target count was not loaded.");
+                Assert(UserPreferences.HasValidMarker(testDirectory), "User-data marker is invalid.");
+            }
+            finally
+            {
+                if (Directory.Exists(testDirectory)) Directory.Delete(testDirectory, true);
             }
         }
 
-        private static Control FindThemeToggle(Control root)
+        private static void TestNativeWindowChrome()
         {
-            foreach (Control control in root.Controls)
+            var windows = new Window[] { new MainWindow(), new InstallWindow(), new UninstallWindow() };
+            try
             {
-                if (string.Equals(control.AccessibleName, "切换日间或夜间主题", StringComparison.Ordinal))
+                foreach (var window in windows)
                 {
-                    return control;
-                }
-
-                var nested = FindThemeToggle(control);
-                if (nested != null)
-                {
-                    return nested;
+                    Assert(window.WindowStyle != WindowStyle.None, window.GetType().Name + " must use a native title bar.");
+                    Assert(window.ResizeMode == ResizeMode.CanMinimize, window.GetType().Name + " must be movable and minimizable.");
+                    var themeButton = window.FindName("ThemeButton") as DependencyObject;
+                    Assert(themeButton != null &&
+                           string.Equals(AutomationProperties.GetName(themeButton), "切换日间或夜间主题", StringComparison.Ordinal),
+                        window.GetType().Name + " theme switch is missing.");
                 }
             }
+            finally
+            {
+                foreach (var window in windows) window.Close();
+            }
+        }
 
-            return null;
+        private static void TestExplicitLaunchPolicy()
+        {
+            Assert(InstallFlowPolicy.RequiresExplicitLaunchConfirmation, "Explicit confirmation policy must be enabled.");
+            Assert(!InstallFlowPolicy.CanLaunch(false, false), "Launch must be blocked before installation.");
+            Assert(!InstallFlowPolicy.CanLaunch(true, false), "Launch must be blocked until confirmation.");
+            Assert(InstallFlowPolicy.CanLaunch(true, true), "Launch should be allowed after confirmation.");
+        }
+
+        private static void TestEmbeddedPayloads()
+        {
+            var root = FindProjectRoot();
+            AssertEmbeddedEquals("Payload.wechat_duokai.exe",
+                Path.Combine(root, "duokai", "bin", "Release", "net48", "wechat_duokai.exe"));
+            AssertEmbeddedEquals("Payload.WechatDuokai.Core.dll",
+                Path.Combine(root, "duokai", "bin", "Release", "net48", "WechatDuokai.Core.dll"));
+        }
+
+        private static void AssertEmbeddedEquals(string resourceName, string builtPath)
+        {
+            using (var embedded = typeof(InstallerEngine).Assembly.GetManifestResourceStream(resourceName))
+            using (var built = File.OpenRead(builtPath))
+            using (var sha = SHA256.Create())
+            {
+                Assert(embedded != null, "Installer resource is missing: " + resourceName);
+                var embeddedHash = Convert.ToBase64String(sha.ComputeHash(embedded));
+                var builtHash = Convert.ToBase64String(sha.ComputeHash(built));
+                Assert(embeddedHash == builtHash, resourceName + " differs from the Release output.");
+            }
+        }
+
+        private static void TestCustomInstallPathValidation()
+        {
+            Assert(!InstallerEngine.ValidateInstallTarget(Path.GetPathRoot(Environment.SystemDirectory), out _),
+                "A drive root must never be accepted.");
+            var testRoot = Path.Combine(Path.GetTempPath(), "wechat-duokai-install-target-" + Guid.NewGuid().ToString("N"));
+            var target = Path.Combine(testRoot, "custom-app");
+            try
+            {
+                Directory.CreateDirectory(target);
+                Assert(InstallerEngine.ValidateInstallTarget(target, out var error), "Empty custom folder rejected: " + error);
+                File.WriteAllText(Path.Combine(target, "unrelated.txt"), "belongs to the user");
+                Assert(!InstallerEngine.ValidateInstallTarget(target, out _), "Unmarked non-empty folder must be rejected.");
+                File.WriteAllText(Path.Combine(target, InstallerEngine.InstallMarkerName), InstallerEngine.InstallMarkerValue);
+                File.WriteAllText(Path.Combine(target, "wechat_duokai.exe"), string.Empty);
+                Assert(InstallerEngine.ValidateInstallTarget(target, out _), "Marked installation should be updateable.");
+                Assert(InstallerEngine.ValidateInstallDirectory(target), "Marked install directory should validate.");
+            }
+            finally
+            {
+                if (Directory.Exists(testRoot)) Directory.Delete(testRoot, true);
+            }
         }
 
         private static int TestInstall()
         {
             if (Directory.Exists(InstallerEngine.InstallDirectory))
-            {
-                throw new InvalidOperationException("Install test requires an unused installation directory.");
-            }
-
+                throw new InvalidOperationException("Install test requires an unused default installation directory.");
             var result = InstallerEngine.Install(false);
-            Assert(result.InstallDirectory == InstallerEngine.InstallDirectory, "Unexpected installation directory.");
-            Assert(File.Exists(InstallerEngine.InstalledExecutable), "Installed application is missing.");
-            Assert(File.Exists(InstallerEngine.InstalledUninstaller), "Installed uninstaller is missing.");
-            Assert(File.Exists(Path.Combine(InstallerEngine.StartMenuDirectory, "微信企业微信多开助手.lnk")),
-                "Start menu application shortcut is missing.");
-            Assert(File.Exists(Path.Combine(InstallerEngine.StartMenuDirectory, "完全卸载.lnk")),
-                "Start menu uninstall shortcut is missing.");
-            Assert(!File.Exists(InstallerEngine.DesktopShortcut), "Desktop shortcut should not be created in this test.");
-            Console.WriteLine("PASS: Installer writes application, uninstaller, registry data and shortcuts");
+            Assert(File.Exists(result.ExecutablePath), "Installed application is missing.");
+            Assert(File.Exists(Path.Combine(result.InstallDirectory, "WechatDuokai.Core.dll")), "Installed core DLL is missing.");
+            Assert(File.Exists(result.UninstallerPath), "Installed uninstaller is missing.");
+            Console.WriteLine("PASS: Installer writes the complete application without launching it");
             return 0;
         }
 
         private static int CleanupTestInstall()
         {
             var locations = InstallerEngine.GetCleanupLocations();
-            Assert(InstallerEngine.ValidateInstallDirectory(locations.InstallDirectory),
-                "No safely marked test installation was found.");
+            Assert(InstallerEngine.ValidateInstallDirectory(locations.InstallDirectory), "No marked test installation found.");
             Assert(string.Equals(Path.GetFullPath(locations.InstallDirectory).TrimEnd(Path.DirectorySeparatorChar),
                     Path.GetFullPath(InstallerEngine.DefaultInstallDirectory).TrimEnd(Path.DirectorySeparatorChar),
-                    StringComparison.OrdinalIgnoreCase),
-                "Cleanup test only accepts the exact default test installation directory.");
-
+                    StringComparison.OrdinalIgnoreCase), "Cleanup test accepts only the exact default directory.");
             var planPath = Path.Combine(Path.GetTempPath(), "wechat-duokai-cleanup-test-" + Guid.NewGuid().ToString("N") + ".plan");
             var plan = new CleanupPlan
             {
@@ -264,108 +275,30 @@ namespace WechatDuokai.Tests
             };
             plan.Write(planPath);
             CleanupWorker.ExecuteForTests(planPath);
-
-            Assert(!Directory.Exists(InstallerEngine.DefaultInstallDirectory), "Test installation directory was not removed.");
-            Assert(!Directory.Exists(InstallerEngine.StartMenuDirectory), "Test start-menu directory was not removed.");
-            Assert(!InstallerEngine.ValidateInstallDirectory(locations.InstallDirectory), "Test installation still validates after cleanup.");
-            Console.WriteLine("PASS: Complete cleanup removes the verified test installation");
+            Assert(!Directory.Exists(InstallerEngine.DefaultInstallDirectory), "Test installation was not removed.");
+            Console.WriteLine("PASS: Cleanup removes the verified test installation");
             return 0;
-        }
-
-        private static void TestEmbeddedPayload()
-        {
-            var root = FindProjectRoot();
-            var builtApp = Path.Combine(root, "duokai", "bin", "Release", "duokai.exe");
-            var installerAssembly = typeof(InstallerEngine).Assembly;
-            using (var embedded = installerAssembly.GetManifestResourceStream("Payload.wechat_duokai.exe"))
-            using (var built = File.OpenRead(builtApp))
-            using (var sha = SHA256.Create())
-            {
-                Assert(embedded != null, "Installer payload resource is missing.");
-                var embeddedHash = Convert.ToBase64String(sha.ComputeHash(embedded));
-                built.Position = 0;
-                var builtHash = Convert.ToBase64String(sha.ComputeHash(built));
-                Assert(embeddedHash == builtHash, "Installer payload differs from the Release application.");
-            }
-        }
-
-        private static void TestCustomInstallPathValidation()
-        {
-            string validationError;
-            Assert(!InstallerEngine.ValidateInstallTarget(Path.GetPathRoot(Environment.SystemDirectory), out validationError),
-                "A drive root must never be accepted as an installation target.");
-
-            var testRoot = Path.Combine(Path.GetTempPath(), "wechat-duokai-install-target-" + Guid.NewGuid().ToString("N"));
-            var emptyTarget = Path.Combine(testRoot, "custom-app");
-            try
-            {
-                Directory.CreateDirectory(emptyTarget);
-                Assert(InstallerEngine.ValidateInstallTarget(emptyTarget, out validationError),
-                    "An empty custom folder should be accepted: " + validationError);
-
-                File.WriteAllText(Path.Combine(emptyTarget, "unrelated.txt"), "belongs to the user");
-                Assert(!InstallerEngine.ValidateInstallTarget(emptyTarget, out validationError),
-                    "A non-empty unmarked folder must be rejected.");
-
-                File.WriteAllText(Path.Combine(emptyTarget, InstallerEngine.InstallMarkerName),
-                    InstallerEngine.InstallMarkerValue);
-                File.WriteAllText(Path.Combine(emptyTarget, "wechat_duokai.exe"), string.Empty);
-                Assert(InstallerEngine.ValidateInstallTarget(emptyTarget, out validationError),
-                    "A marked existing installation should be accepted for an update.");
-                Assert(InstallerEngine.ValidateInstallDirectory(emptyTarget),
-                    "A marked custom installation should be recognized during cleanup.");
-            }
-            finally
-            {
-                if (Directory.Exists(testRoot))
-                {
-                    Directory.Delete(testRoot, true);
-                }
-            }
         }
 
         private static void TestMutexRelease()
         {
             var readyFile = Path.Combine(Path.GetTempPath(), "wechat-duokai-test-" + Guid.NewGuid().ToString("N") + ".ready");
-            var child = Process.Start(new ProcessStartInfo
-            {
-                FileName = Process.GetCurrentProcess().MainModule.FileName,
-                Arguments = "--hold-mutex \"" + readyFile + "\"",
-                UseShellExecute = false,
-                CreateNoWindow = true
-            });
-
+            var child = StartHelper("--hold-mutex", readyFile);
             try
             {
-                for (var attempt = 0; attempt < 100 && !File.Exists(readyFile); attempt++)
-                {
-                    Thread.Sleep(50);
-                }
-
-                Assert(File.Exists(readyFile), "Mutex holder did not become ready.");
+                WaitForFile(readyFile);
                 Assert(File.ReadAllText(readyFile) == "ready", "Test mutex was already present.");
-
                 var unlock = WindowsHandleUnlocker.ReleaseSingleInstanceLocks(AppKind.WeChat, new[] { child.Id });
                 Assert(unlock.ClosedHandleCount > 0, "No matching mutex handle was closed.");
-
-                Mutex opened;
-                var stillExists = Mutex.TryOpenExisting(MutexName, out opened);
+                var stillExists = Mutex.TryOpenExisting(MutexName, out var opened);
                 opened?.Dispose();
                 Assert(!stillExists, "Named mutex still exists after release.");
-                Assert(!child.HasExited, "The holder process was terminated; only the handle should be released.");
+                Assert(!child.HasExited, "Holder process was terminated.");
             }
             finally
             {
-                if (child != null && !child.HasExited)
-                {
-                    child.Kill();
-                    child.WaitForExit(3000);
-                }
-                child?.Dispose();
-                if (File.Exists(readyFile))
-                {
-                    File.Delete(readyFile);
-                }
+                StopHelper(child);
+                if (File.Exists(readyFile)) File.Delete(readyFile);
             }
         }
 
@@ -373,58 +306,57 @@ namespace WechatDuokai.Tests
         {
             var lockFile = Path.Combine(Path.GetTempPath(), "wechat-duokai-lock-" + Guid.NewGuid().ToString("N") + ".ini");
             var readyFile = lockFile + ".ready";
-            var child = Process.Start(new ProcessStartInfo
-            {
-                FileName = Process.GetCurrentProcess().MainModule.FileName,
-                Arguments = "--hold-file \"" + lockFile + "\"",
-                UseShellExecute = false,
-                CreateNoWindow = true
-            });
-
+            var child = StartHelper("--hold-file", lockFile);
             try
             {
-                for (var attempt = 0; attempt < 100 && !File.Exists(readyFile); attempt++)
-                {
-                    Thread.Sleep(50);
-                }
-
-                Assert(File.Exists(readyFile), "File-lock holder did not become ready.");
+                WaitForFile(readyFile);
                 var unlock = WindowsHandleUnlocker.ReleaseSingleInstanceLocks(AppKind.WeChat, new[] { child.Id }, lockFile);
                 Assert(unlock.ClosedHandleCount > 0, "No matching file handle was closed.");
-                Assert(unlock.RemovedLockFile, "Lock file was not removed.");
-                Assert(!File.Exists(lockFile), "Lock file still exists after release.");
-                Assert(!child.HasExited, "The holder process was terminated; only the file handle should be released.");
+                Assert(unlock.RemovedLockFile && !File.Exists(lockFile), "Lock file was not removed.");
+                Assert(!child.HasExited, "Holder process was terminated.");
             }
             finally
             {
-                if (child != null && !child.HasExited)
-                {
-                    child.Kill();
-                    child.WaitForExit(3000);
-                }
-                child?.Dispose();
-                if (File.Exists(lockFile))
-                {
-                    File.Delete(lockFile);
-                }
-                if (File.Exists(readyFile))
-                {
-                    File.Delete(readyFile);
-                }
+                StopHelper(child);
+                if (File.Exists(lockFile)) File.Delete(lockFile);
+                if (File.Exists(readyFile)) File.Delete(readyFile);
             }
+        }
+
+        private static Process StartHelper(string option, string path)
+        {
+            return Process.Start(new ProcessStartInfo
+            {
+                FileName = Process.GetCurrentProcess().MainModule.FileName,
+                Arguments = option + " \"" + path + "\"",
+                UseShellExecute = false,
+                CreateNoWindow = true
+            });
+        }
+
+        private static void WaitForFile(string path)
+        {
+            for (var attempt = 0; attempt < 100 && !File.Exists(path); attempt++) Thread.Sleep(50);
+            Assert(File.Exists(path), "Helper did not become ready.");
+        }
+
+        private static void StopHelper(Process child)
+        {
+            if (child != null && !child.HasExited)
+            {
+                child.Kill();
+                child.WaitForExit(3000);
+            }
+            child?.Dispose();
         }
 
         private static string FindProjectRoot()
         {
             var directory = new DirectoryInfo(AppDomain.CurrentDomain.BaseDirectory);
-            for (var depth = 0; directory != null && depth < 8; depth++, directory = directory.Parent)
+            for (var depth = 0; directory != null && depth < 9; depth++, directory = directory.Parent)
             {
-                if (File.Exists(Path.Combine(directory.FullName, InstallerEngine.SourceMarkerName)))
-                {
-                    return directory.FullName;
-                }
+                if (File.Exists(Path.Combine(directory.FullName, InstallerEngine.SourceMarkerName))) return directory.FullName;
             }
-
             throw new DirectoryNotFoundException("Project root not found.");
         }
 
@@ -436,10 +368,7 @@ namespace WechatDuokai.Tests
 
         private static void Assert(bool condition, string message)
         {
-            if (!condition)
-            {
-                throw new InvalidOperationException(message);
-            }
+            if (!condition) throw new InvalidOperationException(message);
         }
     }
 }

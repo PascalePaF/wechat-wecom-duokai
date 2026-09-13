@@ -1,0 +1,41 @@
+; --- Settings ---
+; Action on detect:	Report only
+; Scan objects:	All objects
+; Use iChecker:	No
+; Use iSwift:	No
+; Try disinfect:	No
+; Try delete:	No
+; Try delete container:	No
+; Scan archives:	No
+; Exclude by mask:	No
+; Include by mask:	No
+; Objects to scan:
+; 	"D:\Acode\С��������\wechat_duokai\duokai\bin\Release\net48\"	Enable = Yes	Recursive = Yes
+; 	"D:\Acode\С��������\wechat_duokai\installer\bin\Release\net48\"	Enable = Yes	Recursive = Yes
+; ------------------
+2026-09-13 20:24:38	Scan_Objects$0368                          starting   1
+2026-09-13 20:24:38	Scan_Objects$0368                          running    1
+2026-09-13 20:24:38	D:\Acode\小软件集合\wechat_duokai\duokai\bin\Release\net48\WechatDuokai.Core.pdb	ok
+2026-09-13 20:24:38	D:\Acode\小软件集合\wechat_duokai\duokai\bin\Release\net48\wechat_duokai.exe.config	ok
+2026-09-13 20:24:38	D:\Acode\小软件集合\wechat_duokai\duokai\bin\Release\net48\wechat_duokai.pdb	ok
+2026-09-13 20:24:38	D:\Acode\小软件集合\wechat_duokai\duokai\bin\Release\net48\WechatDuokai.Core.dll	ok
+2026-09-13 20:24:38	D:\Acode\小软件集合\wechat_duokai\duokai\bin\Release\net48\wechat_duokai.exe	ok
+2026-09-13 20:24:38	D:\Acode\小软件集合\wechat_duokai\installer\bin\Release\net48\wechat_duokai-setup-v1.0.2.exe.config	ok
+2026-09-13 20:24:38	D:\Acode\小软件集合\wechat_duokai\installer\bin\Release\net48\wechat_duokai-setup-v1.0.2.pdb	ok
+2026-09-13 20:24:39 	D:\Acode\小软件集合\wechat_duokai\installer\bin\Release\net48\wechat_duokai-setup-v1.0.2.exe	archive	dotNetResources
+2026-09-13 20:24:39	D:\Acode\小软件集合\wechat_duokai\installer\bin\Release\net48\wechat_duokai-setup-v1.0.2.exe//data0004.res	ok
+2026-09-13 20:24:39	D:\Acode\小软件集合\wechat_duokai\installer\bin\Release\net48\wechat_duokai-setup-v1.0.2.exe//data0006.res	ok
+2026-09-13 20:24:39	D:\Acode\小软件集合\wechat_duokai\installer\bin\Release\net48\wechat_duokai-setup-v1.0.2.exe	ok
+2026-09-13 20:24:41	Scan_Objects$0368                          completed
+;  --- Statistics ---
+; Time Start:	2026-09-13 20:24:38
+; Time Finish:	2026-09-13 20:24:41
+; Processed objects:	10
+; Total OK:	10
+; Total detected:	0
+; Suspicions:	0
+; Total skipped:	0
+; Password protected:	0
+; Corrupted:	0
+; Errors:	0
+;  ------------------
