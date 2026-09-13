@@ -75,6 +75,47 @@ namespace WechatDuokai.Installer
                 return;
             }
 
+            var running = InstallerEngine.FindRunningApplications(_selectedInstallDirectory);
+            if (running.Count > 0)
+            {
+                var closeChoice = MessageBox.Show(
+                    "检测到这个安装位置的多开助手正在运行。\r\n\r\n" +
+                    "是否先正常关闭助手，再继续覆盖安装？微信和企业微信不会被关闭。",
+                    "需要关闭正在运行的助手", MessageBoxButton.YesNo,
+                    MessageBoxImage.Question, MessageBoxResult.Yes);
+                if (closeChoice != MessageBoxResult.Yes)
+                {
+                    SetStatus("安装已暂停；正在运行的助手保持不变", "WarningBrush");
+                    return;
+                }
+
+                var remaining = InstallerEngine.CloseRunningApplications(
+                    _selectedInstallDirectory, running, false);
+                if (remaining.Count > 0)
+                {
+                    var forceChoice = MessageBox.Show(
+                        "助手未能在 5 秒内正常退出。\r\n\r\n" +
+                        "是否只强制关闭该安装目录中的助手进程，然后继续安装？微信和企业微信不会被关闭。",
+                        "助手仍在运行", MessageBoxButton.YesNo,
+                        MessageBoxImage.Warning, MessageBoxResult.No);
+                    if (forceChoice != MessageBoxResult.Yes)
+                    {
+                        SetStatus("安装已暂停；请退出助手后重试", "WarningBrush");
+                        return;
+                    }
+
+                    remaining = InstallerEngine.CloseRunningApplications(
+                        _selectedInstallDirectory, remaining, true);
+                    if (remaining.Count > 0)
+                    {
+                        SetStatus("无法关闭正在运行的助手，未覆盖文件", "DangerBrush");
+                        MessageBox.Show("仍有助手进程占用安装文件。请手动退出后重试。",
+                            "无法继续安装", MessageBoxButton.OK, MessageBoxImage.Error);
+                        return;
+                    }
+                }
+            }
+
             SetInteractiveState(false);
             SetStatus("正在写入程序文件和快捷方式…", "AccentBrush");
             Mouse.OverrideCursor = Cursors.Wait;
@@ -87,7 +128,7 @@ namespace WechatDuokai.Installer
             }
             catch (Exception ex)
             {
-                SetStatus("安装失败，请关闭正在运行的旧版本后重试", "DangerBrush");
+                SetStatus("安装失败；原有客户端文件未被修改", "DangerBrush");
                 MessageBox.Show(ex.Message, "安装失败", MessageBoxButton.OK, MessageBoxImage.Error);
                 SetInteractiveState(true);
             }

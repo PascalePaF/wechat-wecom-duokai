@@ -16,7 +16,7 @@ namespace WechatDuokai.Installer
     internal static class InstallerEngine
     {
         internal const string ProductName = "微信 · 企业微信多开助手";
-        internal const string Version = "1.0.2";
+        internal const string Version = "1.0.3";
         internal const string SourceMarkerName = ".wechat-duokai-source-root";
         internal const string SourceMarkerValue = "wechat-duokai-source-root:8f8b922d-244d-45c6-b7a8-a47ab3073f7d";
         internal const string ArtifactMarkerName = ".wechat-duokai-artifacts";
@@ -82,6 +82,11 @@ namespace WechatDuokai.Installer
 
         internal static string GetInstalledUninstaller(string installDirectory)
         {
+            return Path.Combine(installDirectory, "wechat_duokai-uninstall.exe");
+        }
+
+        internal static string GetLegacyUninstaller(string installDirectory)
+        {
             return Path.Combine(installDirectory, "uninstall.exe");
         }
 
@@ -110,7 +115,12 @@ namespace WechatDuokai.Installer
             ExtractResource("Payload.WechatDuokai.Core.dll", Path.Combine(installDirectory, "WechatDuokai.Core.dll"));
             ExtractResource("Payload.LICENSE.txt", Path.Combine(installDirectory, "LICENSE.txt"));
 
-            File.Copy(InstallerExecutablePath, installedUninstaller, true);
+            ExtractResource("Payload.wechat_duokai-cleanup.exe", installedUninstaller);
+            var legacyUninstaller = GetLegacyUninstaller(installDirectory);
+            if (File.Exists(legacyUninstaller) && !PathsEqual(legacyUninstaller, InstallerExecutablePath))
+            {
+                File.Delete(legacyUninstaller);
+            }
 
             Directory.CreateDirectory(StartMenuDirectory);
             Shortcut.Create(Path.Combine(StartMenuDirectory, "微信企业微信多开助手.lnk"), installedExecutable, string.Empty,
@@ -156,6 +166,97 @@ namespace WechatDuokai.Installer
                 SourceRoot = sourceRoot,
                 ArtifactRoot = artifactRoot
             };
+        }
+
+        internal static IReadOnlyList<RunningApplicationInfo> FindRunningApplications(string requestedInstallDirectory)
+        {
+            string normalized;
+            string error;
+            if (!TryNormalizeInstallTarget(requestedInstallDirectory, out normalized, out error))
+            {
+                return new RunningApplicationInfo[0];
+            }
+
+            var target = GetInstalledExecutable(normalized);
+            var result = new List<RunningApplicationInfo>();
+            foreach (var process in Process.GetProcessesByName("wechat_duokai"))
+            {
+                try
+                {
+                    var path = process.MainModule?.FileName;
+                    if (PathsEqual(path, target))
+                    {
+                        result.Add(new RunningApplicationInfo { ProcessId = process.Id, ExecutablePath = path });
+                    }
+                }
+                catch (Exception)
+                {
+                    // A process can exit or be inaccessible. Never act without an exact path.
+                }
+                finally
+                {
+                    process.Dispose();
+                }
+            }
+
+            return result;
+        }
+
+        internal static IReadOnlyList<RunningApplicationInfo> CloseRunningApplications(
+            string requestedInstallDirectory, IEnumerable<RunningApplicationInfo> applications, bool force)
+        {
+            string normalized;
+            string error;
+            if (!TryNormalizeInstallTarget(requestedInstallDirectory, out normalized, out error))
+            {
+                throw new InvalidOperationException(error);
+            }
+
+            var target = GetInstalledExecutable(normalized);
+            var candidates = (applications ?? Enumerable.Empty<RunningApplicationInfo>()).ToArray();
+            foreach (var candidate in candidates)
+            {
+                try
+                {
+                    using (var process = Process.GetProcessById(candidate.ProcessId))
+                    {
+                        var livePath = process.MainModule?.FileName;
+                        if (!PathsEqual(livePath, target) || !PathsEqual(candidate.ExecutablePath, target))
+                        {
+                            continue;
+                        }
+
+                        if (force)
+                        {
+                            process.Kill();
+                        }
+                        else
+                        {
+                            process.CloseMainWindow();
+                        }
+                    }
+                }
+                catch (ArgumentException)
+                {
+                    // Already exited.
+                }
+                catch (InvalidOperationException)
+                {
+                    // Already exited.
+                }
+            }
+
+            var deadline = DateTime.UtcNow.AddSeconds(force ? 3 : 5);
+            IReadOnlyList<RunningApplicationInfo> remaining;
+            do
+            {
+                remaining = FindRunningApplications(normalized);
+                if (remaining.Count == 0) return remaining;
+                Thread.Sleep(100);
+            }
+            while (DateTime.UtcNow < deadline);
+
+            return remaining;
         }
 
         internal static CleanupLocations GetCleanupLocations()
@@ -265,7 +366,8 @@ namespace WechatDuokai.Installer
                 var attributes = new DirectoryInfo(fullPath).Attributes;
                 return (attributes & FileAttributes.ReparsePoint) == 0 &&
                        (File.Exists(GetInstalledExecutable(fullPath)) ||
-                        File.Exists(GetInstalledUninstaller(fullPath)));
+                        File.Exists(GetInstalledUninstaller(fullPath)) ||
+                        File.Exists(GetLegacyUninstaller(fullPath)));
             }
             catch (Exception)
             {
@@ -928,6 +1030,13 @@ namespace WechatDuokai.Installer
         public string UninstallerPath { get; set; }
         public string SourceRoot { get; set; }
         public string ArtifactRoot { get; set; }
+    }
+
+    internal sealed class RunningApplicationInfo
+    {
+        public int ProcessId { get; set; }
+
+        public string ExecutablePath { get; set; }
     }
 
     internal static class Shortcut

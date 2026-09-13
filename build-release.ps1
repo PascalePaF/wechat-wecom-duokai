@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [string]$Version = '1.0.2'
+    [string]$Version = '1.0.3'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -62,15 +62,16 @@ Set-Content -LiteralPath (Join-Path $portableDirectory '.wechat-duokai-portable'
 
 $appOutput = Join-Path $sourceRoot 'duokai\bin\Release\net48'
 $setupOutput = Join-Path $sourceRoot ("installer\bin\Release\net48\wechat_duokai-setup-" + $versionSuffix + '.exe')
+$cleanupOutput = Join-Path $sourceRoot ("cleanup\bin\Release\net48\wechat_duokai-cleanup-" + $versionSuffix + '.exe')
 $setupTarget = Join-Path $installerDirectory ("wechat_duokai-setup-" + $versionSuffix + '.exe')
 $cleanupTarget = Join-Path $installerDirectory ("wechat_duokai-cleanup-" + $versionSuffix + '.exe')
 
 Copy-Item -LiteralPath $setupOutput -Destination $setupTarget
-Copy-Item -LiteralPath $setupOutput -Destination $cleanupTarget
+Copy-Item -LiteralPath $cleanupOutput -Destination $cleanupTarget
 Copy-Item -LiteralPath (Join-Path $appOutput 'wechat_duokai.exe') -Destination (Join-Path $portableDirectory 'wechat_duokai.exe')
 Copy-Item -LiteralPath (Join-Path $appOutput 'wechat_duokai.exe.config') -Destination (Join-Path $portableDirectory 'wechat_duokai.exe.config')
 Copy-Item -LiteralPath (Join-Path $appOutput 'WechatDuokai.Core.dll') -Destination (Join-Path $portableDirectory 'WechatDuokai.Core.dll')
-Copy-Item -LiteralPath $setupOutput -Destination (Join-Path $portableDirectory ("wechat_duokai-cleanup-" + $versionSuffix + '.exe'))
+Copy-Item -LiteralPath $cleanupOutput -Destination (Join-Path $portableDirectory ("wechat_duokai-cleanup-" + $versionSuffix + '.exe'))
 Copy-Item -LiteralPath (Join-Path $sourceRoot 'LICENSE') -Destination (Join-Path $portableDirectory 'LICENSE.txt')
 Copy-Item -LiteralPath (Join-Path $sourceRoot 'README.md') -Destination (Join-Path $portableDirectory 'README.md')
 Copy-Item -LiteralPath (Join-Path $sourceRoot 'SECURITY-AUDIT.md') -Destination (Join-Path $portableDirectory 'SECURITY-AUDIT.md')
@@ -79,17 +80,62 @@ $hardcodedPathReport = Join-Path $sourceRoot 'docs\旧版EXE硬编码路径说�
 if (Test-Path -LiteralPath $hardcodedPathReport) {
     Copy-Item -LiteralPath $hardcodedPathReport -Destination (Join-Path $portableDirectory '安全说明-旧版EXE硬编码路径报告.txt')
 }
-$completeSecurityReport = Join-Path $sourceRoot 'docs\微信企业微信多开助手_V1.0.2_完整安全审计报告.txt'
+$completeSecurityReport = Join-Path $sourceRoot 'docs\微信企业微信多开助手_V1.0.3_完整安全审计报告.txt'
 if (Test-Path -LiteralPath $completeSecurityReport) {
     Copy-Item -LiteralPath $completeSecurityReport -Destination (Join-Path $portableDirectory '完整安全审计与卡巴斯基告警调查报告.txt')
 }
-$architectureReport = Join-Path $sourceRoot 'docs\V1.0.2-架构评估与GitHub开源项目对比报告.md'
+$architectureReport = Join-Path $sourceRoot 'docs\V1.0.3-技术决策与兼容性报告.md'
 if (Test-Path -LiteralPath $architectureReport) {
     Copy-Item -LiteralPath $architectureReport -Destination (Join-Path $portableDirectory '架构评估与GitHub开源项目对比报告.md')
 }
+$uiRegressionReport = Join-Path $sourceRoot 'docs\V1.0.3-UI回归矩阵.md'
+if (Test-Path -LiteralPath $uiRegressionReport) {
+    Copy-Item -LiteralPath $uiRegressionReport -Destination (Join-Path $artifactRoot 'wechat-duokai-v1.0.3-ui-regression-matrix.md')
+}
+
+# Keep the two release-facing reports beside the binaries as standalone GitHub
+# Release assets as well as inside the portable package.
+if (Test-Path -LiteralPath $completeSecurityReport) {
+    Copy-Item -LiteralPath $completeSecurityReport -Destination (Join-Path $artifactRoot 'wechat-duokai-v1.0.3-security-audit.txt')
+}
+if (Test-Path -LiteralPath $architectureReport) {
+    Copy-Item -LiteralPath $architectureReport -Destination (Join-Path $artifactRoot 'wechat-duokai-v1.0.3-architecture-compatibility-report.md')
+}
 
 $portableZip = Join-Path (Split-Path -Parent $portableDirectory) ("wechat_duokai-portable-" + $versionSuffix + '.zip')
-Compress-Archive -Path (Join-Path $portableDirectory '*') -DestinationPath $portableZip -CompressionLevel Optimal -Force
+Add-Type -AssemblyName System.IO.Compression
+$zipStream = [IO.File]::Open($portableZip, [IO.FileMode]::CreateNew, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None)
+try {
+    $archive = New-Object IO.Compression.ZipArchive($zipStream, [IO.Compression.ZipArchiveMode]::Create, $true)
+    try {
+        $fixedZipTime = [DateTimeOffset]::Parse('2026-01-01T00:00:00Z')
+        $portableFiles = Get-ChildItem -LiteralPath $portableDirectory -File -Recurse | Sort-Object FullName
+        foreach ($file in $portableFiles) {
+            $relativeName = $file.FullName.Substring($portableDirectory.Length).TrimStart([IO.Path]::DirectorySeparatorChar).Replace('\', '/')
+            $entry = $archive.CreateEntry($relativeName, [IO.Compression.CompressionLevel]::Optimal)
+            $entry.LastWriteTime = $fixedZipTime
+            $input = [IO.File]::OpenRead($file.FullName)
+            try {
+                $output = $entry.Open()
+                try {
+                    $input.CopyTo($output)
+                }
+                finally {
+                    $output.Dispose()
+                }
+            }
+            finally {
+                $input.Dispose()
+            }
+        }
+    }
+    finally {
+        $archive.Dispose()
+    }
+}
+finally {
+    $zipStream.Dispose()
+}
 
 $hashTargets = @(
     $setupTarget,
@@ -109,8 +155,11 @@ $manifest = @(
     "Product=$Version",
     'Framework=.NET Framework 4.8',
     'Platform=Windows 10/11 x64',
-    'UI=WPF with native Windows title bars',
+    'UI=Responsive WPF with native Windows title bars and Per-Monitor V2 DPI awareness',
     'LaunchPolicy=Explicit confirmation after install',
+    'UpgradePolicy=Prompt before closing exact-path running helper',
+    'UpdatePolicy=Check GitHub Releases metadata; browser download only',
+    'InstallerIdentity=Setup and cleanup are separate assemblies',
     ("Installer=installer/wechat_duokai-setup-" + $versionSuffix + '.exe'),
     ("Cleanup=installer/wechat_duokai-cleanup-" + $versionSuffix + '.exe'),
     ("Portable=portable/wechat_duokai-portable-" + $versionSuffix + '.zip'),

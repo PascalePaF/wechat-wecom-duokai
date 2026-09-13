@@ -1,0 +1,185 @@
+微信 · 企业微信多开助手 V1.0.3 完整安全审计报告
+
+文档编号：WD-SA-2026-09-13-V103
+报告日期：2026-09-13（Asia/Tokyo）
+审计对象：PascalePaF/wechat-wecom-duokai V1.0.3 源码、构建逻辑和候选发布文件
+
+一、执行结论
+
+截至候选构建检查，没有发现读取聊天内容、窃取账号或凭据、远程控制、隐藏下载、代码注入、
+开机自启或后台上传诊断数据的实现。V1.0.3 新增的唯一自动网络行为，是通过 HTTPS 向 GitHub
+公开 API 读取本仓库最新 Release 的 tag_name；它不下载附件、不执行远端内容、不上传本地报告。
+
+本结论不是“绝对安全保证”。程序仍使用 Windows 系统句柄枚举与白名单句柄关闭来处理客户端的
+单实例限制；这种低层行为容易被启发式杀毒模型关注，也是未来 Windows 或客户端更新后的主要
+兼容风险。所有正式使用都应核对 Release 来源、SHA-256 和本机安全软件结果，不应关闭防护或设置
+永久白名单来掩盖告警。
+
+二、V1.0.3 新增能力及风险控制
+
+1. 自定义客户端路径
+   - 只接受微信 Weixin.exe/WeChat.exe 与企业微信 WXWork.exe/兼容命名；
+   - 同时检查 Tencent 产品版本资源；
+   - 调用 Windows WinVerifyTrust 验证 Authenticode 完整性；
+   - 签名主体必须包含 Tencent；
+   - 保存后的路径每次启动重新验证；仅改文件名的陌生 EXE 会被拒绝。
+
+2. 自动版本检测
+   - 固定终端：https://api.github.com/repos/PascalePaF/wechat-wecom-duokai/releases/latest
+   - 固定行为：一次 GET，只解析 tag_name，8 秒超时；
+   - 失败不弹窗、不阻止多开；
+   - 没有下载、解压、替换、提权或执行更新代码；
+   - 用户点击后只由系统浏览器打开 GitHub Releases。
+
+3. 本地诊断
+   - 仅在用户点击“诊断”时写入 <程序目录>\diagnostics；
+   - 包含程序/系统版本、客户端路径、产品版本、签名状态、实例数和策略说明；
+   - 不读取聊天记录、联系人、账号、Cookie、登录凭据、环境变量、进程命令行；
+   - 不自动上传；无写权限时明确失败，不回退到隐蔽目录。
+
+4. 运行中覆盖安装
+   - 只枚举名称为 wechat_duokai 且可执行路径精确等于所选安装目录目标文件的进程；
+   - 路径无法读取时失败关闭，不根据同名进程猜测；
+   - 首先询问是否正常关闭；正常退出等待五秒；
+   - 仍运行时再次询问是否强制关闭，默认选项为“否”；
+   - 每次操作前按 PID 重新读取并核对路径，降低 PID 重用风险；
+   - 永不结束微信、企业微信或其他目录中的助手。
+
+5. 安装器与清理器身份分离
+   - setup 只显示安装窗口；cleanup 只显示卸载窗口或执行经过验证的临时清理计划；
+   - 二者程序集名、产品名、说明和二进制内容不同；
+   - 安装器嵌入独立 cleanup 构建，不再复制自己改名；
+   - 清理器原有目录标记、结构验证、链接拒绝和多重确认保持不变。
+
+6. 进程环境抽象
+   - System.Diagnostics 与 Toolhelp32 进程快照集中在 WindowsProcessEnvironment；
+   - InstanceManager 只依赖 IProcessEnvironment；
+   - 测试可提供固定会话、路径和父子关系，不需要启动真实微信；
+   - 生产环境仍按当前 Windows 会话和客户端精确路径筛选。
+
+三、权限与数据面
+
+- 主程序、安装器、清理器均使用 asInvoker、uiAccess=false；
+- 不安装驱动、服务、计划任务、浏览器扩展或开机启动项；
+- 不请求 SeDebugPrivilege；
+- 不使用 WriteProcessMemory、CreateRemoteThread、VirtualAllocEx 或 DLL 注入；
+- 不修改微信/企业微信二进制、资源或聊天数据；
+- 主程序仅在补开时对精确客户端进程使用 PROCESS_DUP_HANDLE；
+- 企业微信会写当前用户 HKCU\SOFTWARE\Tencent\WXWork\multi_instances；
+- 用户配置位于 %LOCALAPPDATA%\WechatDuokai；
+- 安装版程序和诊断位于用户选择的专用安装目录；
+- 卸载登记只写 HKCU，不要求管理员。
+
+四、网络审计边界变化
+
+V1.0.2 可表述为主程序没有自动网络请求；V1.0.3 因用户明确要求“自动检测是否有更新”，新增了
+公开 GitHub Release 元数据请求。因此不能继续使用“完全无网络代码”的旧结论。准确结论是：
+
+- 没有隐私数据采集入口；
+- 没有上传请求；
+- 没有自定义服务器、遥测 SDK、广告 SDK 或第三方运行时；
+- 只有固定 api.github.com HTTPS GET；
+- User-Agent 只含产品名和当前版本；
+- GitHub 作为服务端会按其基础设施规则看到普通 HTTP 请求元数据（如 IP），这是使用该功能的
+  外部服务边界，应在 README 公开；
+- 用户完全断网或 GitHub 不可达时，核心功能不受影响。
+
+五、客户端验证实测
+
+本机官方客户端：
+- 微信：D:\中文安装地址\微信\Weixin\Weixin.exe，版本 4.1.15.6，Tencent 签名 Valid；
+- 企业微信：D:\中文安装地址\WXWork\WXWork.exe，版本 5.0.11.6018，Tencent 签名 Valid。
+
+V1.0.3 验证器对两者均返回有效。路径检查只用于证明当前实现可以识别自定义中文目录和现行
+腾讯签名，不把这两条本机路径写入源码或发布配置。
+
+六、自动验证结果
+
+候选源码自动测试覆盖：
+- 数量设置与自定义路径缓存；
+- 可替换进程环境、会话过滤、父子根进程归并；
+- GitHub tag 解析与“无内置更新”固定 URL；
+- 安装目录、源码目录、发布目录和磁盘根保护；
+- 精确运行中安装目标识别与经确认的关闭；
+- 主窗口 680×520、790×600、960×640、1280×800、1920×1080 布局；
+- 原生标题栏、移动、最小化、最大化和自由缩放；
+- 安装后必须再次确认才启动；
+- 主程序、Core 和独立清理器嵌入内容一致性；
+- setup/cleanup 不同编译身份；
+- 微信已知互斥锁和现代 lock.ini 文件句柄白名单释放；
+- 释放锁时测试持有进程保持运行。
+
+候选 Release 连续两次完整重编译均通过 17 项测试，setup、cleanup、portable ZIP、主程序和 Core
+五项 SHA-256 在两次构建间完全一致。固定 ZIP 条目时间与排序后，绿色包也可重复生成相同哈希。
+
+候选包已使用 Kaspersky 21.26 执行全对象、关闭 iChecker/iSwift、仅报告扫描：病毒库时间为
+2026-09-13 12:03:00（full），处理 33 个对象，检测 0、可疑 0、跳过 0、损坏 0、错误 0。
+将安全、架构与 UI 报告加入独立 Release 附件后，正式包使用同一病毒库再次处理 36 个对象，
+检测 0、可疑 0、跳过 0、密码保护 0、损坏 0、错误 0。报告定稿后还会对最终字节执行同参数
+确认扫描；原始结果保存在 docs\kaspersky-scan-v1.0.3.txt，并作为 GitHub Release 独立附件发布。
+
+稳定的可执行文件 SHA-256：
+- setup：736ecff0e8e1eb338476de3c1e9287c3eaa92947821a74c7e9b667b487f940d7
+- cleanup：bf7ebe8f7f8e87450515959d78deed0b1ad8e93ab9ea5d84a1cd4cb42fa448b0
+- 主程序：88230ed5e4a75b4e0a3f956c4820e8cdc97f353641d93c2aaa2f76ef34a31e6b
+- Core：23bb9f6b8084eaacb66351a8763f6e7b337a992bcb68278920d01c6800aad0a4
+
+绿色 ZIP 含本报告自身，报告文字定稿后其最终哈希以同目录 SHA256SUMS.txt 为准，避免在 ZIP
+内部写入自身哈希形成循环依赖。
+
+七、代码签名状态
+
+V1.0.3 当前没有受公共信任的 Authenticode 代码签名。未签名不等于恶意，但会导致：
+- Windows 显示未知发布者；
+- 每次新版本哈希从零建立信誉；
+- SmartScreen、Smart App Control 或第三方启发式产品更可能拦截；
+- 用户不能通过发布者证书验证二进制来源。
+
+推荐先申请 SignPath Foundation 免费开源签名；不符合资格时再评估 Microsoft Artifact Signing
+Basic（官方当前列价约 US$9.99/月，存在地区/主体限制）或传统 OV 证书。自签名仅适用于开发或
+受管企业设备，不能解决普通公众下载的信任问题。
+
+八、WiX/MSI 结论
+
+MSI 的 Restart Manager、回滚、修复和企业部署是有效优势。但本项目目前为少量文件的当前用户
+安装，还保留“清理发布包/可选源码”这种 MSI 不应承担的项目级清理职责。在代码签名、CI 和虚拟机
+升级矩阵尚未完成前，本版不迁移 WiX/MSI，避免同时改变安装数据库和产品行为。
+
+WiX 作为未来企业分发 PoC 保留；触发条件为组策略部署、MSI 修复/回滚或明确企业客户需求。PoC
+不得取代绿色版，也不得让 MSI 直接删除源码。
+
+九、剩余风险
+
+1. 句柄枚举依赖 NtQuerySystemInformation 内部接口，Windows 更新可能改变行为；
+2. 腾讯没有公开保证第三方多开机制长期可用；未来客户端可能更换锁名或架构；
+3. 有效腾讯签名能验证客户端发布者，不能保证每个腾讯文件都适合作为当前产品入口，所以还叠加
+   文件名和产品信息校验；
+4. 自动更新检查引入了 GitHub 可用性和普通网络元数据边界；
+5. 安装目录由当前用户写入，同一账户已被攻击者完全控制时，目录标记不能作为密码学防线；
+6. 清理源码是不可撤销操作，虽然有标记、结构和两次确认，仍应先推送/备份未提交修改；
+7. 未签名新构建仍可能被安全产品启发式告警；必须对最终文件扫描，而不是只扫描源码；
+8. 本机零检出不能替代 Kaspersky 实验室对历史 Convagent.gen 告警的正式误报裁定。
+
+十、发布判断
+
+只有满足以下门禁才发布 V1.0.3：
+- Release 重编译与全部自动测试通过；
+- UI 日间/夜间、紧凑/默认/宽屏截图人工复核；
+- setup、cleanup、portable 三种产物身份和内容核验；
+- SHA-256 清单生成；
+- Kaspersky 对最终 artifacts\V1.0.3 目录执行全文件扫描，日志公开且记录病毒库日期；
+- Git 提交、v1.0.3 标签与 GitHub Release 指向同一源码状态；
+- Release 说明公开未签名、GitHub 检查端点和底层句柄兼容风险。
+
+在上述条件完成且扫描无检测/可疑项时，可以作为透明的公开测试版发布；不能宣传为“绝对安全”
+或“腾讯官方支持”。若最终安全扫描出现新告警，应暂停发布并调查，不能让用户盲目点击忽略。
+
+参考：
+- Microsoft 代码签名选项：https://learn.microsoft.com/en-us/windows/apps/package-and-deploy/code-signing-options
+- Microsoft SmartScreen 信誉：https://learn.microsoft.com/en-us/windows/apps/package-and-deploy/smartscreen-reputation
+- Microsoft Artifact Signing SKU：https://learn.microsoft.com/en-us/azure/artifact-signing/how-to-change-sku
+- Microsoft Restart Manager：https://learn.microsoft.com/en-us/windows/win32/msi/using-windows-installer-with-restart-manager
+- WiX Toolset：https://docs.firegiant.com/wix/
+- WiX OSMF：https://docs.firegiant.com/wix/osmf/
+- SignPath Foundation：https://signpath.org/
+- SignPath 开源条件：https://signpath.org/terms.html

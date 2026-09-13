@@ -11,9 +11,11 @@ namespace WechatDuokai.Core
         private static readonly string[] WeChatExecutableNames = { "Weixin.exe", "WeChat.exe" };
         private static readonly string[] WeComExecutableNames = { "WXWork.exe", "WeCom.exe", "企业微信.exe" };
 
-        public static AppDefinition FindWeChat()
+        public static AppDefinition FindWeChat(string preferredPath = null)
         {
             var candidates = new List<string>();
+
+            AddPreferredCandidate(candidates, preferredPath, AppKind.WeChat);
 
             AddRegistryDirectory(candidates, RegistryHive.CurrentUser, @"SOFTWARE\Tencent\Weixin", "InstallPath", WeChatExecutableNames);
             AddRegistryDirectory(candidates, RegistryHive.CurrentUser, @"SOFTWARE\Tencent\WeChat", "InstallPath", WeChatExecutableNames);
@@ -27,12 +29,14 @@ namespace WechatDuokai.Core
             AddProgramFilesCandidates(candidates, @"Tencent\WeChat\WeChat.exe");
             AddProgramFilesCandidates(candidates, @"WeChat\WeChat.exe");
 
-            return new AppDefinition(AppKind.WeChat, "微信", FirstValid(candidates, WeChatExecutableNames));
+            return new AppDefinition(AppKind.WeChat, "微信", FirstValid(candidates, AppKind.WeChat));
         }
 
-        public static AppDefinition FindWeCom()
+        public static AppDefinition FindWeCom(string preferredPath = null)
         {
             var candidates = new List<string>();
+
+            AddPreferredCandidate(candidates, preferredPath, AppKind.WeCom);
 
             AddRegistryValue(candidates, RegistryHive.CurrentUser, @"SOFTWARE\Tencent\WXWork", "Executable");
             AddRegistryDirectory(candidates, RegistryHive.CurrentUser, @"SOFTWARE\Tencent\WXWork", "InstallPath", WeComExecutableNames);
@@ -44,7 +48,21 @@ namespace WechatDuokai.Core
             AddProgramFilesCandidates(candidates, @"Tencent\WXWork\WXWork.exe");
             AddProgramFilesCandidates(candidates, @"WeCom\WeCom.exe");
 
-            return new AppDefinition(AppKind.WeCom, "企业微信", FirstValid(candidates, WeComExecutableNames));
+            return new AppDefinition(AppKind.WeCom, "企业微信", FirstValid(candidates, AppKind.WeCom));
+        }
+
+        private static void AddPreferredCandidate(ICollection<string> candidates, string path, AppKind kind)
+        {
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                return;
+            }
+
+            var validation = ClientExecutableValidator.Validate(path, kind);
+            if (validation.IsValid)
+            {
+                candidates.Add(validation.NormalizedPath);
+            }
         }
 
         private static void AddRegistryDirectory(List<string> candidates, RegistryHive hive, string keyPath, string valueName, IEnumerable<string> executableNames)
@@ -150,9 +168,8 @@ namespace WechatDuokai.Core
             }
         }
 
-        private static string FirstValid(IEnumerable<string> candidates, IEnumerable<string> allowedExecutableNames)
+        private static string FirstValid(IEnumerable<string> candidates, AppKind kind)
         {
-            var allowed = new HashSet<string>(allowedExecutableNames, StringComparer.OrdinalIgnoreCase);
             var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
             foreach (var rawCandidate in candidates)
@@ -165,9 +182,7 @@ namespace WechatDuokai.Core
                 try
                 {
                     var candidate = Path.GetFullPath(rawCandidate.Trim(' ', '"'));
-                    if (seen.Add(candidate) &&
-                        allowed.Contains(Path.GetFileName(candidate)) &&
-                        File.Exists(candidate))
+                    if (seen.Add(candidate) && ClientExecutableValidator.Validate(candidate, kind).IsValid)
                     {
                         return candidate;
                     }

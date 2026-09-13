@@ -2,11 +2,11 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="完全卸载 · 微信与企业微信多开助手"
-        Width="790" Height="660" MinWidth="790" MinHeight="660" MaxWidth="790" MaxHeight="660"
-        WindowStartupLocation="CenterScreen" ResizeMode="CanMinimize" WindowStyle="SingleBorderWindow"
+        Width="810" Height="680" MinWidth="720" MinHeight="620"
+        WindowStartupLocation="CenterScreen" ResizeMode="CanResize" WindowStyle="SingleBorderWindow"
         Background="{DynamicResource WindowBackgroundBrush}" FontFamily="{StaticResource AppFont}"
-        UseLayoutRounding="True" SnapsToDevicePixels="True"
-        TextOptions.TextFormattingMode="Display" TextOptions.TextRenderingMode="ClearType"
+        UseLayoutRounding="True" SnapsToDevicePixels="False"
+        TextOptions.TextFormattingMode="Ideal" TextOptions.TextRenderingMode="ClearType"
         SourceInitialized="Window_SourceInitialized">
     <Grid>
         <Grid.RowDefinitions>

@@ -1,9 +1,7 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Win32;
@@ -12,8 +10,17 @@ namespace WechatDuokai.Core
 {
     public sealed class InstanceManager
     {
-        private const uint SnapshotProcesses = 0x00000002;
-        private const uint InvalidHandleValue = 0xFFFFFFFF;
+        private readonly IProcessEnvironment _environment;
+
+        public InstanceManager()
+            : this(new WindowsProcessEnvironment())
+        {
+        }
+
+        public InstanceManager(IProcessEnvironment environment)
+        {
+            _environment = environment ?? throw new ArgumentNullException(nameof(environment));
+        }
 
         public int GetInstanceCount(AppDefinition application)
         {
@@ -30,7 +37,7 @@ namespace WechatDuokai.Core
 
             // WeChat/WeCom helpers normally use different executable names. If a newer
             // version reuses the main name for child processes, count only process roots.
-            var parentMap = GetParentProcessMap();
+            var parentMap = _environment.GetParentProcessMap();
             var roots = processIds.Count(processId =>
                 !parentMap.TryGetValue(processId, out var parentId) || !processIds.Contains(parentId));
 
@@ -95,7 +102,7 @@ namespace WechatDuokai.Core
                 }
 
                 var beforeLaunch = GetInstanceCount(application);
-                StartApplication(application.ExecutablePath);
+                _environment.StartApplication(application.ExecutablePath);
                 result.StartedCount++;
 
                 reportStatus?.Invoke($"已发出启动请求，等待{application.DisplayName}窗口出现…");
@@ -119,81 +126,47 @@ namespace WechatDuokai.Core
                 return result;
             }
 
-            var currentSession = Process.GetCurrentProcess().SessionId;
-            foreach (var processName in application.ProcessNames)
+            var currentSession = _environment.CurrentSessionId;
+            foreach (var process in _environment.FindProcesses(application.ProcessNames))
             {
-                foreach (var process in Process.GetProcessesByName(processName))
+                try
                 {
-                    try
+                    if (process.SessionId != currentSession)
                     {
-                        if (process.SessionId != currentSession)
-                        {
-                            continue;
-                        }
-
-                        if (!string.IsNullOrWhiteSpace(application.ExecutablePath))
-                        {
-                            string runningPath;
-                            try
-                            {
-                                runningPath = process.MainModule?.FileName;
-                            }
-                            catch (Exception)
-                            {
-                                // Fail closed: a matching file name is not enough to prove that this
-                                // is the Tencent client selected by ApplicationLocator.
-                                continue;
-                            }
-
-                            if (string.IsNullOrWhiteSpace(runningPath) ||
-                                !PathsEqual(runningPath, application.ExecutablePath))
-                            {
-                                continue;
-                            }
-                        }
-
-                        result.Add(process.Id);
+                        continue;
                     }
-                    catch (Exception)
+
+                    if (!string.IsNullOrWhiteSpace(application.ExecutablePath) &&
+                        (string.IsNullOrWhiteSpace(process.ExecutablePath) ||
+                         !PathsEqual(process.ExecutablePath, application.ExecutablePath)))
                     {
-                        // A process can exit between enumeration and inspection.
+                        continue;
                     }
-                    finally
-                    {
-                        process.Dispose();
-                    }
+
+                    result.Add(process.Id);
+                }
+                catch (Exception)
+                {
+                    // A process can exit or a test snapshot can be incomplete.
                 }
             }
 
             return result;
         }
 
-        private static async Task WaitForInstanceIncreaseAsync(AppDefinition application, int previousCount, CancellationToken cancellationToken)
+        private async Task WaitForInstanceIncreaseAsync(AppDefinition application, int previousCount, CancellationToken cancellationToken)
         {
-            var manager = new InstanceManager();
             for (var attempt = 0; attempt < 32; attempt++)
             {
-                await Task.Delay(250, cancellationToken);
-                if (manager.GetInstanceCount(application) > previousCount)
+                await _environment.DelayAsync(TimeSpan.FromMilliseconds(250), cancellationToken);
+                if (GetInstanceCount(application) > previousCount)
                 {
                     // Give the client enough time to establish its single-instance lock before
                     // the next loop tries to release it.
-                    await Task.Delay(350, cancellationToken);
+                    await _environment.DelayAsync(TimeSpan.FromMilliseconds(350), cancellationToken);
                     return;
                 }
             }
-        }
-
-        private static void StartApplication(string executablePath)
-        {
-            var startInfo = new ProcessStartInfo
-            {
-                FileName = executablePath,
-                WorkingDirectory = Path.GetDirectoryName(executablePath),
-                UseShellExecute = true
-            };
-
-            Process.Start(startInfo);
         }
 
         private static void ConfigureWeComMultiInstance(int targetCount)
@@ -211,38 +184,6 @@ namespace WechatDuokai.Core
             }
         }
 
-        private static Dictionary<int, int> GetParentProcessMap()
-        {
-            var result = new Dictionary<int, int>();
-            var snapshot = CreateToolhelp32Snapshot(SnapshotProcesses, 0);
-            if (snapshot == new IntPtr(unchecked((int)InvalidHandleValue)))
-            {
-                return result;
-            }
-
-            try
-            {
-                var entry = new ProcessEntry32 { Size = (uint)Marshal.SizeOf(typeof(ProcessEntry32)) };
-                if (!Process32First(snapshot, ref entry))
-                {
-                    return result;
-                }
-
-                do
-                {
-                    result[unchecked((int)entry.ProcessId)] = unchecked((int)entry.ParentProcessId);
-                    entry.Size = (uint)Marshal.SizeOf(typeof(ProcessEntry32));
-                }
-                while (Process32Next(snapshot, ref entry));
-            }
-            finally
-            {
-                CloseHandle(snapshot);
-            }
-
-            return result;
-        }
-
         private static bool PathsEqual(string left, string right)
         {
             try
@@ -255,33 +196,5 @@ namespace WechatDuokai.Core
             }
         }
 
-        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
-        private struct ProcessEntry32
-        {
-            public uint Size;
-            public uint Usage;
-            public uint ProcessId;
-            public IntPtr DefaultHeapId;
-            public uint ModuleId;
-            public uint Threads;
-            public uint ParentProcessId;
-            public int BasePriority;
-            public uint Flags;
-
-            [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 260)]
-            public string ExeFile;
-        }
-
-        [DllImport("kernel32.dll", SetLastError = true)]
-        private static extern IntPtr CreateToolhelp32Snapshot(uint flags, uint processId);
-
-        [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
-        private static extern bool Process32First(IntPtr snapshot, ref ProcessEntry32 entry);
-
-        [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
-        private static extern bool Process32Next(IntPtr snapshot, ref ProcessEntry32 entry);
-
-        [DllImport("kernel32.dll", SetLastError = true)]
-        private static extern bool CloseHandle(IntPtr handle);
     }
 }

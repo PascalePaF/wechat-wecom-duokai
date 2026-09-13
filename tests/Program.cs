@@ -1,11 +1,14 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using System.Security.Cryptography;
 using System.Threading;
 using System.Windows;
 using System.Windows.Automation;
+using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
@@ -24,7 +27,9 @@ namespace WechatDuokai.Tests
         {
             if (args.Length == 2 && args[0] == "--hold-mutex") return HoldMutex(args[1]);
             if (args.Length == 2 && args[0] == "--hold-file") return HoldFile(args[1]);
-            if (args.Length == 4 && args[0] == "--snapshot") return SaveUiSnapshot(args[1], args[2], args[3]);
+            if (args.Length >= 4 && args[0] == "--snapshot")
+                return SaveUiSnapshot(args[1], args[2], args[3], args.Length >= 6 ? args[4] : null, args.Length >= 6 ? args[5] : null);
+            if (args.Length == 1 && args[0] == "--idle") { Thread.Sleep(30000); return 0; }
             if (args.Length == 1 && args[0] == "--test-install") return TestInstall();
             if (args.Length == 1 && args[0] == "--cleanup-test-install") return CleanupTestInstall();
 
@@ -34,15 +39,22 @@ namespace WechatDuokai.Tests
                 Run("Null application has zero instances", () =>
                     Assert(new InstanceManager().GetInstanceCount(null) == 0, "Expected zero."));
                 Run("Target count cache survives a restart", TestPreferenceRoundTrip);
+                Run("Renamed executables cannot impersonate an official client", TestClientExecutableValidation);
+                Run("Process environment groups roots and supports deterministic launch tests", TestProcessEnvironmentAbstraction);
+                Run("Diagnostics stay inside the selected local application directory", TestLocalDiagnostics);
+                Run("GitHub release metadata never performs an in-app update", TestReleaseMetadataParsing);
                 Run("Cleanup refuses drive roots", () =>
                     Assert(!InstallerEngine.ValidateSourceRoot(Path.GetPathRoot(Environment.SystemDirectory)),
                         "A drive root must never be accepted as a source directory."));
                 Run("Project source marker is recognized", () =>
                     Assert(InstallerEngine.ValidateSourceRoot(FindProjectRoot()), "Expected marked source root."));
                 Run("Custom installation paths are validated safely", TestCustomInstallPathValidation);
+                Run("Installer identifies only the exact running target before overwrite", TestRunningInstallDetection);
                 Run("All release windows use native movable title bars", TestNativeWindowChrome);
+                Run("Main window responds from minimum size through maximized layouts", TestResponsiveLayoutMatrix);
                 Run("Install cannot launch before explicit confirmation", TestExplicitLaunchPolicy);
                 Run("Installer embeds the exact application and core payload", TestEmbeddedPayloads);
+                Run("Setup and cleanup are separate compiled identities", TestSeparateInstallerIdentities);
                 Run("Known WeChat mutex can be released without terminating its process", TestMutexRelease);
                 Run("Modern WeChat lock file can be released without terminating its process", TestFileLockRelease);
                 Console.WriteLine("All smoke tests passed.");
@@ -99,7 +111,7 @@ namespace WechatDuokai.Tests
             method.Invoke(null, new[] { themeValue, (object)false });
         }
 
-        private static int SaveUiSnapshot(string windowName, string outputPath, string themeName)
+        private static int SaveUiSnapshot(string windowName, string outputPath, string themeName, string requestedWidth, string requestedHeight)
         {
             Type windowType;
             var showInstallerCompletion = false;
@@ -111,7 +123,7 @@ namespace WechatDuokai.Tests
                     windowType = typeof(InstallWindow);
                     showInstallerCompletion = true;
                     break;
-                case "uninstaller": windowType = typeof(UninstallWindow); break;
+                case "uninstaller": windowType = LoadCleanupWindowType(); break;
                 default: throw new ArgumentException("Unknown window: " + windowName);
             }
 
@@ -119,6 +131,10 @@ namespace WechatDuokai.Tests
             var window = (Window)Activator.CreateInstance(windowType);
             try
             {
+                double width;
+                double height;
+                if (double.TryParse(requestedWidth, out width)) window.Width = Math.Max(window.MinWidth, width);
+                if (double.TryParse(requestedHeight, out height)) window.Height = Math.Max(window.MinHeight, height);
                 if (showInstallerCompletion)
                 {
                     var method = typeof(InstallWindow).GetMethod("EnterCompletedState",
@@ -130,9 +146,9 @@ namespace WechatDuokai.Tests
                 window.Dispatcher.Invoke(() => { }, DispatcherPriority.ContextIdle);
                 Thread.Sleep(250);
                 window.UpdateLayout();
-                var width = Math.Max(1, (int)Math.Ceiling(window.ActualWidth));
-                var height = Math.Max(1, (int)Math.Ceiling(window.ActualHeight));
-                var bitmap = new RenderTargetBitmap(width, height, 96, 96, PixelFormats.Pbgra32);
+                var renderedWidth = Math.Max(1, (int)Math.Ceiling(window.ActualWidth));
+                var renderedHeight = Math.Max(1, (int)Math.Ceiling(window.ActualHeight));
+                var bitmap = new RenderTargetBitmap(renderedWidth, renderedHeight, 96, 96, PixelFormats.Pbgra32);
                 bitmap.Render(window);
                 var encoder = new PngBitmapEncoder();
                 encoder.Frames.Add(BitmapFrame.Create(bitmap));
@@ -157,6 +173,10 @@ namespace WechatDuokai.Tests
                 Assert(UserPreferences.LoadTargetCount(testDirectory) == 2, "Missing settings should default to 2.");
                 UserPreferences.SaveTargetCount(testDirectory, 7);
                 Assert(UserPreferences.LoadTargetCount(testDirectory) == 7, "Saved target count was not loaded.");
+                var custom = Path.Combine(testDirectory, "Weixin.exe");
+                UserPreferences.SaveCustomClientPath(testDirectory, AppKind.WeChat, custom);
+                Assert(UserPreferences.LoadCustomClientPath(testDirectory, AppKind.WeChat) == Path.GetFullPath(custom),
+                    "Custom client path was not preserved.");
                 Assert(UserPreferences.HasValidMarker(testDirectory), "User-data marker is invalid.");
             }
             finally
@@ -167,13 +187,19 @@ namespace WechatDuokai.Tests
 
         private static void TestNativeWindowChrome()
         {
-            var windows = new Window[] { new MainWindow(), new InstallWindow(), new UninstallWindow() };
+            var windows = new Window[]
+            {
+                new MainWindow(),
+                new InstallWindow(),
+                (Window)Activator.CreateInstance(LoadCleanupWindowType())
+            };
             try
             {
                 foreach (var window in windows)
                 {
                     Assert(window.WindowStyle != WindowStyle.None, window.GetType().Name + " must use a native title bar.");
-                    Assert(window.ResizeMode == ResizeMode.CanMinimize, window.GetType().Name + " must be movable and minimizable.");
+                    Assert(window.ResizeMode == ResizeMode.CanResize,
+                        window.GetType().Name + " must support move, minimize, maximize and resize.");
                     var themeButton = window.FindName("ThemeButton") as DependencyObject;
                     Assert(themeButton != null &&
                            string.Equals(AutomationProperties.GetName(themeButton), "切换日间或夜间主题", StringComparison.Ordinal),
@@ -184,6 +210,111 @@ namespace WechatDuokai.Tests
             {
                 foreach (var window in windows) window.Close();
             }
+        }
+
+        private static void TestResponsiveLayoutMatrix()
+        {
+            var window = new MainWindow();
+            try
+            {
+                Assert(window.MinWidth <= 680 && window.MinHeight <= 520, "Minimum main-window size is too large.");
+                Assert(double.IsPositiveInfinity(window.MaxWidth) && double.IsPositiveInfinity(window.MaxHeight),
+                    "Main window must not impose a fixed maximum size.");
+                var method = typeof(MainWindow).GetMethod("ApplyResponsiveLayout",
+                    BindingFlags.Instance | BindingFlags.NonPublic);
+                Assert(method != null, "Responsive layout method is missing.");
+                var panel = (FrameworkElement)window.FindName("CountPanel");
+                window.WindowStartupLocation = WindowStartupLocation.Manual;
+                window.Left = -10000;
+                window.Top = -10000;
+                window.ShowInTaskbar = false;
+                window.Show();
+                foreach (var size in new[]
+                {
+                    new System.Windows.Size(680, 520), new System.Windows.Size(790, 600),
+                    new System.Windows.Size(960, 640), new System.Windows.Size(1280, 800),
+                    new System.Windows.Size(1920, 1080)
+                })
+                {
+                    window.Width = size.Width;
+                    window.Height = size.Height;
+                    method.Invoke(window, new object[] { size.Width });
+                    window.Dispatcher.Invoke(() => { }, DispatcherPriority.ContextIdle);
+                    window.UpdateLayout();
+                    Assert(panel.ActualWidth > 0 && panel.ActualHeight > 0,
+                        "Count panel disappeared at " + size.Width + "x" + size.Height + ".");
+                }
+
+                method.Invoke(window, new object[] { 700d });
+                Assert(Grid.GetRow(panel) == 1 && Grid.GetColumnSpan(panel) == 3,
+                    "Compact layout must stack the count panel.");
+                method.Invoke(window, new object[] { 1200d });
+                Assert(Grid.GetRow(panel) == 0 && Grid.GetColumn(panel) == 2,
+                    "Wide layout must keep the count panel on the right.");
+            }
+            finally
+            {
+                window.Close();
+            }
+        }
+
+        private static void TestProcessEnvironmentAbstraction()
+        {
+            var path = Path.Combine(Path.GetTempPath(), "Weixin.exe");
+            var environment = new FakeProcessEnvironment(path);
+            var manager = new InstanceManager(environment);
+            var app = new AppDefinition(AppKind.WeChat, "微信", path);
+            Assert(manager.GetApplicationProcessIds(app).Count == 3, "Exact-path processes were not selected.");
+            Assert(manager.GetInstanceCount(app) == 2, "Parent/child process roots were not grouped correctly.");
+        }
+
+        private static void TestClientExecutableValidation()
+        {
+            var folder = Path.Combine(Path.GetTempPath(), "wechat-duokai-client-validation-" + Guid.NewGuid().ToString("N"));
+            try
+            {
+                Directory.CreateDirectory(folder);
+                var renamed = Path.Combine(folder, "Weixin.exe");
+                File.Copy(Process.GetCurrentProcess().MainModule.FileName, renamed);
+                var validation = ClientExecutableValidator.Validate(renamed, AppKind.WeChat);
+                Assert(!validation.IsValid, "A renamed unsigned test executable was accepted as WeChat.");
+            }
+            finally
+            {
+                if (Directory.Exists(folder)) Directory.Delete(folder, true);
+            }
+        }
+
+        private static void TestLocalDiagnostics()
+        {
+            var folder = Path.Combine(Path.GetTempPath(), "wechat-duokai-diagnostics-" + Guid.NewGuid().ToString("N"));
+            try
+            {
+                Directory.CreateDirectory(folder);
+                var report = new DiagnosticReportService().CreateReport(folder, null, null, new InstanceManager());
+                var expectedRoot = Path.Combine(Path.GetFullPath(folder), DiagnosticReportService.FolderName) + Path.DirectorySeparatorChar;
+                Assert(Path.GetFullPath(report).StartsWith(expectedRoot, StringComparison.OrdinalIgnoreCase),
+                    "Diagnostic report escaped the application directory.");
+                var text = File.ReadAllText(report);
+                Assert(text.Contains("不会自动上传") && !text.Contains("UserName="),
+                    "Diagnostic privacy statement is missing or a user name field was added.");
+            }
+            finally
+            {
+                if (Directory.Exists(folder)) Directory.Delete(folder, true);
+            }
+        }
+
+        private static void TestReleaseMetadataParsing()
+        {
+            var newer = ReleaseUpdateChecker.ParseResponse("{\"tag_name\":\"v1.1.0\"}", "1.0.3");
+            Assert(newer.CheckSucceeded && newer.IsUpdateAvailable && newer.LatestVersion == "1.1.0",
+                "Newer release metadata was not recognized.");
+            var same = ReleaseUpdateChecker.ParseResponse("{\"tag_name\":\"v1.0.3\"}", "1.0.3");
+            Assert(same.CheckSucceeded && !same.IsUpdateAvailable,
+                "Current version must not be presented as an update.");
+            Assert(ReleaseUpdateChecker.ReleasesUrl.StartsWith("https://github.com/", StringComparison.Ordinal),
+                "Release action must remain an HTTPS GitHub page.");
         }
 
         private static void TestExplicitLaunchPolicy()
@@ -201,6 +332,30 @@ namespace WechatDuokai.Tests
                 Path.Combine(root, "duokai", "bin", "Release", "net48", "wechat_duokai.exe"));
             AssertEmbeddedEquals("Payload.WechatDuokai.Core.dll",
                 Path.Combine(root, "duokai", "bin", "Release", "net48", "WechatDuokai.Core.dll"));
+            AssertEmbeddedEquals("Payload.wechat_duokai-cleanup.exe",
+                Path.Combine(root, "cleanup", "bin", "Release", "net48", "wechat_duokai-cleanup-v1.0.3.exe"));
+        }
+
+        private static void TestSeparateInstallerIdentities()
+        {
+            var root = FindProjectRoot();
+            var setup = Path.Combine(root, "installer", "bin", "Release", "net48", "wechat_duokai-setup-v1.0.3.exe");
+            var cleanup = Path.Combine(root, "cleanup", "bin", "Release", "net48", "wechat_duokai-cleanup-v1.0.3.exe");
+            Assert(File.Exists(setup) && File.Exists(cleanup), "Setup or cleanup output is missing.");
+            Assert(!File.ReadAllBytes(setup).SequenceEqual(File.ReadAllBytes(cleanup)),
+                "Setup and cleanup must not be byte-identical copies.");
+            Assert(FileVersionInfo.GetVersionInfo(setup).ProductName.IndexOf("安装", StringComparison.Ordinal) >= 0,
+                "Setup product identity is incorrect.");
+            Assert(FileVersionInfo.GetVersionInfo(cleanup).ProductName.IndexOf("清理", StringComparison.Ordinal) >= 0,
+                "Cleanup product identity is incorrect.");
+        }
+
+        private static Type LoadCleanupWindowType()
+        {
+            var path = Path.Combine(FindProjectRoot(), "cleanup", "bin", "Release", "net48",
+                "wechat_duokai-cleanup-v1.0.3.exe");
+            var assembly = Assembly.LoadFrom(path);
+            return assembly.GetType("WechatDuokai.Installer.UninstallWindow", true);
         }
 
         private static void AssertEmbeddedEquals(string resourceName, string builtPath)
@@ -236,6 +391,65 @@ namespace WechatDuokai.Tests
             finally
             {
                 if (Directory.Exists(testRoot)) Directory.Delete(testRoot, true);
+            }
+        }
+
+        private static void TestRunningInstallDetection()
+        {
+            var root = Path.Combine(Path.GetTempPath(), "wechat-duokai-running-install-" + Guid.NewGuid().ToString("N"));
+            Process child = null;
+            try
+            {
+                Directory.CreateDirectory(root);
+                foreach (var file in Directory.EnumerateFiles(AppDomain.CurrentDomain.BaseDirectory))
+                {
+                    var extension = Path.GetExtension(file);
+                    if (string.Equals(extension, ".dll", StringComparison.OrdinalIgnoreCase) ||
+                        string.Equals(extension, ".config", StringComparison.OrdinalIgnoreCase))
+                    {
+                        File.Copy(file, Path.Combine(root, Path.GetFileName(file)), true);
+                    }
+                }
+
+                var target = InstallerEngine.GetInstalledExecutable(root);
+                File.Copy(Process.GetCurrentProcess().MainModule.FileName, target, true);
+                var sourceConfig = Process.GetCurrentProcess().MainModule.FileName + ".config";
+                if (File.Exists(sourceConfig)) File.Copy(sourceConfig, target + ".config", true);
+                File.WriteAllText(Path.Combine(root, InstallerEngine.InstallMarkerName),
+                    InstallerEngine.InstallMarkerValue);
+                child = Process.Start(new ProcessStartInfo
+                {
+                    FileName = target,
+                    Arguments = "--idle",
+                    WorkingDirectory = root,
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                });
+                Assert(child != null, "Idle helper process did not start.");
+
+                IReadOnlyList<RunningApplicationInfo> running = null;
+                for (var attempt = 0; attempt < 40; attempt++)
+                {
+                    running = InstallerEngine.FindRunningApplications(root);
+                    if (running.Count > 0) break;
+                    Thread.Sleep(50);
+                }
+                Assert(running != null && running.Count == 1 && running[0].ProcessId == child.Id,
+                    "Installer did not identify the exact target process.");
+
+                var unrelatedRoot = Path.Combine(Path.GetTempPath(), "wechat-duokai-unrelated-" + Guid.NewGuid().ToString("N"));
+                Assert(InstallerEngine.FindRunningApplications(unrelatedRoot).Count == 0,
+                    "Installer must not target a helper running from another directory.");
+
+                var remaining = InstallerEngine.CloseRunningApplications(root, running, true);
+                Assert(remaining.Count == 0, "Confirmed force-close did not release the exact target.");
+                child.WaitForExit(3000);
+            }
+            finally
+            {
+                if (child != null && !child.HasExited) child.Kill();
+                child?.Dispose();
+                if (Directory.Exists(root)) Directory.Delete(root, true);
             }
         }
 
@@ -369,6 +583,39 @@ namespace WechatDuokai.Tests
         private static void Assert(bool condition, string message)
         {
             if (!condition) throw new InvalidOperationException(message);
+        }
+
+        private sealed class FakeProcessEnvironment : IProcessEnvironment
+        {
+            private readonly string _path;
+
+            internal FakeProcessEnvironment(string path) { _path = path; }
+
+            public int CurrentSessionId => 7;
+
+            public System.Collections.Generic.IReadOnlyList<ProcessSnapshot> FindProcesses(
+                System.Collections.Generic.IEnumerable<string> processNames)
+            {
+                return new[]
+                {
+                    new ProcessSnapshot { Id = 10, SessionId = 7, ExecutablePath = _path },
+                    new ProcessSnapshot { Id = 11, SessionId = 7, ExecutablePath = _path },
+                    new ProcessSnapshot { Id = 20, SessionId = 7, ExecutablePath = _path },
+                    new ProcessSnapshot { Id = 99, SessionId = 8, ExecutablePath = _path }
+                };
+            }
+
+            public System.Collections.Generic.IReadOnlyDictionary<int, int> GetParentProcessMap()
+            {
+                return new System.Collections.Generic.Dictionary<int, int> { [11] = 10 };
+            }
+
+            public void StartApplication(string executablePath) { }
+
+            public System.Threading.Tasks.Task DelayAsync(TimeSpan delay, CancellationToken cancellationToken)
+            {
+                return System.Threading.Tasks.Task.CompletedTask;
+            }
         }
     }
 }

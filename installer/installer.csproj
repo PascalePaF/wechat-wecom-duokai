@@ -4,7 +4,7 @@
     <TargetFramework>net48</TargetFramework>
     <UseWPF>true</UseWPF>
     <UseWindowsForms>true</UseWindowsForms>
-    <AssemblyName>wechat_duokai-setup-v1.0.2</AssemblyName>
+    <AssemblyName>wechat_duokai-setup-v1.0.3</AssemblyName>
     <RootNamespace>WechatDuokai.Installer</RootNamespace>
     <StartupObject>WechatDuokai.Installer.Program</StartupObject>
     <PlatformTarget>x64</PlatformTarget>
@@ -12,15 +12,18 @@
     <LangVersion>latest</LangVersion>
     <Deterministic>true</Deterministic>
     <ApplicationIcon>..\duokai\favicon.ico</ApplicationIcon>
-    <AssemblyVersion>1.0.2.0</AssemblyVersion>
-    <FileVersion>1.0.2.0</FileVersion>
-    <Version>1.0.2</Version>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <AssemblyVersion>1.0.3.0</AssemblyVersion>
+    <FileVersion>1.0.3.0</FileVersion>
+    <Version>1.0.3</Version>
     <Company>wechat_duokai contributors</Company>
     <Product>微信 · 企业微信多开助手安装程序</Product>
-    <Description>微信与企业微信多开助手的安装与完整清理程序</Description>
+    <Description>微信与企业微信多开助手安装程序</Description>
     <Copyright>Copyright © CN-Root and contributors 2022-2026</Copyright>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Remove="UninstallWindow.xaml.cs" />
+    <Page Remove="UninstallWindow.xaml" />
     <Compile Include="..\shared\WpfPresentation.cs" Link="Presentation\WpfPresentation.cs" />
     <Page Include="..\shared\ThemeResources.xaml" Link="Themes\ThemeResources.xaml" />
   </ItemGroup>
@@ -34,12 +37,16 @@
     <EmbeddedResource Include="..\duokai\bin\Release\net48\WechatDuokai.Core.dll">
       <LogicalName>Payload.WechatDuokai.Core.dll</LogicalName>
     </EmbeddedResource>
+    <EmbeddedResource Include="..\cleanup\bin\$(Configuration)\net48\wechat_duokai-cleanup-v1.0.3.exe">
+      <LogicalName>Payload.wechat_duokai-cleanup.exe</LogicalName>
+    </EmbeddedResource>
     <EmbeddedResource Include="..\LICENSE">
       <LogicalName>Payload.LICENSE.txt</LogicalName>
     </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\duokai\duokai.csproj" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\cleanup\cleanup.csproj" ReferenceOutputAssembly="false" />
   </ItemGroup>
   <ItemGroup>
     <InternalsVisibleTo Include="WechatDuokai.Tests" />

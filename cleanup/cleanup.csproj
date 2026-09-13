@@ -3,36 +3,29 @@
     <OutputType>WinExe</OutputType>
     <TargetFramework>net48</TargetFramework>
     <UseWPF>true</UseWPF>
-    <AssemblyName>wechat_duokai</AssemblyName>
-    <RootNamespace>WechatDuokai.App</RootNamespace>
-    <StartupObject>WechatDuokai.App.Program</StartupObject>
+    <UseWindowsForms>true</UseWindowsForms>
+    <AssemblyName>wechat_duokai-cleanup-v1.0.3</AssemblyName>
+    <RootNamespace>WechatDuokai.Cleanup</RootNamespace>
+    <StartupObject>WechatDuokai.Cleanup.Program</StartupObject>
     <PlatformTarget>x64</PlatformTarget>
     <Prefer32Bit>false</Prefer32Bit>
     <LangVersion>latest</LangVersion>
     <Deterministic>true</Deterministic>
-    <ApplicationIcon>favicon.ico</ApplicationIcon>
+    <ApplicationIcon>..\duokai\favicon.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
     <AssemblyVersion>1.0.3.0</AssemblyVersion>
     <FileVersion>1.0.3.0</FileVersion>
     <Version>1.0.3</Version>
     <Company>wechat_duokai contributors</Company>
-    <Product>微信 · 企业微信多开助手</Product>
-    <Description>按目标数量启动和补开微信、企业微信实例</Description>
+    <Product>微信 · 企业微信多开助手清理器</Product>
+    <Description>独立清理微信与企业微信多开助手、发布包和可选源码</Description>
     <Copyright>Copyright © CN-Root and contributors 2022-2026</Copyright>
   </PropertyGroup>
-  <PropertyGroup>
-    <ApplicationManifest>app.manifest</ApplicationManifest>
-  </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="..\core\WechatDuokai.Core.csproj" />
-  </ItemGroup>
-  <ItemGroup>
+    <Compile Include="..\installer\InstallerEngine.cs" Link="InstallerEngine.cs" />
+    <Compile Include="..\installer\UninstallWindow.xaml.cs" Link="UninstallWindow.xaml.cs" />
     <Compile Include="..\shared\WpfPresentation.cs" Link="Presentation\WpfPresentation.cs" />
+    <Page Include="..\installer\UninstallWindow.xaml" Link="UninstallWindow.xaml" />
     <Page Include="..\shared\ThemeResources.xaml" Link="Themes\ThemeResources.xaml" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Remove="Resources\WeChat.png" />
-    <None Remove="Resources\WXWork.png" />
-    <Resource Include="Resources\WeChat.png" />
-    <Resource Include="Resources\WXWork.png" />
   </ItemGroup>
 </Project>

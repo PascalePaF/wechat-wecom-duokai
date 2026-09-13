@@ -1,12 +1,12 @@
 <Window x:Class="WechatDuokai.Installer.InstallWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="微信 · 企业微信多开助手 V1.0.2 安装程序"
-        Width="760" Height="545" MinWidth="760" MinHeight="545" MaxWidth="760" MaxHeight="545"
-        WindowStartupLocation="CenterScreen" ResizeMode="CanMinimize" WindowStyle="SingleBorderWindow"
+        Title="微信 · 企业微信多开助手 V1.0.3 安装程序"
+        Width="780" Height="570" MinWidth="700" MinHeight="540"
+        WindowStartupLocation="CenterScreen" ResizeMode="CanResize" WindowStyle="SingleBorderWindow"
         Background="{DynamicResource WindowBackgroundBrush}" FontFamily="{StaticResource AppFont}"
-        UseLayoutRounding="True" SnapsToDevicePixels="True"
-        TextOptions.TextFormattingMode="Display" TextOptions.TextRenderingMode="ClearType"
+        UseLayoutRounding="True" SnapsToDevicePixels="False"
+        TextOptions.TextFormattingMode="Ideal" TextOptions.TextRenderingMode="ClearType"
         SourceInitialized="Window_SourceInitialized">
     <Grid>
         <Grid.RowDefinitions>
@@ -34,7 +34,7 @@
                 </StackPanel>
                 <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
                     <Border Height="30" Padding="13,0" CornerRadius="15" Background="{DynamicResource SelectionBrush}">
-                        <TextBlock Text="V1.0.2" FontSize="11" FontWeight="SemiBold"
+                        <TextBlock Text="V1.0.3" FontSize="11" FontWeight="SemiBold"
                                    Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" />
                     </Border>
                     <Button x:Name="ThemeButton" Margin="10,0,0,0" Style="{StaticResource PillButtonStyle}" Click="ThemeButton_Click"
