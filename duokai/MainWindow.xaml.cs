@@ -19,7 +19,7 @@ namespace WechatDuokai.App
     {
         internal const double MinimumWindowWidth = 901d;
         internal const double MinimumWindowHeight = 513d;
-        private const string CurrentVersion = "1.0.5";
+        private const string CurrentVersion = "1.0.6";
         private static readonly Regex DigitsOnly = new Regex("^[0-9]+$", RegexOptions.Compiled);
         private readonly InstanceManager _instanceManager;
         private readonly DiagnosticReportService _diagnostics = new DiagnosticReportService();
@@ -29,7 +29,7 @@ namespace WechatDuokai.App
         private AppDefinition _weChat;
         private AppDefinition _weCom;
         private bool _busy;
-        private bool _updatingCount;
+        private bool _updatingCounts;
         private bool _checkingUpdates;
         private bool _showingSettings;
         private bool _initializingSettings = true;
@@ -44,12 +44,15 @@ namespace WechatDuokai.App
             _instanceManager = instanceManager ?? throw new ArgumentNullException(nameof(instanceManager));
             _updateChecker = updateChecker ?? throw new ArgumentNullException(nameof(updateChecker));
             InitializeComponent();
-            DataObject.AddPastingHandler(TargetCountBox, TargetCountBox_OnPaste);
-            _updatingCount = true;
-            TargetCountBox.Text = UserPreferences.LoadTargetCount().ToString();
-            _updatingCount = false;
+            DataObject.AddPastingHandler(WeChatTargetCountBox, TargetCountBox_OnPaste);
+            DataObject.AddPastingHandler(WeComTargetCountBox, TargetCountBox_OnPaste);
+            _updatingCounts = true;
+            WeChatTargetCountBox.Text = UserPreferences.LoadTargetCount(AppKind.WeChat).ToString();
+            WeComTargetCountBox.Text = UserPreferences.LoadTargetCount(AppKind.WeCom).ToString();
+            _updatingCounts = false;
             SynchronizeSettingsControls();
             _initializingSettings = false;
+            SetBusy(true);
 
             _refreshTimer = new DispatcherTimer(DispatcherPriority.Background)
             {
@@ -59,11 +62,23 @@ namespace WechatDuokai.App
 
             Loaded += async (sender, args) =>
             {
+                var recovery = await Task.Run(() => _instanceManager.RecoverPendingWeComRegistryState());
                 LocateClients();
+                SetBusy(false);
                 UpdateThemeButton();
                 ApplyProportionalScale();
                 RefreshClientStatus();
                 _refreshTimer.Start();
+                if (recovery.Outcome != WeComRegistryRecoveryOutcome.None &&
+                    !string.IsNullOrWhiteSpace(recovery.Message))
+                {
+                    var brush = recovery.Outcome == WeComRegistryRecoveryOutcome.Restored
+                        ? "SuccessBrush"
+                        : recovery.Outcome == WeComRegistryRecoveryOutcome.ExternalStatePreserved
+                            ? "InfoBrush"
+                            : "WarningBrush";
+                    SetStatus(recovery.Message, brush);
+                }
                 if (UserPreferences.LoadAutoCheckForUpdates())
                 {
                     await CheckForUpdatesAsync(false);
@@ -277,8 +292,8 @@ namespace WechatDuokai.App
             SetBusy(true);
             try
             {
-                var target = GetTargetCount();
-                UserPreferences.SaveTargetCount(target);
+                var target = GetTargetCount(kind);
+                UserPreferences.SaveTargetCount(kind, target);
                 var result = await _instanceManager.EnsureTargetCountAsync(
                     application, target,
                     message => Dispatcher.Invoke(() => SetStatus(message, "InfoBrush")),
@@ -310,9 +325,12 @@ namespace WechatDuokai.App
             WeComButton.IsEnabled = !busy && _weCom != null && _weCom.IsAvailable;
             WeChatSelectButton.IsEnabled = !busy;
             WeComSelectButton.IsEnabled = !busy;
-            DecreaseButton.IsEnabled = !busy;
-            IncreaseButton.IsEnabled = !busy;
-            TargetCountBox.IsEnabled = !busy;
+            WeChatDecreaseButton.IsEnabled = !busy;
+            WeChatIncreaseButton.IsEnabled = !busy;
+            WeChatTargetCountBox.IsEnabled = !busy;
+            WeComDecreaseButton.IsEnabled = !busy;
+            WeComIncreaseButton.IsEnabled = !busy;
+            WeComTargetCountBox.IsEnabled = !busy;
             DiagnosticsButton.IsEnabled = !busy;
             AutoUpdateCheckBox.IsEnabled = !busy;
             SystemThemeRadio.IsEnabled = !busy;
@@ -322,25 +340,49 @@ namespace WechatDuokai.App
             SettingsReleaseButton.IsEnabled = !busy;
         }
 
-        private int GetTargetCount()
+        private int GetTargetCount(AppKind kind)
         {
+            var textBox = GetTargetTextBox(kind);
             int count;
-            if (!int.TryParse(TargetCountBox.Text, out count)) count = UserPreferences.LoadTargetCount();
+            if (!int.TryParse(textBox.Text, out count)) count = UserPreferences.LoadTargetCount(kind);
             return Math.Max(1, Math.Min(10, count));
         }
 
-        private void SetTargetCount(int count)
+        private void SetTargetCount(AppKind kind, int count)
         {
             count = Math.Max(1, Math.Min(10, count));
-            _updatingCount = true;
-            TargetCountBox.Text = count.ToString();
-            TargetCountBox.CaretIndex = TargetCountBox.Text.Length;
-            _updatingCount = false;
-            UserPreferences.SaveTargetCount(count);
+            var textBox = GetTargetTextBox(kind);
+            _updatingCounts = true;
+            textBox.Text = count.ToString();
+            textBox.CaretIndex = textBox.Text.Length;
+            _updatingCounts = false;
+            UserPreferences.SaveTargetCount(kind, count);
         }
 
-        private void DecreaseButton_Click(object sender, RoutedEventArgs e) { SetTargetCount(GetTargetCount() - 1); }
-        private void IncreaseButton_Click(object sender, RoutedEventArgs e) { SetTargetCount(GetTargetCount() + 1); }
+        private TextBox GetTargetTextBox(AppKind kind)
+        {
+            return kind == AppKind.WeChat ? WeChatTargetCountBox : WeComTargetCountBox;
+        }
+
+        private void WeChatDecreaseButton_Click(object sender, RoutedEventArgs e)
+        {
+            SetTargetCount(AppKind.WeChat, GetTargetCount(AppKind.WeChat) - 1);
+        }
+
+        private void WeChatIncreaseButton_Click(object sender, RoutedEventArgs e)
+        {
+            SetTargetCount(AppKind.WeChat, GetTargetCount(AppKind.WeChat) + 1);
+        }
+
+        private void WeComDecreaseButton_Click(object sender, RoutedEventArgs e)
+        {
+            SetTargetCount(AppKind.WeCom, GetTargetCount(AppKind.WeCom) - 1);
+        }
+
+        private void WeComIncreaseButton_Click(object sender, RoutedEventArgs e)
+        {
+            SetTargetCount(AppKind.WeCom, GetTargetCount(AppKind.WeCom) + 1);
+        }
 
         private void TargetCountBox_PreviewTextInput(object sender, TextCompositionEventArgs e)
         {
@@ -355,14 +397,28 @@ namespace WechatDuokai.App
 
         private void TargetCountBox_TextChanged(object sender, TextChangedEventArgs e)
         {
+            var textBox = sender as TextBox;
+            AppKind kind;
             int count;
-            if (_updatingCount || !int.TryParse(TargetCountBox.Text, out count)) return;
-            if (count >= 1 && count <= 10) UserPreferences.SaveTargetCount(count);
+            if (_updatingCounts || textBox == null || !TryGetTargetKind(textBox, out kind) ||
+                !int.TryParse(textBox.Text, out count)) return;
+            if (count >= 1 && count <= 10) UserPreferences.SaveTargetCount(kind, count);
         }
 
         private void TargetCountBox_LostKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
         {
-            SetTargetCount(GetTargetCount());
+            var textBox = sender as TextBox;
+            AppKind kind;
+            if (textBox != null && TryGetTargetKind(textBox, out kind))
+            {
+                SetTargetCount(kind, GetTargetCount(kind));
+            }
+        }
+
+        private static bool TryGetTargetKind(FrameworkElement element, out AppKind kind)
+        {
+            return Enum.TryParse(Convert.ToString(element.Tag), true, out kind) &&
+                   Enum.IsDefined(typeof(AppKind), kind);
         }
 
         private void ThemeButton_Click(object sender, RoutedEventArgs e)
@@ -543,7 +599,7 @@ namespace WechatDuokai.App
             catch (Exception ex)
             {
                 SetStatus("无法写入本地诊断报告", "WarningBrush");
-                MessageBox.Show("无法在程序目录创建 diagnostics 文件夹：\r\n" + ex.Message,
+                MessageBox.Show("无法在程序目录的 data\\diagnostics 文件夹中创建报告：\r\n" + ex.Message,
                     "诊断提示", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
         }

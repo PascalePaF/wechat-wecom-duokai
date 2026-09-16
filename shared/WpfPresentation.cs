@@ -104,9 +104,9 @@ namespace WechatDuokai.Presentation
             ApplyResources(Current);
         }
 
-        internal static AppTheme Toggle()
+        internal static AppTheme Toggle(bool persist = true)
         {
-            SetTheme(Current == AppTheme.Dark ? AppTheme.Light : AppTheme.Dark);
+            SetTheme(Current == AppTheme.Dark ? AppTheme.Light : AppTheme.Dark, persist);
             return Current;
         }
 
@@ -197,7 +197,7 @@ namespace WechatDuokai.Presentation
         }
 
         private static string DataDirectory => Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "WechatDuokai");
+            Path.GetFullPath(AppDomain.CurrentDomain.BaseDirectory), "data");
 
         private static AppThemePreference LoadSavedPreference()
         {

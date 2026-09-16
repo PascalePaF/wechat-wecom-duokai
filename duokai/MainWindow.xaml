@@ -1,7 +1,7 @@
 <Window x:Class="WechatDuokai.App.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="微信 · 企业微信多开助手 V1.0.5"
+        Title="微信 · 企业微信多开助手 V1.0.6"
         Width="901" Height="513" MinWidth="901" MinHeight="513"
         WindowStartupLocation="CenterScreen" ResizeMode="CanResize" WindowStyle="SingleBorderWindow"
         Background="{DynamicResource WindowBackgroundBrush}" FontFamily="{StaticResource AppFont}"
@@ -43,7 +43,7 @@
                     <Border x:Name="VersionBadge" Height="30" Padding="13,0" CornerRadius="15"
                             Background="{DynamicResource SelectionBrush}" BorderBrush="{DynamicResource BorderBrush}"
                             BorderThickness="1">
-                        <TextBlock Text="V1.0.5" FontSize="11" FontWeight="SemiBold"
+                        <TextBlock Text="V1.0.6" FontSize="11" FontWeight="SemiBold"
                                    Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" />
                     </Border>
                     <Button x:Name="ThemeButton" Margin="10,0,0,0" Style="{StaticResource PillButtonStyle}"
@@ -152,8 +152,11 @@
                         <Grid>
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto" />
-                                <RowDefinition Height="20" />
-                                <RowDefinition Height="76" />
+                                <RowDefinition Height="10" />
+                                <RowDefinition Height="54" />
+                                <RowDefinition Height="8" />
+                                <RowDefinition Height="54" />
+                                <RowDefinition Height="10" />
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="*" />
                                 <RowDefinition Height="Auto" />
@@ -164,36 +167,75 @@
                                 <TextBlock Text="微信与企微分别补齐" Margin="0,6,0,0" TextAlignment="Center"
                                            Style="{StaticResource CaptionStyle}" />
                             </StackPanel>
-                            <Grid Grid.Row="2">
+                            <Border Grid.Row="2" CornerRadius="12" Background="{DynamicResource SurfaceRaisedBrush}"
+                                    BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
+                            <Grid>
                                 <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="48" />
+                                    <ColumnDefinition Width="42" />
+                                    <ColumnDefinition Width="42" />
                                     <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="48" />
+                                    <ColumnDefinition Width="42" />
                                 </Grid.ColumnDefinitions>
-                                <Button x:Name="DecreaseButton" Style="{StaticResource StepButtonStyle}" Content="−"
-                                        AutomationProperties.Name="减少目标窗口数" Click="DecreaseButton_Click" />
-                                <TextBox x:Name="TargetCountBox" Grid.Column="1" Margin="8,0" FontSize="30"
+                                <TextBlock Text="微信" Margin="9,0,0,0" FontSize="11" FontWeight="SemiBold"
+                                           VerticalAlignment="Center" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                <Button x:Name="WeChatDecreaseButton" Grid.Column="1"
+                                        Style="{StaticResource StepButtonStyle}" Content="−"
+                                        AutomationProperties.Name="减少微信目标窗口数"
+                                        Click="WeChatDecreaseButton_Click" />
+                                <TextBox x:Name="WeChatTargetCountBox" Grid.Column="2" Margin="3,0" FontSize="23"
                                          FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}"
                                          Background="Transparent" BorderThickness="0" TextAlignment="Center"
                                          VerticalContentAlignment="Center" MaxLength="2" Text="2"
-                                         AutomationProperties.Name="目标窗口数量"
+                                         Tag="WeChat" AutomationProperties.Name="微信目标窗口数量"
                                          PreviewTextInput="TargetCountBox_PreviewTextInput"
                                          LostKeyboardFocus="TargetCountBox_LostKeyboardFocus"
                                          TextChanged="TargetCountBox_TextChanged" />
-                                <Button x:Name="IncreaseButton" Grid.Column="2" Style="{StaticResource StepButtonStyle}"
-                                        Content="+" AutomationProperties.Name="增加目标窗口数"
-                                        Click="IncreaseButton_Click" />
+                                <Button x:Name="WeChatIncreaseButton" Grid.Column="3"
+                                        Style="{StaticResource StepButtonStyle}" Content="+"
+                                        AutomationProperties.Name="增加微信目标窗口数"
+                                        Click="WeChatIncreaseButton_Click" />
                             </Grid>
-                            <Border Grid.Row="3" Margin="0,4,0,0" Padding="10,7" CornerRadius="10"
+                            </Border>
+                            <Border Grid.Row="4" CornerRadius="12" Background="{DynamicResource SurfaceRaisedBrush}"
+                                    BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="42" />
+                                    <ColumnDefinition Width="42" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="42" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="企微" Margin="9,0,0,0" FontSize="11" FontWeight="SemiBold"
+                                           VerticalAlignment="Center" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                <Button x:Name="WeComDecreaseButton" Grid.Column="1"
+                                        Style="{StaticResource StepButtonStyle}" Content="−"
+                                        AutomationProperties.Name="减少企业微信目标窗口数"
+                                        Click="WeComDecreaseButton_Click" />
+                                <TextBox x:Name="WeComTargetCountBox" Grid.Column="2" Margin="3,0" FontSize="23"
+                                         FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}"
+                                         Background="Transparent" BorderThickness="0" TextAlignment="Center"
+                                         VerticalContentAlignment="Center" MaxLength="2" Text="2"
+                                         Tag="WeCom" AutomationProperties.Name="企业微信目标窗口数量"
+                                         PreviewTextInput="TargetCountBox_PreviewTextInput"
+                                         LostKeyboardFocus="TargetCountBox_LostKeyboardFocus"
+                                         TextChanged="TargetCountBox_TextChanged" />
+                                <Button x:Name="WeComIncreaseButton" Grid.Column="3"
+                                        Style="{StaticResource StepButtonStyle}" Content="+"
+                                        AutomationProperties.Name="增加企业微信目标窗口数"
+                                        Click="WeComIncreaseButton_Click" />
+                            </Grid>
+                            </Border>
+                            <Border Grid.Row="6" Padding="10,6" CornerRadius="10"
                                     Background="{DynamicResource SuccessSurfaceBrush}">
-                                <TextBlock Text="●  数量会自动保存" FontSize="11" HorizontalAlignment="Center"
+                                <TextBlock Text="●  两项数量分别保存" FontSize="10.5" HorizontalAlignment="Center"
                                            Foreground="{DynamicResource SuccessBrush}" />
                             </Border>
-                            <StackPanel Grid.Row="5">
-                                <Rectangle Height="1" Fill="{DynamicResource BorderBrush}" Margin="0,0,0,14" />
+                            <StackPanel Grid.Row="8">
+                                <Rectangle Height="1" Fill="{DynamicResource BorderBrush}" Margin="0,0,0,10" />
                                 <TextBlock Text="窗口误关后再次点击，即可单独补回" TextAlignment="Center"
-                                           TextWrapping="Wrap" LineHeight="19" Style="{StaticResource BodyStyle}" />
-                                <TextBlock Text="支持 1–10 个窗口" Margin="0,8,0,0" TextAlignment="Center"
+                                           TextWrapping="Wrap" LineHeight="17" FontSize="10.5"
+                                           Foreground="{DynamicResource TextSecondaryBrush}" />
+                                <TextBlock Text="各支持 1–10 个窗口" Margin="0,5,0,0" TextAlignment="Center"
                                            Style="{StaticResource CaptionStyle}" />
                             </StackPanel>
                         </Grid>
@@ -222,7 +264,7 @@
                         <Border Grid.Column="1" Height="28" Padding="12,0" CornerRadius="14"
                                 Background="{DynamicResource SelectionBrush}"
                                 BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
-                            <TextBlock Text="V1.0.5" FontSize="10" FontWeight="SemiBold"
+                            <TextBlock Text="V1.0.6" FontSize="10" FontWeight="SemiBold"
                                        Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" />
                         </Border>
                     </Grid>

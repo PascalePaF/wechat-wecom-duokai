@@ -28,6 +28,11 @@ namespace WechatDuokai.Core
             _weComLaunchPolicy = weComLaunchPolicy ?? throw new ArgumentNullException(nameof(weComLaunchPolicy));
         }
 
+        public WeComRegistryRecoveryResult RecoverPendingWeComRegistryState()
+        {
+            return _weComLaunchPolicy.RecoverPendingSession();
+        }
+
         public int GetInstanceCount(AppDefinition application)
         {
             if (application == null)

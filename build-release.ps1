@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [string]$Version = '1.0.5'
+    [string]$Version = '1.0.6'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -84,9 +84,9 @@ $completeSecurityReport = Join-Path $sourceRoot ("docs\微信企业微信多开�
 if (Test-Path -LiteralPath $completeSecurityReport) {
     Copy-Item -LiteralPath $completeSecurityReport -Destination (Join-Path $portableDirectory '完整安全审计与卡巴斯基告警调查报告.txt')
 }
-$architectureReport = Join-Path $sourceRoot ("docs\V" + $Version + "-设置状态与注册表冲突保护验证报告.md")
+$architectureReport = Join-Path $sourceRoot ("docs\V" + $Version + "-断电恢复与独立数量验证报告.md")
 if (Test-Path -LiteralPath $architectureReport) {
-    Copy-Item -LiteralPath $architectureReport -Destination (Join-Path $portableDirectory '设置状态与注册表冲突保护验证报告.md')
+    Copy-Item -LiteralPath $architectureReport -Destination (Join-Path $portableDirectory '断电恢复与独立数量验证报告.md')
 }
 $releaseNotes = Join-Path $sourceRoot ("docs\release-notes-v" + $Version + ".md")
 if (Test-Path -LiteralPath $releaseNotes) {
@@ -103,7 +103,7 @@ if (Test-Path -LiteralPath $completeSecurityReport) {
     Copy-Item -LiteralPath $completeSecurityReport -Destination (Join-Path $artifactRoot ("wechat-duokai-v" + $Version + "-security-audit.txt"))
 }
 if (Test-Path -LiteralPath $architectureReport) {
-    Copy-Item -LiteralPath $architectureReport -Destination (Join-Path $artifactRoot ("wechat-duokai-v" + $Version + "-settings-registry-validation-report.md"))
+    Copy-Item -LiteralPath $architectureReport -Destination (Join-Path $artifactRoot ("wechat-duokai-v" + $Version + "-crash-recovery-storage-validation-report.md"))
 }
 
 $portableZip = Join-Path (Split-Path -Parent $portableDirectory) ("wechat_duokai-portable-" + $versionSuffix + '.zip')
@@ -165,6 +165,9 @@ $manifest = @(
     'UpdatePolicy=Optional startup check or manual GitHub Releases metadata check; browser download only',
     'InstallerIdentity=Setup and cleanup are separate assemblies',
     'WeComExtendedMode=Temporary registry policy plus exact known mutex release; restore only if temporary state is still owned',
+    'RegistryCrashRecovery=Durable pre-write journal under data/recovery; startup restore remains conditional on temporary-state ownership',
+    'TargetCounts=Independent persisted 1-10 targets for WeChat and WeCom',
+    'RuntimeStorage=Persistent configuration, theme, diagnostics and recovery evidence stay below the application data directory',
     'CI=Fresh GitHub-hosted Windows build, tests, SHA-256 verification and SPDX 2.2 SBOM',
     ("Installer=installer/wechat_duokai-setup-" + $versionSuffix + '.exe'),
     ("Cleanup=installer/wechat_duokai-cleanup-" + $versionSuffix + '.exe'),

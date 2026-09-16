@@ -28,6 +28,19 @@ namespace WechatDuokai.App
                 {
                     Source = new Uri("Themes/ThemeResources.xaml", UriKind.Relative)
                 });
+                try
+                {
+                    WechatDuokai.Core.ApplicationStorage.EnsureReady();
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show("无法在程序安装目录创建 data 文件夹。\r\n\r\n" +
+                                    "请确认当前用户对程序目录具有写入权限：\r\n" +
+                                    WechatDuokai.Core.ApplicationStorage.ApplicationDirectory + "\r\n\r\n" +
+                                    ex.Message,
+                        "程序目录不可写", MessageBoxButton.OK, MessageBoxImage.Error);
+                    return 1;
+                }
                 ThemeManager.Initialize(ParseForcedTheme(args));
                 application.DispatcherUnhandledException += (sender, eventArgs) =>
                 {

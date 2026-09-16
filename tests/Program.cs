@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Security.Cryptography;
+using System.Text;
 using System.Threading;
 using System.Windows;
 using System.Windows.Automation;
@@ -28,6 +29,8 @@ namespace WechatDuokai.Tests
         {
             if (args.Length == 2 && args[0] == "--hold-mutex") return HoldMutex(args[1]);
             if (args.Length == 2 && args[0] == "--hold-file") return HoldFile(args[1]);
+            if (args.Length == 5 && args[0] == "--abandon-wecom-registry")
+                return AbandonWeComRegistrySession(args[1], args[2], args[3], int.Parse(args[4]));
             if (args.Length >= 4 && args[0] == "--snapshot")
                 return SaveUiSnapshot(args[1], args[2], args[3], args.Length >= 6 ? args[4] : null, args.Length >= 6 ? args[5] : null);
             if (args.Length == 1 && args[0] == "--idle") { Thread.Sleep(30000); return 0; }
@@ -39,12 +42,15 @@ namespace WechatDuokai.Tests
                 BootstrapWpf(typeof(MainWindow), "Light");
                 Run("Null application has zero instances", () =>
                     Assert(new InstanceManager().GetInstanceCount(null) == 0, "Expected zero."));
-                Run("Target count cache survives a restart", TestPreferenceRoundTrip);
+                Run("Independent target count caches survive a restart", TestPreferenceRoundTrip);
                 Run("Footer counts and settings navigation stay live and visible", TestFooterCountsAndSettings);
                 Run("Renamed executables cannot impersonate an official client", TestClientExecutableValidation);
                 Run("Process environment groups roots and supports deterministic launch tests", TestProcessEnvironmentAbstraction);
                 Run("WeCom extended launch policy is temporary and reaches three instances", TestWeComExtendedLaunchPolicy);
+                Run("WeCom registry journal recovers crashes and preserves external changes", TestWeComCrashRecovery);
                 Run("Diagnostics stay inside the selected local application directory", TestLocalDiagnostics);
+                Run("All persistent runtime data stays below the application directory", TestApplicationStorageLayout);
+                Run("Legacy AppData settings migrate into the application directory", TestLegacyStorageMigration);
                 Run("GitHub release metadata never performs an in-app update", TestReleaseMetadataParsing);
                 Run("Cleanup refuses drive roots", () =>
                     Assert(!InstallerEngine.ValidateSourceRoot(Path.GetPathRoot(Environment.SystemDirectory)),
@@ -85,6 +91,16 @@ namespace WechatDuokai.Tests
             File.WriteAllText(filePath + ".ready", "ready");
             Thread.Sleep(30000);
             GC.KeepAlive(stream);
+            return 0;
+        }
+
+        private static int AbandonWeComRegistrySession(string registryPath, string gateName,
+            string dataDirectory, int targetCount)
+        {
+            var policy = new WindowsWeComLaunchPolicy(registryPath, gateName, dataDirectory);
+            var scope = policy.BeginLaunchSession(targetCount);
+            GC.KeepAlive(scope);
+            // Deliberately do not dispose: process exit models a crash or sudden power loss.
             return 0;
         }
 
@@ -182,11 +198,18 @@ namespace WechatDuokai.Tests
             var testDirectory = Path.Combine(Path.GetTempPath(), "wechat-duokai-preferences-" + Guid.NewGuid().ToString("N"));
             try
             {
-                Assert(UserPreferences.LoadTargetCount(testDirectory) == 2, "Missing settings should default to 2.");
+                Assert(UserPreferences.LoadTargetCount(testDirectory, AppKind.WeChat) == 2,
+                    "Missing WeChat target should default to 2.");
+                Assert(UserPreferences.LoadTargetCount(testDirectory, AppKind.WeCom) == 2,
+                    "Missing WeCom target should default to 2.");
                 Assert(UserPreferences.LoadAutoCheckForUpdates(testDirectory),
                     "Missing update preference should preserve the safe historical default.");
-                UserPreferences.SaveTargetCount(testDirectory, 7);
-                Assert(UserPreferences.LoadTargetCount(testDirectory) == 7, "Saved target count was not loaded.");
+                UserPreferences.SaveTargetCount(testDirectory, AppKind.WeChat, 7);
+                UserPreferences.SaveTargetCount(testDirectory, AppKind.WeCom, 4);
+                Assert(UserPreferences.LoadTargetCount(testDirectory, AppKind.WeChat) == 7,
+                    "Saved WeChat target count was not loaded.");
+                Assert(UserPreferences.LoadTargetCount(testDirectory, AppKind.WeCom) == 4,
+                    "Saved WeCom target count was not loaded independently.");
                 UserPreferences.SaveAutoCheckForUpdates(testDirectory, false);
                 Assert(!UserPreferences.LoadAutoCheckForUpdates(testDirectory),
                     "Automatic version-check preference was not preserved.");
@@ -195,6 +218,11 @@ namespace WechatDuokai.Tests
                 Assert(UserPreferences.LoadCustomClientPath(testDirectory, AppKind.WeChat) == Path.GetFullPath(custom),
                     "Custom client path was not preserved.");
                 Assert(UserPreferences.HasValidMarker(testDirectory), "User-data marker is invalid.");
+
+                var settings = File.ReadAllText(Path.Combine(testDirectory, "settings.ini"));
+                Assert(settings.Contains("WeChatTargetInstanceCount=7") &&
+                       settings.Contains("WeComTargetInstanceCount=4"),
+                    "Separate target values are missing from settings.ini.");
             }
             finally
             {
@@ -238,6 +266,13 @@ namespace WechatDuokai.Tests
                        window.FindName("LightThemeRadio") != null &&
                        window.FindName("DarkThemeRadio") != null,
                     "Settings must expose update and three-way theme preferences.");
+                var weChatTarget = (TextBox)window.FindName("WeChatTargetCountBox");
+                var weComTarget = (TextBox)window.FindName("WeComTargetCountBox");
+                Assert(weChatTarget != null && weComTarget != null &&
+                       !ReferenceEquals(weChatTarget, weComTarget) &&
+                       Convert.ToString(weChatTarget.Tag) == "WeChat" &&
+                       Convert.ToString(weComTarget.Tag) == "WeCom",
+                    "The two clients must expose independent target controls.");
             }
             finally
             {
@@ -357,6 +392,8 @@ namespace WechatDuokai.Tests
         {
             var registryPath = @"SOFTWARE\WechatDuokai\Tests\" + Guid.NewGuid().ToString("N");
             var gateName = @"Local\WechatDuokai.Tests." + Guid.NewGuid().ToString("N");
+            var recoveryDirectory = Path.Combine(Path.GetTempPath(),
+                "wechat-duokai-registry-policy-" + Guid.NewGuid().ToString("N"));
             try
             {
                 using (var key = Registry.CurrentUser.CreateSubKey(registryPath))
@@ -364,7 +401,7 @@ namespace WechatDuokai.Tests
                     key.SetValue("multi_instances", "keep-original-kind", RegistryValueKind.String);
                 }
 
-                var policy = new WindowsWeComLaunchPolicy(registryPath, gateName);
+                var policy = new WindowsWeComLaunchPolicy(registryPath, gateName, recoveryDirectory);
                 using (policy.BeginLaunchSession(3))
                 using (var key = Registry.CurrentUser.OpenSubKey(registryPath))
                 {
@@ -448,6 +485,10 @@ namespace WechatDuokai.Tests
                 Assert(environment.Delays.Any(delay => delay == TimeSpan.FromMilliseconds(100)) &&
                        environment.Delays.Any(delay => delay == TimeSpan.FromMilliseconds(800)),
                     "The verified WeCom unlock and settle timings are missing.");
+                Assert(!File.Exists(policy.JournalPath),
+                    "A normally disposed registry session left a stale journal.");
+                Assert(File.Exists(policy.AuditLogPath),
+                    "Registry recovery audit evidence was not written locally.");
             }
             finally
             {
@@ -458,7 +499,145 @@ namespace WechatDuokai.Tests
                 catch (Exception)
                 {
                 }
+                if (Directory.Exists(recoveryDirectory)) Directory.Delete(recoveryDirectory, true);
             }
+        }
+
+        private static void TestWeComCrashRecovery()
+        {
+            var registryPath = @"SOFTWARE\WechatDuokai\CrashTests\" + Guid.NewGuid().ToString("N");
+            var gateName = @"Local\WechatDuokai.CrashTests." + Guid.NewGuid().ToString("N");
+            var dataDirectory = Path.Combine(Path.GetTempPath(),
+                "wechat-duokai-crash-recovery-" + Guid.NewGuid().ToString("N"));
+            try
+            {
+                using (var key = Registry.CurrentUser.CreateSubKey(registryPath))
+                {
+                    key.SetValue("multi_instances", "before-power-loss", RegistryValueKind.String);
+                }
+
+                RunAbandonedRegistrySession(registryPath, gateName, dataDirectory, 2);
+                var policy = new WindowsWeComLaunchPolicy(registryPath, gateName, dataDirectory);
+                Assert(File.Exists(policy.JournalPath),
+                    "Abrupt process exit did not leave a durable recovery journal.");
+                using (var key = Registry.CurrentUser.OpenSubKey(registryPath))
+                {
+                    Assert(Convert.ToInt32(key.GetValue("multi_instances")) == 2,
+                        "Crash fixture did not leave the expected temporary registry state.");
+                }
+
+                var restored = policy.RecoverPendingSession();
+                Assert(restored.Outcome == WeComRegistryRecoveryOutcome.Restored,
+                    "Startup recovery did not restore the interrupted registry transaction.");
+                using (var key = Registry.CurrentUser.OpenSubKey(registryPath))
+                {
+                    Assert((string)key.GetValue("multi_instances") == "before-power-loss" &&
+                           key.GetValueKind("multi_instances") == RegistryValueKind.String,
+                        "Crash recovery did not preserve the original registry value and kind.");
+                }
+                Assert(!File.Exists(policy.JournalPath),
+                    "Successful crash recovery did not clear its transaction journal.");
+
+                using (var key = Registry.CurrentUser.CreateSubKey(registryPath))
+                {
+                    key.SetValue("multi_instances", "before-external-change", RegistryValueKind.String);
+                }
+                RunAbandonedRegistrySession(registryPath, gateName, dataDirectory, 2);
+                using (var key = Registry.CurrentUser.OpenSubKey(registryPath, true))
+                {
+                    key.SetValue("multi_instances", 9, RegistryValueKind.DWord);
+                }
+                var conflict = policy.RecoverPendingSession();
+                Assert(conflict.Outcome == WeComRegistryRecoveryOutcome.ExternalStatePreserved,
+                    "Recovery did not report a newer external registry value.");
+                using (var key = Registry.CurrentUser.OpenSubKey(registryPath))
+                {
+                    Assert(Convert.ToInt32(key.GetValue("multi_instances")) == 9 &&
+                           key.GetValueKind("multi_instances") == RegistryValueKind.DWord,
+                        "Crash recovery overwrote a third-party registry change.");
+                }
+                Assert(!File.Exists(policy.JournalPath),
+                    "Resolved external conflict left a stale recovery journal.");
+
+                using (var key = Registry.CurrentUser.CreateSubKey(registryPath))
+                {
+                    key.SetValue("multi_instances", new[] { "one", "二" }, RegistryValueKind.MultiString);
+                }
+                RunAbandonedRegistrySession(registryPath, gateName, dataDirectory, 3);
+                using (var key = Registry.CurrentUser.OpenSubKey(registryPath))
+                {
+                    Assert(!key.GetValueNames().Contains("multi_instances"),
+                        "Extended crash fixture did not remove the temporary registry hint.");
+                }
+                var restoredMultiString = policy.RecoverPendingSession();
+                using (var key = Registry.CurrentUser.OpenSubKey(registryPath))
+                {
+                    var value = (string[])key.GetValue("multi_instances");
+                    Assert(restoredMultiString.Outcome == WeComRegistryRecoveryOutcome.Restored &&
+                           value.SequenceEqual(new[] { "one", "二" }) &&
+                           key.GetValueKind("multi_instances") == RegistryValueKind.MultiString,
+                        "Crash recovery did not round-trip a multi-string registry value.");
+                }
+
+                using (var key = Registry.CurrentUser.OpenSubKey(registryPath, true))
+                {
+                    key.SetValue("multi_instances", 11, RegistryValueKind.DWord);
+                }
+                Directory.CreateDirectory(Path.GetDirectoryName(policy.JournalPath));
+                File.WriteAllText(policy.JournalPath, "Format=untrusted\r\nRegistryPath=invalid");
+                var invalid = policy.RecoverPendingSession();
+                using (var key = Registry.CurrentUser.OpenSubKey(registryPath))
+                {
+                    Assert(invalid.Outcome == WeComRegistryRecoveryOutcome.InvalidJournal &&
+                           Convert.ToInt32(key.GetValue("multi_instances")) == 11,
+                        "An invalid recovery journal was allowed to modify the registry.");
+                }
+                Assert(Directory.EnumerateFiles(Path.GetDirectoryName(policy.JournalPath),
+                           Path.GetFileName(policy.JournalPath) + ".invalid-*").Any(),
+                    "Invalid recovery journal was not quarantined locally.");
+                using (policy.BeginLaunchSession(2)) { }
+                using (var key = Registry.CurrentUser.OpenSubKey(registryPath))
+                {
+                    Assert(Convert.ToInt32(key.GetValue("multi_instances")) == 11 &&
+                           !File.Exists(policy.JournalPath),
+                        "A quarantined recovery journal did not block a new temporary registry session.");
+                }
+
+                var audit = File.ReadAllText(policy.AuditLogPath, Encoding.UTF8);
+                Assert(audit.Contains("REGISTRY_RESTORED") &&
+                       audit.Contains("EXTERNAL_STATE_PRESERVED") &&
+                       audit.Contains("RECOVERY_INVALID") &&
+                       !audit.Contains("before-power-loss"),
+                    "Recovery audit is incomplete or leaked the original registry value.");
+            }
+            finally
+            {
+                try { Registry.CurrentUser.DeleteSubKeyTree(registryPath, false); }
+                catch (Exception) { }
+                if (Directory.Exists(dataDirectory)) Directory.Delete(dataDirectory, true);
+            }
+        }
+
+        private static void RunAbandonedRegistrySession(string registryPath, string gateName,
+            string dataDirectory, int targetCount)
+        {
+            using (var process = Process.Start(new ProcessStartInfo
+            {
+                FileName = Process.GetCurrentProcess().MainModule.FileName,
+                Arguments = "--abandon-wecom-registry " + QuoteArgument(registryPath) + " " +
+                            QuoteArgument(gateName) + " " + QuoteArgument(dataDirectory) + " " + targetCount,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            }))
+            {
+                Assert(process != null && process.WaitForExit(10000) && process.ExitCode == 0,
+                    "Crash recovery helper did not complete.");
+            }
+        }
+
+        private static string QuoteArgument(string value)
+        {
+            return "\"" + (value ?? string.Empty).Replace("\"", string.Empty) + "\"";
         }
 
         private static void TestClientExecutableValidation()
@@ -485,7 +664,8 @@ namespace WechatDuokai.Tests
             {
                 Directory.CreateDirectory(folder);
                 var report = new DiagnosticReportService().CreateReport(folder, null, null, new InstanceManager());
-                var expectedRoot = Path.Combine(Path.GetFullPath(folder), DiagnosticReportService.FolderName) + Path.DirectorySeparatorChar;
+                var expectedRoot = Path.Combine(Path.GetFullPath(folder), ApplicationStorage.DataFolderName,
+                    DiagnosticReportService.FolderName) + Path.DirectorySeparatorChar;
                 Assert(Path.GetFullPath(report).StartsWith(expectedRoot, StringComparison.OrdinalIgnoreCase),
                     "Diagnostic report escaped the application directory.");
                 var text = File.ReadAllText(report);
@@ -498,12 +678,77 @@ namespace WechatDuokai.Tests
             }
         }
 
+        private static void TestApplicationStorageLayout()
+        {
+            ApplicationStorage.EnsureReady();
+            var applicationRoot = Path.GetFullPath(AppDomain.CurrentDomain.BaseDirectory)
+                .TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+            var dataRoot = Path.GetFullPath(ApplicationStorage.DataDirectory)
+                .TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+            Assert(dataRoot.StartsWith(applicationRoot, StringComparison.OrdinalIgnoreCase),
+                "Application data escaped the executable directory.");
+            Assert(UserPreferences.DataDirectory == ApplicationStorage.DataDirectory &&
+                   UserPreferences.HasValidMarker(),
+                "Preferences are not using the marked in-directory data folder.");
+
+            var policy = new WindowsWeComLaunchPolicy();
+            Assert(Path.GetFullPath(policy.JournalPath).StartsWith(dataRoot, StringComparison.OrdinalIgnoreCase) &&
+                   Path.GetFullPath(policy.AuditLogPath).StartsWith(dataRoot, StringComparison.OrdinalIgnoreCase),
+                "Registry recovery evidence escaped the in-directory data folder.");
+
+            var themeManager = typeof(MainWindow).Assembly.GetType(
+                "WechatDuokai.Presentation.ThemeManager", true);
+            var themeDataProperty = themeManager.GetProperty("DataDirectory",
+                BindingFlags.Static | BindingFlags.NonPublic);
+            Assert(themeDataProperty != null &&
+                   string.Equals(Path.GetFullPath((string)themeDataProperty.GetValue(null)),
+                       Path.GetFullPath(ApplicationStorage.DataDirectory), StringComparison.OrdinalIgnoreCase),
+                "Theme preference is not stored with the application data.");
+
+            var installSample = Path.Combine(Path.GetTempPath(), "sample-wechat-duokai-install");
+            Assert(string.Equals(InstallerEngine.GetInstalledDataDirectory(installSample),
+                    Path.Combine(installSample, "data"), StringComparison.OrdinalIgnoreCase),
+                "Installer data path is not below the selected installation directory.");
+        }
+
+        private static void TestLegacyStorageMigration()
+        {
+            var root = Path.Combine(Path.GetTempPath(),
+                "wechat-duokai-storage-migration-" + Guid.NewGuid().ToString("N"));
+            var legacy = Path.Combine(root, "legacy");
+            var destination = Path.Combine(root, "application", "data");
+            try
+            {
+                Directory.CreateDirectory(legacy);
+                File.WriteAllText(Path.Combine(legacy, ApplicationStorage.DataMarkerName),
+                    ApplicationStorage.DataMarkerValue, Encoding.UTF8);
+                File.WriteAllText(Path.Combine(legacy, "settings.ini"),
+                    "TargetInstanceCount=6", Encoding.UTF8);
+                File.WriteAllText(Path.Combine(legacy, "theme.ini"), "Dark", Encoding.UTF8);
+
+                ApplicationStorage.MigrateLegacyFiles(legacy, destination);
+                Assert(File.Exists(Path.Combine(destination, "settings.ini")) &&
+                       File.Exists(Path.Combine(destination, "theme.ini")) &&
+                       ApplicationStorage.HasValidMarker(destination),
+                    "Known legacy preferences were not migrated to the new data directory.");
+                Assert(!Directory.Exists(legacy),
+                    "Empty marked legacy directory was not removed after successful migration.");
+                Assert(UserPreferences.LoadTargetCount(destination, AppKind.WeChat) == 6 &&
+                       UserPreferences.LoadTargetCount(destination, AppKind.WeCom) == 6,
+                    "Legacy single target was not used as both independent initial values.");
+            }
+            finally
+            {
+                if (Directory.Exists(root)) Directory.Delete(root, true);
+            }
+        }
+
         private static void TestReleaseMetadataParsing()
         {
-            var newer = ReleaseUpdateChecker.ParseResponse("{\"tag_name\":\"v1.1.0\"}", "1.0.5");
+            var newer = ReleaseUpdateChecker.ParseResponse("{\"tag_name\":\"v1.1.0\"}", "1.0.6");
             Assert(newer.CheckSucceeded && newer.IsUpdateAvailable && newer.LatestVersion == "1.1.0",
                 "Newer release metadata was not recognized.");
-            var same = ReleaseUpdateChecker.ParseResponse("{\"tag_name\":\"v1.0.5\"}", "1.0.5");
+            var same = ReleaseUpdateChecker.ParseResponse("{\"tag_name\":\"v1.0.6\"}", "1.0.6");
             Assert(same.CheckSucceeded && !same.IsUpdateAvailable,
                 "Current version must not be presented as an update.");
             Assert(ReleaseUpdateChecker.ReleasesUrl.StartsWith("https://github.com/", StringComparison.Ordinal),
@@ -526,14 +771,14 @@ namespace WechatDuokai.Tests
             AssertEmbeddedEquals("Payload.WechatDuokai.Core.dll",
                 Path.Combine(root, "duokai", "bin", "Release", "net48", "WechatDuokai.Core.dll"));
             AssertEmbeddedEquals("Payload.wechat_duokai-cleanup.exe",
-                Path.Combine(root, "cleanup", "bin", "Release", "net48", "wechat_duokai-cleanup-v1.0.5.exe"));
+                Path.Combine(root, "cleanup", "bin", "Release", "net48", "wechat_duokai-cleanup-v1.0.6.exe"));
         }
 
         private static void TestSeparateInstallerIdentities()
         {
             var root = FindProjectRoot();
-            var setup = Path.Combine(root, "installer", "bin", "Release", "net48", "wechat_duokai-setup-v1.0.5.exe");
-            var cleanup = Path.Combine(root, "cleanup", "bin", "Release", "net48", "wechat_duokai-cleanup-v1.0.5.exe");
+            var setup = Path.Combine(root, "installer", "bin", "Release", "net48", "wechat_duokai-setup-v1.0.6.exe");
+            var cleanup = Path.Combine(root, "cleanup", "bin", "Release", "net48", "wechat_duokai-cleanup-v1.0.6.exe");
             Assert(File.Exists(setup) && File.Exists(cleanup), "Setup or cleanup output is missing.");
             Assert(!File.ReadAllBytes(setup).SequenceEqual(File.ReadAllBytes(cleanup)),
                 "Setup and cleanup must not be byte-identical copies.");
@@ -546,7 +791,7 @@ namespace WechatDuokai.Tests
         private static Type LoadCleanupWindowType()
         {
             var path = Path.Combine(FindProjectRoot(), "cleanup", "bin", "Release", "net48",
-                "wechat_duokai-cleanup-v1.0.5.exe");
+                "wechat_duokai-cleanup-v1.0.6.exe");
             var assembly = Assembly.LoadFrom(path);
             return assembly.GetType("WechatDuokai.Installer.UninstallWindow", true);
         }
@@ -654,6 +899,10 @@ namespace WechatDuokai.Tests
             Assert(File.Exists(result.ExecutablePath), "Installed application is missing.");
             Assert(File.Exists(Path.Combine(result.InstallDirectory, "WechatDuokai.Core.dll")), "Installed core DLL is missing.");
             Assert(File.Exists(result.UninstallerPath), "Installed uninstaller is missing.");
+            var dataDirectory = InstallerEngine.GetInstalledDataDirectory(result.InstallDirectory);
+            Assert(Directory.Exists(dataDirectory) &&
+                   File.Exists(Path.Combine(dataDirectory, InstallerEngine.UserDataMarkerName)),
+                "Installer did not create the marked in-directory data folder.");
             Console.WriteLine("PASS: Installer writes the complete application without launching it");
             return 0;
         }
@@ -788,6 +1037,11 @@ namespace WechatDuokai.Tests
             {
                 RequestedTarget = targetCount;
                 return new DelegateDisposable(() => DisposeCount++);
+            }
+
+            public WeComRegistryRecoveryResult RecoverPendingSession()
+            {
+                return WeComRegistryRecoveryResult.NoPendingRecovery;
             }
         }
 

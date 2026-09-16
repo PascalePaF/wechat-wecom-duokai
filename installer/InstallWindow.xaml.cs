@@ -199,7 +199,7 @@ namespace WechatDuokai.Installer
 
         private void ThemeButton_Click(object sender, RoutedEventArgs e)
         {
-            ThemeManager.Toggle();
+            ThemeManager.Toggle(false);
             UpdateThemeButton();
             WindowChromeHelper.Apply(this);
         }

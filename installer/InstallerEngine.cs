@@ -16,7 +16,7 @@ namespace WechatDuokai.Installer
     internal static class InstallerEngine
     {
         internal const string ProductName = "微信 · 企业微信多开助手";
-        internal const string Version = "1.0.5";
+        internal const string Version = "1.0.6";
         internal const string SourceMarkerName = ".wechat-duokai-source-root";
         internal const string SourceMarkerValue = "wechat-duokai-source-root:8f8b922d-244d-45c6-b7a8-a47ab3073f7d";
         internal const string ArtifactMarkerName = ".wechat-duokai-artifacts";
@@ -43,6 +43,11 @@ namespace WechatDuokai.Installer
 
         internal static string UserDataDirectory => Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "WechatDuokai");
+
+        internal static string GetInstalledDataDirectory(string installDirectory)
+        {
+            return Path.Combine(installDirectory, "data");
+        }
 
         internal static string StartMenuDirectory => Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
@@ -106,6 +111,7 @@ namespace WechatDuokai.Installer
 
             Directory.CreateDirectory(installDirectory);
             File.WriteAllText(Path.Combine(installDirectory, InstallMarkerName), InstallMarkerValue, Encoding.UTF8);
+            PrepareInstalledDataDirectory(installDirectory);
 
             var installedExecutable = GetInstalledExecutable(installDirectory);
             var installedUninstaller = GetInstalledUninstaller(installDirectory);
@@ -166,6 +172,66 @@ namespace WechatDuokai.Installer
                 SourceRoot = sourceRoot,
                 ArtifactRoot = artifactRoot
             };
+        }
+
+        private static void PrepareInstalledDataDirectory(string installDirectory)
+        {
+            var dataDirectory = GetInstalledDataDirectory(installDirectory);
+            Directory.CreateDirectory(dataDirectory);
+            var dataInfo = new DirectoryInfo(Path.GetFullPath(dataDirectory));
+            if ((dataInfo.Attributes & FileAttributes.ReparsePoint) != 0)
+            {
+                throw new IOException("程序 data 文件夹不能是符号链接或目录联接。");
+            }
+
+            File.WriteAllText(Path.Combine(dataDirectory, UserDataMarkerName),
+                UserDataMarkerValue, Encoding.UTF8);
+            MigrateLegacyUserData(dataDirectory);
+        }
+
+        private static void MigrateLegacyUserData(string destinationDirectory)
+        {
+            if (!ValidateUserDataDirectory(UserDataDirectory))
+            {
+                return;
+            }
+
+            foreach (var fileName in new[] { "settings.ini", "theme.ini" })
+            {
+                var source = Path.Combine(UserDataDirectory, fileName);
+                var destination = Path.Combine(destinationDirectory, fileName);
+                try
+                {
+                    if (File.Exists(source) && !File.Exists(destination))
+                    {
+                        File.Copy(source, destination, false);
+                    }
+                    if (File.Exists(source)) File.Delete(source);
+                    if (File.Exists(source + ".new")) File.Delete(source + ".new");
+                }
+                catch (Exception)
+                {
+                    // The application repeats this safe migration on first launch.
+                }
+            }
+
+            try
+            {
+                var remaining = Directory.EnumerateFileSystemEntries(UserDataDirectory)
+                    .Where(path => !string.Equals(Path.GetFileName(path), UserDataMarkerName,
+                        StringComparison.OrdinalIgnoreCase))
+                    .Any();
+                if (!remaining)
+                {
+                    var marker = Path.Combine(UserDataDirectory, UserDataMarkerName);
+                    if (File.Exists(marker)) File.Delete(marker);
+                    Directory.Delete(UserDataDirectory, false);
+                }
+            }
+            catch (Exception)
+            {
+                // Cleanup can remove any locked legacy directory later.
+            }
         }
 
         internal static IReadOnlyList<RunningApplicationInfo> FindRunningApplications(string requestedInstallDirectory)
