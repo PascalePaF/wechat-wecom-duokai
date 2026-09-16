@@ -52,6 +52,8 @@
 # Local review/scanner intermediates; final versioned evidence has no suffix.
 /docs/assets/*-preview.png
 /docs/*-candidate.txt
+/docs/*-candidate-*.txt
+/docs/*-replacement-*.txt
 
 # Kernel Module Compile Results
 *.mod*

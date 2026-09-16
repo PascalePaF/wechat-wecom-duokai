@@ -16,6 +16,13 @@ namespace WechatDuokai.Presentation
         Dark
     }
 
+    internal enum AppThemePreference
+    {
+        System,
+        Light,
+        Dark
+    }
+
     internal static class ThemeManager
     {
         private const string MarkerName = ".wechat-duokai-user-data";
@@ -78,9 +85,22 @@ namespace WechatDuokai.Presentation
 
         internal static AppTheme Current { get; private set; }
 
+        internal static AppThemePreference Preference { get; private set; } = AppThemePreference.System;
+
         internal static void Initialize(AppTheme? forcedTheme = null)
         {
-            Current = forcedTheme ?? LoadSavedTheme() ?? ReadWindowsTheme();
+            if (forcedTheme.HasValue)
+            {
+                Preference = forcedTheme.Value == AppTheme.Dark
+                    ? AppThemePreference.Dark
+                    : AppThemePreference.Light;
+                Current = forcedTheme.Value;
+            }
+            else
+            {
+                Preference = LoadSavedPreference();
+                Current = ResolveTheme(Preference);
+            }
             ApplyResources(Current);
         }
 
@@ -92,12 +112,42 @@ namespace WechatDuokai.Presentation
 
         internal static void SetTheme(AppTheme theme, bool persist = true)
         {
+            Preference = theme == AppTheme.Dark ? AppThemePreference.Dark : AppThemePreference.Light;
             Current = theme;
             ApplyResources(theme);
             if (persist)
             {
-                SaveTheme(theme);
+                SavePreference(Preference);
             }
+        }
+
+        internal static void SetPreference(AppThemePreference preference, bool persist = true)
+        {
+            Preference = preference;
+            Current = ResolveTheme(preference);
+            ApplyResources(Current);
+            if (persist)
+            {
+                SavePreference(preference);
+            }
+        }
+
+        internal static bool RefreshSystemTheme()
+        {
+            if (Preference != AppThemePreference.System)
+            {
+                return false;
+            }
+
+            var resolved = ReadWindowsTheme();
+            if (resolved == Current)
+            {
+                return false;
+            }
+
+            Current = resolved;
+            ApplyResources(Current);
+            return true;
         }
 
         private static void ApplyResources(AppTheme theme)
@@ -149,7 +199,7 @@ namespace WechatDuokai.Presentation
         private static string DataDirectory => Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "WechatDuokai");
 
-        private static AppTheme? LoadSavedTheme()
+        private static AppThemePreference LoadSavedPreference()
         {
             try
             {
@@ -158,21 +208,22 @@ namespace WechatDuokai.Presentation
                 if (!File.Exists(marker) || !File.Exists(themeFile) ||
                     !string.Equals(File.ReadAllText(marker, Encoding.UTF8).Trim(), MarkerValue, StringComparison.Ordinal))
                 {
-                    return null;
+                    return AppThemePreference.System;
                 }
 
                 var saved = File.ReadAllText(themeFile, Encoding.UTF8).Trim();
-                if (string.Equals(saved, "Light", StringComparison.OrdinalIgnoreCase)) return AppTheme.Light;
-                if (string.Equals(saved, "Dark", StringComparison.OrdinalIgnoreCase)) return AppTheme.Dark;
+                AppThemePreference preference;
+                if (Enum.TryParse(saved, true, out preference) &&
+                    Enum.IsDefined(typeof(AppThemePreference), preference)) return preference;
             }
             catch (Exception)
             {
             }
 
-            return null;
+            return AppThemePreference.System;
         }
 
-        private static void SaveTheme(AppTheme theme)
+        private static void SavePreference(AppThemePreference preference)
         {
             try
             {
@@ -180,12 +231,25 @@ namespace WechatDuokai.Presentation
                 File.WriteAllText(Path.Combine(DataDirectory, MarkerName), MarkerValue, Encoding.UTF8);
                 var target = Path.Combine(DataDirectory, ThemeFileName);
                 var temporary = target + ".new";
-                File.WriteAllText(temporary, theme.ToString(), Encoding.UTF8);
+                File.WriteAllText(temporary, preference.ToString(), Encoding.UTF8);
                 if (File.Exists(target)) File.Delete(target);
                 File.Move(temporary, target);
             }
             catch (Exception)
             {
+            }
+        }
+
+        private static AppTheme ResolveTheme(AppThemePreference preference)
+        {
+            switch (preference)
+            {
+                case AppThemePreference.Dark:
+                    return AppTheme.Dark;
+                case AppThemePreference.Light:
+                    return AppTheme.Light;
+                default:
+                    return ReadWindowsTheme();
             }
         }
 

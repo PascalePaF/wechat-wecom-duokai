@@ -5,6 +5,7 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Threading;
@@ -18,25 +19,37 @@ namespace WechatDuokai.App
     {
         internal const double MinimumWindowWidth = 901d;
         internal const double MinimumWindowHeight = 513d;
-        private const string CurrentVersion = "1.0.4";
+        private const string CurrentVersion = "1.0.5";
         private static readonly Regex DigitsOnly = new Regex("^[0-9]+$", RegexOptions.Compiled);
-        private readonly InstanceManager _instanceManager = new InstanceManager();
+        private readonly InstanceManager _instanceManager;
         private readonly DiagnosticReportService _diagnostics = new DiagnosticReportService();
-        private readonly ReleaseUpdateChecker _updateChecker = new ReleaseUpdateChecker();
+        private readonly ReleaseUpdateChecker _updateChecker;
         private readonly DispatcherTimer _refreshTimer;
         private readonly CancellationTokenSource _lifetime = new CancellationTokenSource();
         private AppDefinition _weChat;
         private AppDefinition _weCom;
         private bool _busy;
         private bool _updatingCount;
+        private bool _checkingUpdates;
+        private bool _showingSettings;
+        private bool _initializingSettings = true;
 
         public MainWindow()
+            : this(new InstanceManager(), new ReleaseUpdateChecker())
         {
+        }
+
+        internal MainWindow(InstanceManager instanceManager, ReleaseUpdateChecker updateChecker)
+        {
+            _instanceManager = instanceManager ?? throw new ArgumentNullException(nameof(instanceManager));
+            _updateChecker = updateChecker ?? throw new ArgumentNullException(nameof(updateChecker));
             InitializeComponent();
             DataObject.AddPastingHandler(TargetCountBox, TargetCountBox_OnPaste);
             _updatingCount = true;
             TargetCountBox.Text = UserPreferences.LoadTargetCount().ToString();
             _updatingCount = false;
+            SynchronizeSettingsControls();
+            _initializingSettings = false;
 
             _refreshTimer = new DispatcherTimer(DispatcherPriority.Background)
             {
@@ -51,7 +64,18 @@ namespace WechatDuokai.App
                 ApplyProportionalScale();
                 RefreshClientStatus();
                 _refreshTimer.Start();
-                await CheckForUpdatesAsync();
+                if (UserPreferences.LoadAutoCheckForUpdates())
+                {
+                    await CheckForUpdatesAsync(false);
+                }
+            };
+            Activated += (sender, args) =>
+            {
+                if (ThemeManager.RefreshSystemTheme())
+                {
+                    UpdateThemeButton();
+                    WindowChromeHelper.Apply(this);
+                }
             };
             Closed += (sender, args) =>
             {
@@ -129,12 +153,38 @@ namespace WechatDuokai.App
 
         private void RefreshClientStatus()
         {
+            var weChatCount = GetCurrentCount(_weChat);
+            var weComCount = GetCurrentCount(_weCom);
+            UpdateFooterCounts(weChatCount, weComCount);
             if (_busy) return;
-            UpdateClientStatus(_weChat, WeChatStatus, WeChatButton);
-            UpdateClientStatus(_weCom, WeComStatus, WeComButton);
+            UpdateClientStatus(_weChat, WeChatStatus, WeChatButton, weChatCount);
+            UpdateClientStatus(_weCom, WeComStatus, WeComButton, weComCount);
         }
 
-        private void UpdateClientStatus(AppDefinition application, TextBlock status, Button button)
+        private void UpdateFooterCounts(int weChatCount, int weComCount)
+        {
+            FooterWeChatCount.Text = $"当前微信窗口 {weChatCount} 个";
+            FooterWeComCount.Text = $"当前企业微信窗口 {weComCount} 个";
+        }
+
+        private int GetCurrentCount(AppDefinition application)
+        {
+            if (application == null || !application.IsAvailable)
+            {
+                return 0;
+            }
+
+            try
+            {
+                return _instanceManager.GetInstanceCount(application);
+            }
+            catch (Exception)
+            {
+                return 0;
+            }
+        }
+
+        private void UpdateClientStatus(AppDefinition application, TextBlock status, Button button, int count)
         {
             if (application == null || !application.IsAvailable)
             {
@@ -144,7 +194,6 @@ namespace WechatDuokai.App
                 return;
             }
 
-            var count = _instanceManager.GetInstanceCount(application);
             status.Text = count > 0 ? $"当前运行 {count} 个实例" : "已验证官方客户端";
             status.SetResourceReference(ForegroundProperty, count > 0 ? "SuccessBrush" : "TextSecondaryBrush");
             button.IsEnabled = !_busy;
@@ -265,6 +314,12 @@ namespace WechatDuokai.App
             IncreaseButton.IsEnabled = !busy;
             TargetCountBox.IsEnabled = !busy;
             DiagnosticsButton.IsEnabled = !busy;
+            AutoUpdateCheckBox.IsEnabled = !busy;
+            SystemThemeRadio.IsEnabled = !busy;
+            LightThemeRadio.IsEnabled = !busy;
+            DarkThemeRadio.IsEnabled = !busy;
+            CheckUpdateButton.IsEnabled = !busy && !_checkingUpdates;
+            SettingsReleaseButton.IsEnabled = !busy;
         }
 
         private int GetTargetCount()
@@ -314,6 +369,7 @@ namespace WechatDuokai.App
         {
             ThemeManager.Toggle();
             UpdateThemeButton();
+            SynchronizeThemePreferenceControls();
             WindowChromeHelper.Apply(this);
         }
 
@@ -324,8 +380,102 @@ namespace WechatDuokai.App
             ThemeLabel.Text = dark ? "日间" : "夜间";
         }
 
-        private async Task CheckForUpdatesAsync()
+        private void SynchronizeSettingsControls()
         {
+            var wasInitializing = _initializingSettings;
+            _initializingSettings = true;
+            AutoUpdateCheckBox.IsChecked = UserPreferences.LoadAutoCheckForUpdates();
+            SynchronizeThemePreferenceControls();
+            _initializingSettings = wasInitializing;
+        }
+
+        private void SynchronizeThemePreferenceControls()
+        {
+            var wasInitializing = _initializingSettings;
+            _initializingSettings = true;
+            SystemThemeRadio.IsChecked = ThemeManager.Preference == AppThemePreference.System;
+            LightThemeRadio.IsChecked = ThemeManager.Preference == AppThemePreference.Light;
+            DarkThemeRadio.IsChecked = ThemeManager.Preference == AppThemePreference.Dark;
+            _initializingSettings = wasInitializing;
+        }
+
+        private void ThemePreference_Checked(object sender, RoutedEventArgs e)
+        {
+            if (_initializingSettings || !(sender is RadioButton radio) || radio.IsChecked != true)
+            {
+                return;
+            }
+
+            AppThemePreference preference;
+            if (!Enum.TryParse(Convert.ToString(radio.Tag), true, out preference))
+            {
+                return;
+            }
+
+            ThemeManager.SetPreference(preference);
+            UpdateThemeButton();
+            WindowChromeHelper.Apply(this);
+            SetStatus(preference == AppThemePreference.System
+                ? "主题已设为跟随 Windows 系统"
+                : "主题设置已保存", "SuccessBrush");
+        }
+
+        private void AutoUpdateCheckBox_Changed(object sender, RoutedEventArgs e)
+        {
+            if (_initializingSettings)
+            {
+                return;
+            }
+
+            var enabled = AutoUpdateCheckBox.IsChecked == true;
+            UserPreferences.SaveAutoCheckForUpdates(enabled);
+            SetStatus(enabled
+                ? "已开启启动时版本检查"
+                : "已关闭启动时版本检查 · 仍可手动检查", "SuccessBrush");
+        }
+
+        private void SettingsButton_Click(object sender, RoutedEventArgs e)
+        {
+            SetSettingsViewVisible(!_showingSettings);
+        }
+
+        internal void SetSettingsViewVisible(bool visible)
+        {
+            _showingSettings = visible;
+            WorkspaceGrid.Visibility = visible ? Visibility.Collapsed : Visibility.Visible;
+            SettingsWorkspace.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
+            SettingsButton.Content = visible ? "返回" : "设置";
+            AutomationProperties.SetName(SettingsButton, visible ? "返回主界面" : "打开设置界面");
+            if (visible)
+            {
+                SynchronizeSettingsControls();
+                SetStatus("设置 · 更改会自动保存在本机", "InfoBrush");
+            }
+            else
+            {
+                SetStatus("就绪 · 选择数量后启动", "SuccessBrush");
+            }
+        }
+
+        private async void CheckUpdateButton_Click(object sender, RoutedEventArgs e)
+        {
+            await CheckForUpdatesAsync(true);
+        }
+
+        private async Task CheckForUpdatesAsync(bool userInitiated)
+        {
+            if (_checkingUpdates)
+            {
+                return;
+            }
+
+            _checkingUpdates = true;
+            CheckUpdateButton.IsEnabled = false;
+            if (userInitiated)
+            {
+                SetStatus("正在检查 GitHub 发布版本…", "InfoBrush");
+            }
+
             ReleaseUpdateResult result;
             try
             {
@@ -335,9 +485,19 @@ namespace WechatDuokai.App
             {
                 return;
             }
+            finally
+            {
+                _checkingUpdates = false;
+                CheckUpdateButton.IsEnabled = !_busy;
+            }
+
             if (!result.CheckSucceeded)
             {
                 ReleaseButton.ToolTip = "本次未能检查更新；点击仍可打开 GitHub 发布页";
+                if (userInitiated)
+                {
+                    SetStatus("暂时无法检查版本 · 可直接打开 GitHub 发布页", "WarningBrush");
+                }
                 return;
             }
 
@@ -350,7 +510,13 @@ namespace WechatDuokai.App
             }
             else
             {
+                ReleaseButton.Content = "发布版本 ↗";
+                ReleaseButton.SetResourceReference(ForegroundProperty, "AccentBrush");
                 ReleaseButton.ToolTip = "当前已是最新版；点击查看 GitHub 发布页";
+                if (userInitiated)
+                {
+                    SetStatus("当前已是最新版 V" + CurrentVersion, "SuccessBrush");
+                }
             }
         }
 

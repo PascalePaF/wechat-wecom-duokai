@@ -48,6 +48,43 @@ namespace WechatDuokai.Core
             SaveValues(dataDirectory, values);
         }
 
+        public static bool LoadAutoCheckForUpdates()
+        {
+            return LoadAutoCheckForUpdates(DataDirectory);
+        }
+
+        internal static bool LoadAutoCheckForUpdates(string dataDirectory)
+        {
+            try
+            {
+                var values = LoadValues(dataDirectory);
+                string raw;
+                bool enabled;
+                if (values.TryGetValue("AutoCheckForUpdates", out raw) && bool.TryParse(raw, out enabled))
+                {
+                    return enabled;
+                }
+            }
+            catch (Exception)
+            {
+                // Keep the historical update-check behaviour if preferences are unavailable.
+            }
+
+            return true;
+        }
+
+        public static void SaveAutoCheckForUpdates(bool enabled)
+        {
+            SaveAutoCheckForUpdates(DataDirectory, enabled);
+        }
+
+        internal static void SaveAutoCheckForUpdates(string dataDirectory, bool enabled)
+        {
+            var values = LoadValues(dataDirectory);
+            values["AutoCheckForUpdates"] = enabled.ToString();
+            SaveValues(dataDirectory, values);
+        }
+
         public static string LoadCustomClientPath(AppKind kind)
         {
             return LoadCustomClientPath(DataDirectory, kind);
@@ -106,6 +143,8 @@ namespace WechatDuokai.Core
             var lines = new List<string>();
             string target;
             if (values.TryGetValue("TargetInstanceCount", out target)) lines.Add("TargetInstanceCount=" + target);
+            string autoCheck;
+            if (values.TryGetValue("AutoCheckForUpdates", out autoCheck)) lines.Add("AutoCheckForUpdates=" + autoCheck);
             string weChat;
             if (values.TryGetValue("WeChatExecutableBase64", out weChat)) lines.Add("WeChatExecutableBase64=" + weChat);
             string weCom;

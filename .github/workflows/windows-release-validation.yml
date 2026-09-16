@@ -1,0 +1,91 @@
+name: Windows build, test, hash and SBOM
+
+on:
+  push:
+    branches:
+      - main
+      - "v*"
+    tags:
+      - "v*"
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-release-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  clean-windows-validation:
+    name: Clean Windows Server 2022 validation
+    runs-on: windows-2022
+    timeout-minutes: 30
+    env:
+      RELEASE_VERSION: 1.0.5
+
+    steps:
+      - name: Check out the exact source revision
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Select .NET 8 for the Microsoft SBOM tool
+        uses: actions/setup-dotnet@d4c94342e560b34958eacfc5d055d21461ed1c5d # v5.0.0
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Locate Visual Studio MSBuild
+        uses: microsoft/setup-msbuild@30375c66a4eea26614e0d39710365f22f8b0af57 # v3.0.0
+        with:
+          vs-version: "[17.0,18.0)"
+
+      - name: Build, run tests and create Windows packages
+        shell: pwsh
+        run: .\build-release.ps1 -Version $env:RELEASE_VERSION
+
+      - name: Verify published SHA-256 checksums
+        shell: pwsh
+        run: |
+          $drop = Join-Path $env:GITHUB_WORKSPACE ("artifacts\V" + $env:RELEASE_VERSION)
+          $checksumFile = Join-Path $drop "SHA256SUMS.txt"
+          foreach ($line in Get-Content -LiteralPath $checksumFile) {
+            if ($line -notmatch '^(?<hash>[0-9a-f]{64})  (?<path>.+)$') {
+              throw "Invalid checksum line: $line"
+            }
+            $target = Join-Path $drop ($Matches.path.Replace('/', '\'))
+            $actual = (Get-FileHash -LiteralPath $target -Algorithm SHA256).Hash.ToLowerInvariant()
+            if ($actual -ne $Matches.hash) {
+              throw "SHA-256 mismatch: $($Matches.path)"
+            }
+          }
+
+      - name: Install the pinned Microsoft SBOM tool
+        shell: pwsh
+        run: dotnet tool install --global Microsoft.Sbom.DotNetTool --version 4.1.2
+
+      - name: Generate and validate SPDX 2.2 SBOM
+        shell: pwsh
+        run: |
+          $drop = Join-Path $env:GITHUB_WORKSPACE ("artifacts\V" + $env:RELEASE_VERSION)
+          $validation = Join-Path $env:RUNNER_TEMP "sbom-validation.json"
+          sbom-tool generate `
+            -b $drop `
+            -bc $env:GITHUB_WORKSPACE `
+            -pn wechat-duokai `
+            -pv $env:RELEASE_VERSION `
+            -ps "wechat_duokai contributors" `
+            -nsb "https://github.com/PascalePaF/wechat-wecom-duokai" `
+            -mi SPDX:2.2
+          if ($LASTEXITCODE -ne 0) { throw "SBOM generation failed with exit code $LASTEXITCODE" }
+          sbom-tool validate -b $drop -o $validation -mi SPDX:2.2
+          if ($LASTEXITCODE -ne 0) { throw "SBOM validation failed with exit code $LASTEXITCODE" }
+          Copy-Item -LiteralPath $validation -Destination (Join-Path $drop "sbom-validation.json")
+
+      - name: Upload tested Windows packages, hashes and SBOM
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        with:
+          name: wechat-duokai-v1.0.5-windows-validation
+          path: artifacts/V1.0.5/
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 14

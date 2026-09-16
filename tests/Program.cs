@@ -40,6 +40,7 @@ namespace WechatDuokai.Tests
                 Run("Null application has zero instances", () =>
                     Assert(new InstanceManager().GetInstanceCount(null) == 0, "Expected zero."));
                 Run("Target count cache survives a restart", TestPreferenceRoundTrip);
+                Run("Footer counts and settings navigation stay live and visible", TestFooterCountsAndSettings);
                 Run("Renamed executables cannot impersonate an official client", TestClientExecutableValidation);
                 Run("Process environment groups roots and supports deterministic launch tests", TestProcessEnvironmentAbstraction);
                 Run("WeCom extended launch policy is temporary and reaches three instances", TestWeComExtendedLaunchPolicy);
@@ -117,9 +118,14 @@ namespace WechatDuokai.Tests
         {
             Type windowType;
             var showInstallerCompletion = false;
+            var showMainSettings = false;
             switch (windowName.ToLowerInvariant())
             {
                 case "main": windowType = typeof(MainWindow); break;
+                case "main-settings":
+                    windowType = typeof(MainWindow);
+                    showMainSettings = true;
+                    break;
                 case "installer": windowType = typeof(InstallWindow); break;
                 case "installer-complete":
                     windowType = typeof(InstallWindow);
@@ -143,6 +149,10 @@ namespace WechatDuokai.Tests
                         BindingFlags.Instance | BindingFlags.NonPublic);
                     Assert(method != null, "Installer completion state is missing.");
                     method.Invoke(window, null);
+                }
+                if (showMainSettings)
+                {
+                    ((MainWindow)window).SetSettingsViewVisible(true);
                 }
                 window.Show();
                 window.Dispatcher.Invoke(() => { }, DispatcherPriority.ContextIdle);
@@ -173,8 +183,13 @@ namespace WechatDuokai.Tests
             try
             {
                 Assert(UserPreferences.LoadTargetCount(testDirectory) == 2, "Missing settings should default to 2.");
+                Assert(UserPreferences.LoadAutoCheckForUpdates(testDirectory),
+                    "Missing update preference should preserve the safe historical default.");
                 UserPreferences.SaveTargetCount(testDirectory, 7);
                 Assert(UserPreferences.LoadTargetCount(testDirectory) == 7, "Saved target count was not loaded.");
+                UserPreferences.SaveAutoCheckForUpdates(testDirectory, false);
+                Assert(!UserPreferences.LoadAutoCheckForUpdates(testDirectory),
+                    "Automatic version-check preference was not preserved.");
                 var custom = Path.Combine(testDirectory, "Weixin.exe");
                 UserPreferences.SaveCustomClientPath(testDirectory, AppKind.WeChat, custom);
                 Assert(UserPreferences.LoadCustomClientPath(testDirectory, AppKind.WeChat) == Path.GetFullPath(custom),
@@ -185,6 +200,64 @@ namespace WechatDuokai.Tests
             {
                 if (Directory.Exists(testDirectory)) Directory.Delete(testDirectory, true);
             }
+        }
+
+        private static void TestFooterCountsAndSettings()
+        {
+            var folder = Path.Combine(Path.GetTempPath(), "wechat-duokai-footer-" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(folder);
+            var weChatPath = Path.Combine(folder, "Weixin.exe");
+            var weComPath = Path.Combine(folder, "WXWork.exe");
+            File.WriteAllText(weChatPath, string.Empty);
+            File.WriteAllText(weComPath, string.Empty);
+            var environment = new MultiClientFakeProcessEnvironment(weChatPath, 2, weComPath, 3);
+            var window = new MainWindow(new InstanceManager(environment), new ReleaseUpdateChecker());
+            try
+            {
+                SetPrivateField(window, "_weChat", new AppDefinition(AppKind.WeChat, "微信", weChatPath));
+                SetPrivateField(window, "_weCom", new AppDefinition(AppKind.WeCom, "企业微信", weComPath));
+                InvokePrivate(window, "RefreshClientStatus");
+
+                var weChatCount = (TextBlock)window.FindName("FooterWeChatCount");
+                var weComCount = (TextBlock)window.FindName("FooterWeComCount");
+                Assert(weChatCount.Text == "当前微信窗口 2 个", "WeChat footer count is not live.");
+                Assert(weComCount.Text == "当前企业微信窗口 3 个", "WeCom footer count is not live.");
+                Assert(weChatCount.TextAlignment == TextAlignment.Left &&
+                       weComCount.TextAlignment == TextAlignment.Left,
+                    "Footer counts must remain left-aligned on two rows.");
+
+                var settingsButton = (Button)window.FindName("SettingsButton");
+                Assert(Grid.GetColumn(settingsButton) == 5,
+                    "Settings must remain the right-most footer action.");
+                window.SetSettingsViewVisible(true);
+                Assert(((FrameworkElement)window.FindName("SettingsWorkspace")).Visibility == Visibility.Visible &&
+                       ((FrameworkElement)window.FindName("WorkspaceGrid")).Visibility == Visibility.Collapsed,
+                    "Settings did not replace the main workspace.");
+                Assert(window.FindName("AutoUpdateCheckBox") != null &&
+                       window.FindName("SystemThemeRadio") != null &&
+                       window.FindName("LightThemeRadio") != null &&
+                       window.FindName("DarkThemeRadio") != null,
+                    "Settings must expose update and three-way theme preferences.");
+            }
+            finally
+            {
+                window.Close();
+                if (Directory.Exists(folder)) Directory.Delete(folder, true);
+            }
+        }
+
+        private static void SetPrivateField(object target, string name, object value)
+        {
+            var field = target.GetType().GetField(name, BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert(field != null, "Missing test field: " + name);
+            field.SetValue(target, value);
+        }
+
+        private static void InvokePrivate(object target, string name)
+        {
+            var method = target.GetType().GetMethod(name, BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert(method != null, "Missing test method: " + name);
+            method.Invoke(target, null);
         }
 
         private static void TestNativeWindowChrome()
@@ -325,6 +398,43 @@ namespace WechatDuokai.Tests
                         "A registry value that did not exist before launch must not remain afterwards.");
                 }
 
+                using (var key = Registry.CurrentUser.OpenSubKey(registryPath, true))
+                {
+                    key.SetValue("multi_instances", "owner-before-two", RegistryValueKind.String);
+                }
+                var twoWindowScope = policy.BeginLaunchSession(2);
+                using (var key = Registry.CurrentUser.OpenSubKey(registryPath, true))
+                {
+                    Assert(Convert.ToInt32(key.GetValue("multi_instances")) == 2,
+                        "The two-instance temporary state was not applied.");
+                    key.SetValue("multi_instances", 7, RegistryValueKind.DWord);
+                }
+                twoWindowScope.Dispose();
+                using (var key = Registry.CurrentUser.OpenSubKey(registryPath))
+                {
+                    Assert(Convert.ToInt32(key.GetValue("multi_instances")) == 7 &&
+                           key.GetValueKind("multi_instances") == RegistryValueKind.DWord,
+                        "Restore overwrote a newer third-party value during two-instance mode.");
+                }
+
+                using (var key = Registry.CurrentUser.OpenSubKey(registryPath, true))
+                {
+                    key.SetValue("multi_instances", "owner-before-extended", RegistryValueKind.String);
+                }
+                var extendedScope = policy.BeginLaunchSession(3);
+                using (var key = Registry.CurrentUser.OpenSubKey(registryPath, true))
+                {
+                    Assert(!key.GetValueNames().Contains("multi_instances"),
+                        "Extended mode must temporarily remove the registry hint.");
+                    key.SetValue("multi_instances", "external-owner", RegistryValueKind.String);
+                }
+                extendedScope.Dispose();
+                using (var key = Registry.CurrentUser.OpenSubKey(registryPath))
+                {
+                    Assert((string)key.GetValue("multi_instances") == "external-owner",
+                        "Restore overwrote a newer third-party value during extended mode.");
+                }
+
                 var environment = new LaunchingFakeProcessEnvironment(Process.GetCurrentProcess().MainModule.FileName, 1);
                 var trackingPolicy = new TrackingWeComLaunchPolicy();
                 var manager = new InstanceManager(environment, trackingPolicy);
@@ -390,10 +500,10 @@ namespace WechatDuokai.Tests
 
         private static void TestReleaseMetadataParsing()
         {
-            var newer = ReleaseUpdateChecker.ParseResponse("{\"tag_name\":\"v1.1.0\"}", "1.0.4");
+            var newer = ReleaseUpdateChecker.ParseResponse("{\"tag_name\":\"v1.1.0\"}", "1.0.5");
             Assert(newer.CheckSucceeded && newer.IsUpdateAvailable && newer.LatestVersion == "1.1.0",
                 "Newer release metadata was not recognized.");
-            var same = ReleaseUpdateChecker.ParseResponse("{\"tag_name\":\"v1.0.4\"}", "1.0.4");
+            var same = ReleaseUpdateChecker.ParseResponse("{\"tag_name\":\"v1.0.5\"}", "1.0.5");
             Assert(same.CheckSucceeded && !same.IsUpdateAvailable,
                 "Current version must not be presented as an update.");
             Assert(ReleaseUpdateChecker.ReleasesUrl.StartsWith("https://github.com/", StringComparison.Ordinal),
@@ -416,14 +526,14 @@ namespace WechatDuokai.Tests
             AssertEmbeddedEquals("Payload.WechatDuokai.Core.dll",
                 Path.Combine(root, "duokai", "bin", "Release", "net48", "WechatDuokai.Core.dll"));
             AssertEmbeddedEquals("Payload.wechat_duokai-cleanup.exe",
-                Path.Combine(root, "cleanup", "bin", "Release", "net48", "wechat_duokai-cleanup-v1.0.4.exe"));
+                Path.Combine(root, "cleanup", "bin", "Release", "net48", "wechat_duokai-cleanup-v1.0.5.exe"));
         }
 
         private static void TestSeparateInstallerIdentities()
         {
             var root = FindProjectRoot();
-            var setup = Path.Combine(root, "installer", "bin", "Release", "net48", "wechat_duokai-setup-v1.0.4.exe");
-            var cleanup = Path.Combine(root, "cleanup", "bin", "Release", "net48", "wechat_duokai-cleanup-v1.0.4.exe");
+            var setup = Path.Combine(root, "installer", "bin", "Release", "net48", "wechat_duokai-setup-v1.0.5.exe");
+            var cleanup = Path.Combine(root, "cleanup", "bin", "Release", "net48", "wechat_duokai-cleanup-v1.0.5.exe");
             Assert(File.Exists(setup) && File.Exists(cleanup), "Setup or cleanup output is missing.");
             Assert(!File.ReadAllBytes(setup).SequenceEqual(File.ReadAllBytes(cleanup)),
                 "Setup and cleanup must not be byte-identical copies.");
@@ -436,7 +546,7 @@ namespace WechatDuokai.Tests
         private static Type LoadCleanupWindowType()
         {
             var path = Path.Combine(FindProjectRoot(), "cleanup", "bin", "Release", "net48",
-                "wechat_duokai-cleanup-v1.0.4.exe");
+                "wechat_duokai-cleanup-v1.0.5.exe");
             var assembly = Assembly.LoadFrom(path);
             return assembly.GetType("WechatDuokai.Installer.UninstallWindow", true);
         }
@@ -737,6 +847,54 @@ namespace WechatDuokai.Tests
             public System.Threading.Tasks.Task DelayAsync(TimeSpan delay, CancellationToken cancellationToken)
             {
                 Delays.Add(delay);
+                return System.Threading.Tasks.Task.CompletedTask;
+            }
+        }
+
+        private sealed class MultiClientFakeProcessEnvironment : IProcessEnvironment
+        {
+            private readonly string _weChatPath;
+            private readonly int _weChatCount;
+            private readonly string _weComPath;
+            private readonly int _weComCount;
+
+            internal MultiClientFakeProcessEnvironment(string weChatPath, int weChatCount,
+                string weComPath, int weComCount)
+            {
+                _weChatPath = weChatPath;
+                _weChatCount = weChatCount;
+                _weComPath = weComPath;
+                _weComCount = weComCount;
+            }
+
+            public int CurrentSessionId => 7;
+
+            public IReadOnlyList<ProcessSnapshot> FindProcesses(IEnumerable<string> processNames)
+            {
+                var isWeCom = processNames.Any(name =>
+                    string.Equals(name, "WXWork", StringComparison.OrdinalIgnoreCase));
+                var path = isWeCom ? _weComPath : _weChatPath;
+                var count = isWeCom ? _weComCount : _weChatCount;
+                var start = isWeCom ? 800000 : 700000;
+                return Enumerable.Range(1, count).Select(index => new ProcessSnapshot
+                {
+                    Id = start + index,
+                    SessionId = CurrentSessionId,
+                    ExecutablePath = path
+                }).ToArray();
+            }
+
+            public IReadOnlyDictionary<int, int> GetParentProcessMap()
+            {
+                return new Dictionary<int, int>();
+            }
+
+            public void StartApplication(string executablePath)
+            {
+            }
+
+            public System.Threading.Tasks.Task DelayAsync(TimeSpan delay, CancellationToken cancellationToken)
+            {
                 return System.Threading.Tasks.Task.CompletedTask;
             }
         }

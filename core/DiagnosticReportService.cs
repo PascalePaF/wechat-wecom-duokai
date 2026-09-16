@@ -40,8 +40,9 @@ namespace WechatDuokai.Core
             AppendClient(lines, "企业微信", weCom, AppKind.WeCom, instanceManager);
             lines.Add(string.Empty);
             lines.Add("底层策略=精确进程路径 + 当前会话 + 已知互斥锁/lock.ini 白名单");
-            lines.Add("企业微信双开策略=启动期间临时使用官方 multi_instances=2 提示，随后恢复原值");
-            lines.Add("企业微信三开及以上策略=启动期间临时移除双开提示并释放已知独占互斥锁，随后恢复原值");
+            lines.Add("企业微信双开策略=启动期间临时使用官方 multi_instances=2 提示；仅在临时值未被外部改动时恢复原值");
+            lines.Add("企业微信三开及以上策略=启动期间临时移除双开提示并释放已知独占互斥锁；外部新值优先保留");
+            lines.Add("注册表冲突保护=结束会话前比较当前值、类型与助手临时状态；不匹配时跳过恢复，避免覆盖第三方新设置");
             lines.Add("企业微信扩展模式实测基线=WXWork 5.0.11.6018 已验证 1→2→3；其他版本需逐版验证");
             lines.Add("诊断目录=" + folder);
 

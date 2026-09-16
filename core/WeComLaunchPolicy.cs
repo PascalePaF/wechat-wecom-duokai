@@ -18,7 +18,9 @@ namespace WechatDuokai.Core
     /// Uses WeCom's documented current-user double-instance hint for two windows. For
     /// three or more windows, the hint is temporarily removed because current WeCom
     /// releases cap that registry path at two. The caller's original value is restored
-    /// exactly after the launch loop, including its original registry value kind.
+    /// exactly after the launch loop, including its original registry value kind. Restore
+    /// is conditional: if another program changes the value while the session is active,
+    /// that newer external value is preserved.
     /// </summary>
     internal sealed class WindowsWeComLaunchPolicy : IWeComLaunchPolicy
     {
@@ -49,10 +51,8 @@ namespace WechatDuokai.Core
             Semaphore gate = null;
             var ownsGate = false;
             RegistryKey key = null;
-            var snapshotReady = false;
-            var hadValue = false;
-            object originalValue = null;
-            var originalKind = RegistryValueKind.None;
+            RegistryValueState originalState = null;
+            RegistryValueState temporaryState = null;
             try
             {
                 gate = new Semaphore(1, 1, _gateName);
@@ -71,17 +71,12 @@ namespace WechatDuokai.Core
                     return EmptyScope.Instance;
                 }
 
-                hadValue = key.GetValueNames().Any(name =>
-                    string.Equals(name, ValueName, StringComparison.OrdinalIgnoreCase));
-                originalValue = hadValue
-                    ? key.GetValue(ValueName, null, RegistryValueOptions.DoNotExpandEnvironmentNames)
-                    : null;
-                originalKind = hadValue ? key.GetValueKind(ValueName) : RegistryValueKind.None;
-                snapshotReady = true;
+                originalState = ReadValueState(key);
 
                 if (targetCount == 2)
                 {
                     key.SetValue(ValueName, 2, RegistryValueKind.DWord);
+                    temporaryState = new RegistryValueState(true, 2, RegistryValueKind.DWord);
                 }
                 else
                 {
@@ -89,15 +84,16 @@ namespace WechatDuokai.Core
                     // two windows. Removing the hint during the exact mutex-release loop
                     // allows a third instance without modifying or injecting into WeCom.
                     key.DeleteValue(ValueName, false);
+                    temporaryState = RegistryValueState.Missing;
                 }
 
-                return new RegistryRestoreScope(key, gate, ownsGate, hadValue, originalValue, originalKind);
+                return new RegistryRestoreScope(key, gate, ownsGate, originalState, temporaryState);
             }
             catch (Exception)
             {
-                if (key != null && snapshotReady)
+                if (key != null && originalState != null && temporaryState != null)
                 {
-                    RestoreValue(key, hadValue, originalValue, originalKind);
+                    RestoreValueIfUnchanged(key, originalState, temporaryState);
                 }
                 key?.Dispose();
                 ReleaseGate(gate, ownsGate);
@@ -107,24 +103,49 @@ namespace WechatDuokai.Core
             }
         }
 
-        private static void RestoreValue(RegistryKey key, bool hadValue, object originalValue,
-            RegistryValueKind originalKind)
+        private static RegistryValueState ReadValueState(RegistryKey key)
+        {
+            var exists = key.GetValueNames().Any(name =>
+                string.Equals(name, ValueName, StringComparison.OrdinalIgnoreCase));
+            if (!exists)
+            {
+                return RegistryValueState.Missing;
+            }
+
+            return new RegistryValueState(true,
+                key.GetValue(ValueName, null, RegistryValueOptions.DoNotExpandEnvironmentNames),
+                key.GetValueKind(ValueName));
+        }
+
+        private static bool RestoreValueIfUnchanged(RegistryKey key, RegistryValueState originalState,
+            RegistryValueState expectedTemporaryState)
         {
             try
             {
-                if (hadValue)
+                var currentState = ReadValueState(key);
+                if (!RegistryValueState.AreEqual(currentState, expectedTemporaryState))
                 {
-                    key.SetValue(ValueName, originalValue, originalKind);
+                    // Another program has written a newer policy while our launch scope was
+                    // active. Its value takes precedence over our stale snapshot.
+                    return false;
+                }
+
+                if (originalState.Exists)
+                {
+                    key.SetValue(ValueName, originalState.Value, originalState.Kind);
                 }
                 else
                 {
                     key.DeleteValue(ValueName, false);
                 }
+
+                return true;
             }
             catch (Exception)
             {
                 // Best effort: the user-scoped key may have been locked or its access
                 // changed by another process after this launch session began.
+                return false;
             }
         }
 
@@ -154,19 +175,17 @@ namespace WechatDuokai.Core
             private RegistryKey _key;
             private Semaphore _gate;
             private bool _ownsGate;
-            private readonly bool _hadValue;
-            private readonly object _originalValue;
-            private readonly RegistryValueKind _originalKind;
+            private readonly RegistryValueState _originalState;
+            private readonly RegistryValueState _temporaryState;
 
-            internal RegistryRestoreScope(RegistryKey key, Semaphore gate, bool ownsGate, bool hadValue,
-                object originalValue, RegistryValueKind originalKind)
+            internal RegistryRestoreScope(RegistryKey key, Semaphore gate, bool ownsGate,
+                RegistryValueState originalState, RegistryValueState temporaryState)
             {
                 _key = key;
                 _gate = gate;
                 _ownsGate = ownsGate;
-                _hadValue = hadValue;
-                _originalValue = originalValue;
-                _originalKind = originalKind;
+                _originalState = originalState;
+                _temporaryState = temporaryState;
             }
 
             public void Dispose()
@@ -180,7 +199,7 @@ namespace WechatDuokai.Core
                 {
                     if (key != null)
                     {
-                        RestoreValue(key, _hadValue, _originalValue, _originalKind);
+                        RestoreValueIfUnchanged(key, _originalState, _temporaryState);
                     }
                 }
                 catch (Exception)
@@ -192,6 +211,59 @@ namespace WechatDuokai.Core
                     key?.Dispose();
                     ReleaseGate(gate, ownsGate);
                 }
+            }
+        }
+
+        private sealed class RegistryValueState
+        {
+            internal static readonly RegistryValueState Missing =
+                new RegistryValueState(false, null, RegistryValueKind.None);
+
+            internal RegistryValueState(bool exists, object value, RegistryValueKind kind)
+            {
+                Exists = exists;
+                Value = value;
+                Kind = kind;
+            }
+
+            internal bool Exists { get; }
+
+            internal object Value { get; }
+
+            internal RegistryValueKind Kind { get; }
+
+            internal static bool AreEqual(RegistryValueState left, RegistryValueState right)
+            {
+                if (left == null || right == null || left.Exists != right.Exists)
+                {
+                    return false;
+                }
+
+                if (!left.Exists)
+                {
+                    return true;
+                }
+
+                if (left.Kind != right.Kind)
+                {
+                    return false;
+                }
+
+                var leftBytes = left.Value as byte[];
+                var rightBytes = right.Value as byte[];
+                if (leftBytes != null || rightBytes != null)
+                {
+                    return leftBytes != null && rightBytes != null && leftBytes.SequenceEqual(rightBytes);
+                }
+
+                var leftStrings = left.Value as string[];
+                var rightStrings = right.Value as string[];
+                if (leftStrings != null || rightStrings != null)
+                {
+                    return leftStrings != null && rightStrings != null && leftStrings.SequenceEqual(rightStrings);
+                }
+
+                return Equals(left.Value, right.Value);
             }
         }
 

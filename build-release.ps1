@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [string]$Version = '1.0.4'
+    [string]$Version = '1.0.5'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -80,26 +80,30 @@ $hardcodedPathReport = Join-Path $sourceRoot 'docs\旧版EXE硬编码路径说�
 if (Test-Path -LiteralPath $hardcodedPathReport) {
     Copy-Item -LiteralPath $hardcodedPathReport -Destination (Join-Path $portableDirectory '安全说明-旧版EXE硬编码路径报告.txt')
 }
-$completeSecurityReport = Join-Path $sourceRoot 'docs\微信企业微信多开助手_V1.0.4_完整安全审计报告.txt'
+$completeSecurityReport = Join-Path $sourceRoot ("docs\微信企业微信多开助手_V" + $Version + "_完整安全审计报告.txt")
 if (Test-Path -LiteralPath $completeSecurityReport) {
     Copy-Item -LiteralPath $completeSecurityReport -Destination (Join-Path $portableDirectory '完整安全审计与卡巴斯基告警调查报告.txt')
 }
-$architectureReport = Join-Path $sourceRoot 'docs\V1.0.4-企业微信三开与界面缩放验证报告.md'
+$architectureReport = Join-Path $sourceRoot ("docs\V" + $Version + "-设置状态与注册表冲突保护验证报告.md")
 if (Test-Path -LiteralPath $architectureReport) {
-    Copy-Item -LiteralPath $architectureReport -Destination (Join-Path $portableDirectory '架构评估与GitHub开源项目对比报告.md')
+    Copy-Item -LiteralPath $architectureReport -Destination (Join-Path $portableDirectory '设置状态与注册表冲突保护验证报告.md')
 }
-$uiRegressionReport = Join-Path $sourceRoot 'docs\V1.0.4-UI回归矩阵.md'
+$releaseNotes = Join-Path $sourceRoot ("docs\release-notes-v" + $Version + ".md")
+if (Test-Path -LiteralPath $releaseNotes) {
+    Copy-Item -LiteralPath $releaseNotes -Destination (Join-Path $portableDirectory '版本说明.md')
+}
+$uiRegressionReport = Join-Path $sourceRoot ("docs\V" + $Version + "-UI回归矩阵.md")
 if (Test-Path -LiteralPath $uiRegressionReport) {
-    Copy-Item -LiteralPath $uiRegressionReport -Destination (Join-Path $artifactRoot 'wechat-duokai-v1.0.4-ui-regression-matrix.md')
+    Copy-Item -LiteralPath $uiRegressionReport -Destination (Join-Path $artifactRoot ("wechat-duokai-v" + $Version + "-ui-regression-matrix.md"))
 }
 
 # Keep the two release-facing reports beside the binaries as standalone GitHub
 # Release assets as well as inside the portable package.
 if (Test-Path -LiteralPath $completeSecurityReport) {
-    Copy-Item -LiteralPath $completeSecurityReport -Destination (Join-Path $artifactRoot 'wechat-duokai-v1.0.4-security-audit.txt')
+    Copy-Item -LiteralPath $completeSecurityReport -Destination (Join-Path $artifactRoot ("wechat-duokai-v" + $Version + "-security-audit.txt"))
 }
 if (Test-Path -LiteralPath $architectureReport) {
-    Copy-Item -LiteralPath $architectureReport -Destination (Join-Path $artifactRoot 'wechat-duokai-v1.0.4-wecom-ui-validation-report.md')
+    Copy-Item -LiteralPath $architectureReport -Destination (Join-Path $artifactRoot ("wechat-duokai-v" + $Version + "-settings-registry-validation-report.md"))
 }
 
 $portableZip = Join-Path (Split-Path -Parent $portableDirectory) ("wechat_duokai-portable-" + $versionSuffix + '.zip')
@@ -158,9 +162,10 @@ $manifest = @(
     'UI=Uniform proportional scaling from 901x513 through maximized layouts; no outer scrollbars',
     'LaunchPolicy=Explicit confirmation after install',
     'UpgradePolicy=Prompt before closing exact-path running helper',
-    'UpdatePolicy=Check GitHub Releases metadata; browser download only',
+    'UpdatePolicy=Optional startup check or manual GitHub Releases metadata check; browser download only',
     'InstallerIdentity=Setup and cleanup are separate assemblies',
-    'WeComExtendedMode=Temporary registry policy plus exact known mutex release; original registry value restored',
+    'WeComExtendedMode=Temporary registry policy plus exact known mutex release; restore only if temporary state is still owned',
+    'CI=Fresh GitHub-hosted Windows build, tests, SHA-256 verification and SPDX 2.2 SBOM',
     ("Installer=installer/wechat_duokai-setup-" + $versionSuffix + '.exe'),
     ("Cleanup=installer/wechat_duokai-cleanup-" + $versionSuffix + '.exe'),
     ("Portable=portable/wechat_duokai-portable-" + $versionSuffix + '.zip'),
