@@ -1,0 +1,72 @@
+; --- Settings ---
+; Action on detect:	Report only
+; Scan objects:	All objects
+; Use iChecker:	No
+; Use iSwift:	No
+; Try disinfect:	No
+; Try delete:	No
+; Try delete container:	No
+; Scan archives:	No
+; Exclude by mask:	No
+; Include by mask:	No
+; Objects to scan:	
+; 	"D:\Acode\С��������\wechat_duokai\artifacts\ci-v106-final-35094920286\"	Enable = Yes	Recursive = Yes
+; ------------------
+2026-09-16 21:22:00	Scan_Objects$1021                          starting   1          
+2026-09-16 21:22:00	D:\Acode\小软件集合\wechat_duokai\artifacts\ci-v106-final-35094920286\.wechat-duokai-artifacts	ok
+2026-09-16 21:22:00	D:\Acode\小软件集合\wechat_duokai\artifacts\ci-v106-final-35094920286\release-manifest.txt	ok
+2026-09-16 21:22:00	D:\Acode\小软件集合\wechat_duokai\artifacts\ci-v106-final-35094920286\sbom-validation.json	ok
+2026-09-16 21:22:00	D:\Acode\小软件集合\wechat_duokai\artifacts\ci-v106-final-35094920286\wechat-duokai-v1.0.6-crash-recovery-storage-validation-report.md	ok
+2026-09-16 21:22:00	D:\Acode\小软件集合\wechat_duokai\artifacts\ci-v106-final-35094920286\wechat-duokai-v1.0.6-security-audit.txt	ok
+2026-09-16 21:22:00	D:\Acode\小软件集合\wechat_duokai\artifacts\ci-v106-final-35094920286\SHA256SUMS.txt	ok
+2026-09-16 21:22:00 	D:\Acode\小软件集合\wechat_duokai\artifacts\ci-v106-final-35094920286\portable\wechat_duokai-portable-v1.0.6.zip	archive	ZIP
+2026-09-16 21:22:00	D:\Acode\小软件集合\wechat_duokai\artifacts\ci-v106-final-35094920286\wechat-duokai-v1.0.6-ui-regression-matrix.md	ok
+2026-09-16 21:22:00	D:\Acode\小软件集合\wechat_duokai\artifacts\ci-v106-final-35094920286\portable\wechat_duokai-portable-v1.0.6.zip//.wechat-duokai-portable	ok
+2026-09-16 21:22:00	D:\Acode\小软件集合\wechat_duokai\artifacts\ci-v106-final-35094920286\portable\wechat_duokai-portable-v1.0.6\.wechat-duokai-portable	ok
+2026-09-16 21:22:00	D:\Acode\小软件集合\wechat_duokai\artifacts\ci-v106-final-35094920286\installer\wechat_duokai-cleanup-v1.0.6.exe	ok
+2026-09-16 21:22:00 	D:\Acode\小软件集合\wechat_duokai\artifacts\ci-v106-final-35094920286\installer\wechat_duokai-setup-v1.0.6.exe	archive	dotNetResources
+2026-09-16 21:22:00	D:\Acode\小软件集合\wechat_duokai\artifacts\ci-v106-final-35094920286\portable\wechat_duokai-portable-v1.0.6.zip//LICENSE.txt	ok
+2026-09-16 21:22:00	D:\Acode\小软件集合\wechat_duokai\artifacts\ci-v106-final-35094920286\portable\wechat_duokai-portable-v1.0.6\LICENSE.txt	ok
+2026-09-16 21:22:00	Scan_Objects$1021                          running    38         
+2026-09-16 21:22:00	D:\Acode\小软件集合\wechat_duokai\artifacts\ci-v106-final-35094920286\portable\wechat_duokai-portable-v1.0.6\README.md	ok
+2026-09-16 21:22:00	D:\Acode\小软件集合\wechat_duokai\artifacts\ci-v106-final-35094920286\portable\wechat_duokai-portable-v1.0.6.zip//README.md	ok
+2026-09-16 21:22:00	D:\Acode\小软件集合\wechat_duokai\artifacts\ci-v106-final-35094920286\portable\wechat_duokai-portable-v1.0.6\SECURITY-AUDIT.md	ok
+2026-09-16 21:22:00	D:\Acode\小软件集合\wechat_duokai\artifacts\ci-v106-final-35094920286\installer\wechat_duokai-setup-v1.0.6.exe//data0003.res	ok
+2026-09-16 21:22:00	D:\Acode\小软件集合\wechat_duokai\artifacts\ci-v106-final-35094920286\portable\wechat_duokai-portable-v1.0.6.zip//SECURITY-AUDIT.md	ok
+2026-09-16 21:22:00	D:\Acode\小软件集合\wechat_duokai\artifacts\ci-v106-final-35094920286\portable\wechat_duokai-portable-v1.0.6\WechatDuokai.Core.dll	ok
+2026-09-16 21:22:00	D:\Acode\小软件集合\wechat_duokai\artifacts\ci-v106-final-35094920286\portable\wechat_duokai-portable-v1.0.6\wechat_duokai-cleanup-v1.0.6.exe	ok
+2026-09-16 21:22:00	D:\Acode\小软件集合\wechat_duokai\artifacts\ci-v106-final-35094920286\portable\wechat_duokai-portable-v1.0.6.zip//wechat_duokai-cleanup-v1.0.6.exe	ok
+2026-09-16 21:22:00	D:\Acode\小软件集合\wechat_duokai\artifacts\ci-v106-final-35094920286\portable\wechat_duokai-portable-v1.0.6\wechat_duokai.exe.config	ok
+2026-09-16 21:22:00	D:\Acode\小软件集合\wechat_duokai\artifacts\ci-v106-final-35094920286\installer\wechat_duokai-setup-v1.0.6.exe//data0004.res	ok
+2026-09-16 21:22:00	D:\Acode\小软件集合\wechat_duokai\artifacts\ci-v106-final-35094920286\portable\wechat_duokai-portable-v1.0.6\使用说明.txt	ok
+2026-09-16 21:22:00	D:\Acode\小软件集合\wechat_duokai\artifacts\ci-v106-final-35094920286\portable\wechat_duokai-portable-v1.0.6\wechat_duokai.exe	ok
+2026-09-16 21:22:00	D:\Acode\小软件集合\wechat_duokai\artifacts\ci-v106-final-35094920286\portable\wechat_duokai-portable-v1.0.6\完整安全审计与卡巴斯基告警调查报告.txt	ok
+2026-09-16 21:22:00	D:\Acode\小软件集合\wechat_duokai\artifacts\ci-v106-final-35094920286\portable\wechat_duokai-portable-v1.0.6\安全说明-旧版EXE硬编码路径报告.txt	ok
+2026-09-16 21:22:00	D:\Acode\小软件集合\wechat_duokai\artifacts\ci-v106-final-35094920286\installer\wechat_duokai-setup-v1.0.6.exe//data0006.res	ok
+2026-09-16 21:22:00	D:\Acode\小软件集合\wechat_duokai\artifacts\ci-v106-final-35094920286\portable\wechat_duokai-portable-v1.0.6\版本说明.md	ok
+2026-09-16 21:22:00	D:\Acode\小软件集合\wechat_duokai\artifacts\ci-v106-final-35094920286\installer\wechat_duokai-setup-v1.0.6.exe	ok
+2026-09-16 21:22:00	D:\Acode\小软件集合\wechat_duokai\artifacts\ci-v106-final-35094920286\portable\wechat_duokai-portable-v1.0.6\断电恢复与独立数量验证报告.md	ok
+2026-09-16 21:22:00	D:\Acode\小软件集合\wechat_duokai\artifacts\ci-v106-final-35094920286\portable\wechat_duokai-portable-v1.0.6.zip//wechat_duokai.exe	ok
+2026-09-16 21:22:00	D:\Acode\小软件集合\wechat_duokai\artifacts\ci-v106-final-35094920286\portable\wechat_duokai-portable-v1.0.6.zip//wechat_duokai.exe.config	ok
+2026-09-16 21:22:00	D:\Acode\小软件集合\wechat_duokai\artifacts\ci-v106-final-35094920286\_manifest\spdx_2.2\manifest.spdx.json.sha256	ok
+2026-09-16 21:22:00	D:\Acode\小软件集合\wechat_duokai\artifacts\ci-v106-final-35094920286\_manifest\spdx_2.2\manifest.spdx.json	ok
+2026-09-16 21:22:00	D:\Acode\小软件集合\wechat_duokai\artifacts\ci-v106-final-35094920286\portable\wechat_duokai-portable-v1.0.6.zip//WechatDuokai.Core.dll	ok
+2026-09-16 21:22:00	D:\Acode\小软件集合\wechat_duokai\artifacts\ci-v106-final-35094920286\portable\wechat_duokai-portable-v1.0.6.zip//使用说明.txt	ok
+2026-09-16 21:22:00	D:\Acode\小软件集合\wechat_duokai\artifacts\ci-v106-final-35094920286\portable\wechat_duokai-portable-v1.0.6.zip//安全说明-旧版EXE硬编码路径报告.txt	ok
+2026-09-16 21:22:00	D:\Acode\小软件集合\wechat_duokai\artifacts\ci-v106-final-35094920286\portable\wechat_duokai-portable-v1.0.6.zip//完整安全审计与卡巴斯基告警调查报告.txt	ok
+2026-09-16 21:22:00	D:\Acode\小软件集合\wechat_duokai\artifacts\ci-v106-final-35094920286\portable\wechat_duokai-portable-v1.0.6.zip//断电恢复与独立数量验证报告.md	ok
+2026-09-16 21:22:00	D:\Acode\小软件集合\wechat_duokai\artifacts\ci-v106-final-35094920286\portable\wechat_duokai-portable-v1.0.6.zip//版本说明.md	ok
+2026-09-16 21:22:00	D:\Acode\小软件集合\wechat_duokai\artifacts\ci-v106-final-35094920286\portable\wechat_duokai-portable-v1.0.6.zip	ok
+2026-09-16 21:22:16	Scan_Objects$1021                          completed             
+;  --- Statistics ---
+; Time Start:	2026-09-16 21:22:00
+; Time Finish:	2026-09-16 21:22:16
+; Processed objects:	41
+; Total OK:	41
+; Total detected:	0
+; Suspicions:	0
+; Total skipped:	0
+; Password protected:	0
+; Corrupted:	0
+; Errors:	0
+;  ------------------
