@@ -5,8 +5,8 @@ on:
     branches:
       - main
       - "v*"
-    tags:
-      - "v*"
+    paths-ignore:
+      - "docs/kaspersky-scan-*.txt"
   pull_request:
   workflow_dispatch:
 
