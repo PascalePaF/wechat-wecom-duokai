@@ -42,7 +42,7 @@ namespace WechatDuokai.Tests
                 BootstrapWpf(typeof(MainWindow), "Light");
                 Run("Null application has zero instances", () =>
                     Assert(new InstanceManager().GetInstanceCount(null) == 0, "Expected zero."));
-                Run("Independent target count caches survive a restart", TestPreferenceRoundTrip);
+                Run("Shared target count migrates V1.0.6 preferences and survives a restart", TestPreferenceRoundTrip);
                 Run("Footer counts and settings navigation stay live and visible", TestFooterCountsAndSettings);
                 Run("Renamed executables cannot impersonate an official client", TestClientExecutableValidation);
                 Run("Process environment groups roots and supports deterministic launch tests", TestProcessEnvironmentAbstraction);
@@ -51,7 +51,9 @@ namespace WechatDuokai.Tests
                 Run("Diagnostics stay inside the selected local application directory", TestLocalDiagnostics);
                 Run("All persistent runtime data stays below the application directory", TestApplicationStorageLayout);
                 Run("Legacy AppData settings migrate into the application directory", TestLegacyStorageMigration);
-                Run("GitHub release metadata never performs an in-app update", TestReleaseMetadataParsing);
+                Run("GitHub release metadata exposes only verified one-click update assets", TestReleaseMetadataParsing);
+                Run("Update mode detection accepts only marked install and portable roots", TestUpdateModeDetection);
+                Run("Transactional update preserves data and rolls back interrupted replacement", TestUpdateTransaction);
                 Run("Cleanup refuses drive roots", () =>
                     Assert(!InstallerEngine.ValidateSourceRoot(Path.GetPathRoot(Environment.SystemDirectory)),
                         "A drive root must never be accepted as a source directory."));
@@ -135,6 +137,7 @@ namespace WechatDuokai.Tests
             Type windowType;
             var showInstallerCompletion = false;
             var showMainSettings = false;
+            bool? previousAutoCheck = null;
             switch (windowName.ToLowerInvariant())
             {
                 case "main": windowType = typeof(MainWindow); break;
@@ -152,6 +155,11 @@ namespace WechatDuokai.Tests
             }
 
             BootstrapWpf(windowType, themeName);
+            if (windowType == typeof(MainWindow))
+            {
+                previousAutoCheck = UserPreferences.LoadAutoCheckForUpdates();
+                UserPreferences.SaveAutoCheckForUpdates(false);
+            }
             var window = (Window)Activator.CreateInstance(windowType);
             try
             {
@@ -174,10 +182,11 @@ namespace WechatDuokai.Tests
                 window.Dispatcher.Invoke(() => { }, DispatcherPriority.ContextIdle);
                 Thread.Sleep(250);
                 window.UpdateLayout();
-                var renderedWidth = Math.Max(1, (int)Math.Ceiling(window.ActualWidth));
-                var renderedHeight = Math.Max(1, (int)Math.Ceiling(window.ActualHeight));
+                var visual = window.Content as FrameworkElement ?? window;
+                var renderedWidth = Math.Max(1, (int)Math.Ceiling(visual.ActualWidth));
+                var renderedHeight = Math.Max(1, (int)Math.Ceiling(visual.ActualHeight));
                 var bitmap = new RenderTargetBitmap(renderedWidth, renderedHeight, 96, 96, PixelFormats.Pbgra32);
-                bitmap.Render(window);
+                bitmap.Render(visual);
                 var encoder = new PngBitmapEncoder();
                 encoder.Frames.Add(BitmapFrame.Create(bitmap));
                 using (var output = new FileStream(outputPath, FileMode.Create, FileAccess.Write, FileShare.None))
@@ -188,6 +197,10 @@ namespace WechatDuokai.Tests
             finally
             {
                 window.Close();
+                if (previousAutoCheck.HasValue)
+                {
+                    UserPreferences.SaveAutoCheckForUpdates(previousAutoCheck.Value);
+                }
                 Application.Current.Shutdown();
             }
             return 0;
@@ -204,12 +217,21 @@ namespace WechatDuokai.Tests
                     "Missing WeCom target should default to 2.");
                 Assert(UserPreferences.LoadAutoCheckForUpdates(testDirectory),
                     "Missing update preference should preserve the safe historical default.");
-                UserPreferences.SaveTargetCount(testDirectory, AppKind.WeChat, 7);
-                UserPreferences.SaveTargetCount(testDirectory, AppKind.WeCom, 4);
+
+                Directory.CreateDirectory(testDirectory);
+                File.WriteAllText(Path.Combine(testDirectory, UserPreferences.DataMarkerName),
+                    UserPreferences.DataMarkerValue, Encoding.UTF8);
+                File.WriteAllText(Path.Combine(testDirectory, "settings.ini"),
+                    "WeChatTargetInstanceCount=7\r\nWeComTargetInstanceCount=4\r\n", Encoding.UTF8);
                 Assert(UserPreferences.LoadTargetCount(testDirectory, AppKind.WeChat) == 7,
-                    "Saved WeChat target count was not loaded.");
-                Assert(UserPreferences.LoadTargetCount(testDirectory, AppKind.WeCom) == 4,
-                    "Saved WeCom target count was not loaded independently.");
+                    "The V1.0.6 WeChat target should take migration priority.");
+                Assert(UserPreferences.LoadTargetCount(testDirectory, AppKind.WeCom) == 7,
+                    "Both clients must use the same migrated target count.");
+
+                UserPreferences.SaveTargetCount(testDirectory, 5);
+                Assert(UserPreferences.LoadTargetCount(testDirectory, AppKind.WeChat) == 5 &&
+                       UserPreferences.LoadTargetCount(testDirectory, AppKind.WeCom) == 5,
+                    "The shared target count was not preserved for both clients.");
                 UserPreferences.SaveAutoCheckForUpdates(testDirectory, false);
                 Assert(!UserPreferences.LoadAutoCheckForUpdates(testDirectory),
                     "Automatic version-check preference was not preserved.");
@@ -220,9 +242,10 @@ namespace WechatDuokai.Tests
                 Assert(UserPreferences.HasValidMarker(testDirectory), "User-data marker is invalid.");
 
                 var settings = File.ReadAllText(Path.Combine(testDirectory, "settings.ini"));
-                Assert(settings.Contains("WeChatTargetInstanceCount=7") &&
-                       settings.Contains("WeComTargetInstanceCount=4"),
-                    "Separate target values are missing from settings.ini.");
+                Assert(settings.Contains("TargetInstanceCount=5") &&
+                       !settings.Contains("WeChatTargetInstanceCount") &&
+                       !settings.Contains("WeComTargetInstanceCount"),
+                    "V1.0.6's separate target keys were not canonicalized to one shared value.");
             }
             finally
             {
@@ -248,11 +271,14 @@ namespace WechatDuokai.Tests
 
                 var weChatCount = (TextBlock)window.FindName("FooterWeChatCount");
                 var weComCount = (TextBlock)window.FindName("FooterWeComCount");
+                var footerCountsPanel = (FrameworkElement)window.FindName("FooterCountsPanel");
                 Assert(weChatCount.Text == "当前微信窗口 2 个", "WeChat footer count is not live.");
                 Assert(weComCount.Text == "当前企业微信窗口 3 个", "WeCom footer count is not live.");
                 Assert(weChatCount.TextAlignment == TextAlignment.Left &&
                        weComCount.TextAlignment == TextAlignment.Left,
                     "Footer counts must remain left-aligned on two rows.");
+                Assert(footerCountsPanel != null && footerCountsPanel.MinWidth >= 112,
+                    "Footer count labels must reserve enough width in every view.");
 
                 var settingsButton = (Button)window.FindName("SettingsButton");
                 Assert(Grid.GetColumn(settingsButton) == 5,
@@ -262,17 +288,22 @@ namespace WechatDuokai.Tests
                        ((FrameworkElement)window.FindName("WorkspaceGrid")).Visibility == Visibility.Collapsed,
                     "Settings did not replace the main workspace.");
                 Assert(window.FindName("AutoUpdateCheckBox") != null &&
+                       window.FindName("CheckUpdateButton") != null &&
+                       window.FindName("UpdateNowButton") != null &&
+                       window.FindName("UpdateProgressBar") != null &&
                        window.FindName("SystemThemeRadio") != null &&
                        window.FindName("LightThemeRadio") != null &&
                        window.FindName("DarkThemeRadio") != null,
-                    "Settings must expose update and three-way theme preferences.");
-                var weChatTarget = (TextBox)window.FindName("WeChatTargetCountBox");
-                var weComTarget = (TextBox)window.FindName("WeComTargetCountBox");
-                Assert(weChatTarget != null && weComTarget != null &&
-                       !ReferenceEquals(weChatTarget, weComTarget) &&
-                       Convert.ToString(weChatTarget.Tag) == "WeChat" &&
-                       Convert.ToString(weComTarget.Tag) == "WeCom",
-                    "The two clients must expose independent target controls.");
+                    "Settings must expose one-click update and three-way theme preferences.");
+                Assert(((FrameworkElement)window.FindName("UpdateNowButton")).Visibility == Visibility.Collapsed,
+                    "One-click update must stay hidden until trusted update metadata is available.");
+                var target = (TextBox)window.FindName("TargetCountBox");
+                Assert(target != null &&
+                       window.FindName("WeChatTargetCountBox") == null &&
+                       window.FindName("WeComTargetCountBox") == null &&
+                       window.FindName("DecreaseButton") != null &&
+                       window.FindName("IncreaseButton") != null,
+                    "The two clients must share one target-count control.");
             }
             finally
             {
@@ -735,7 +766,7 @@ namespace WechatDuokai.Tests
                     "Empty marked legacy directory was not removed after successful migration.");
                 Assert(UserPreferences.LoadTargetCount(destination, AppKind.WeChat) == 6 &&
                        UserPreferences.LoadTargetCount(destination, AppKind.WeCom) == 6,
-                    "Legacy single target was not used as both independent initial values.");
+                    "Legacy single target was not preserved as the shared initial value.");
             }
             finally
             {
@@ -745,14 +776,193 @@ namespace WechatDuokai.Tests
 
         private static void TestReleaseMetadataParsing()
         {
-            var newer = ReleaseUpdateChecker.ParseResponse("{\"tag_name\":\"v1.1.0\"}", "1.0.6");
-            Assert(newer.CheckSucceeded && newer.IsUpdateAvailable && newer.LatestVersion == "1.1.0",
-                "Newer release metadata was not recognized.");
-            var same = ReleaseUpdateChecker.ParseResponse("{\"tag_name\":\"v1.0.6\"}", "1.0.6");
+            var setupHash = new string('a', 64);
+            var sumsHash = new string('b', 64);
+            var newer = ReleaseUpdateChecker.ParseResponse(
+                BuildReleaseJson("1.0.8", setupHash, sumsHash, null), "1.0.7");
+            Assert(newer.CheckSucceeded && newer.IsUpdateAvailable && newer.LatestVersion == "1.0.8" &&
+                   newer.CanInstallUpdate && newer.SetupAsset.Sha256 == setupHash &&
+                   newer.ChecksumAsset.Sha256 == sumsHash,
+                "Newer release and its update assets were not recognized.");
+
+            var malicious = ReleaseUpdateChecker.ParseResponse(
+                BuildReleaseJson("1.0.8", setupHash, sumsHash,
+                    "https://example.com/PascalePaF/wechat-wecom-duokai/releases/download/v1.0.8/" +
+                    "wechat_duokai-setup-v1.0.8.exe"), "1.0.7");
+            Assert(malicious.CheckSucceeded && malicious.IsUpdateAvailable && !malicious.CanInstallUpdate &&
+                   !string.IsNullOrWhiteSpace(malicious.OneClickUpdateError),
+                "A non-GitHub update asset was accepted for execution.");
+
+            var nestedPath = ReleaseUpdateChecker.ParseResponse(
+                BuildReleaseJson("1.0.8", setupHash, sumsHash,
+                    "https://github.com/PascalePaF/wechat-wecom-duokai/releases/download/v1.0.8/extra/" +
+                    "wechat_duokai-setup-v1.0.8.exe"), "1.0.7");
+            Assert(!nestedPath.CanInstallUpdate,
+                "A non-canonical GitHub Release asset path was accepted for execution.");
+
+            var duplicateAsset = ReleaseUpdateChecker.ParseResponse(
+                BuildReleaseJson("1.0.8", setupHash, sumsHash, null, true), "1.0.7");
+            Assert(!duplicateAsset.CanInstallUpdate &&
+                   duplicateAsset.OneClickUpdateError.IndexOf("重名", StringComparison.Ordinal) >= 0,
+                "Ambiguous duplicate GitHub Release assets were accepted.");
+
+            var same = ReleaseUpdateChecker.ParseResponse(
+                BuildReleaseJson("1.0.7", setupHash, sumsHash, null), "1.0.7");
             Assert(same.CheckSucceeded && !same.IsUpdateAvailable,
                 "Current version must not be presented as an update.");
+            var parsedHash = ApplicationUpdateService.ParseChecksum(
+                setupHash + "  installer/wechat_duokai-setup-v1.0.8.exe\r\n" +
+                sumsHash + "  portable/other.zip", "wechat_duokai-setup-v1.0.8.exe");
+            Assert(parsedHash == setupHash, "The setup checksum was not selected exactly.");
+            var duplicateRejected = false;
+            try
+            {
+                ApplicationUpdateService.ParseChecksum(
+                    setupHash + "  installer/wechat_duokai-setup-v1.0.8.exe\n" +
+                    sumsHash + "  wechat_duokai-setup-v1.0.8.exe",
+                    "wechat_duokai-setup-v1.0.8.exe");
+            }
+            catch (InvalidDataException)
+            {
+                duplicateRejected = true;
+            }
+            Assert(duplicateRejected, "Ambiguous duplicate setup hashes were accepted.");
             Assert(ReleaseUpdateChecker.ReleasesUrl.StartsWith("https://github.com/", StringComparison.Ordinal),
                 "Release action must remain an HTTPS GitHub page.");
+        }
+
+        private static string BuildReleaseJson(string version, string setupHash,
+            string sumsHash, string setupUrlOverride, bool duplicateSetup = false)
+        {
+            var setupName = "wechat_duokai-setup-v" + version + ".exe";
+            var setupUrl = setupUrlOverride ??
+                           "https://github.com/PascalePaF/wechat-wecom-duokai/releases/download/v" +
+                           version + "/" + setupName;
+            var setupAsset = "{\"name\":\"" + setupName + "\",\"state\":\"uploaded\"," +
+                             "\"browser_download_url\":\"" + setupUrl + "\",\"size\":481792," +
+                             "\"digest\":\"sha256:" + setupHash + "\"}";
+            return "{\"tag_name\":\"v" + version + "\",\"html_url\":" +
+                   "\"https://github.com/PascalePaF/wechat-wecom-duokai/releases/tag/v" + version + "\"," +
+                   "\"draft\":false,\"prerelease\":false,\"assets\":[" +
+                   setupAsset + "," + (duplicateSetup ? setupAsset + "," : string.Empty) +
+                   "{\"name\":\"SHA256SUMS.txt\",\"state\":\"uploaded\"," +
+                   "\"browser_download_url\":" +
+                   "\"https://github.com/PascalePaF/wechat-wecom-duokai/releases/download/v" +
+                   version + "/SHA256SUMS.txt\",\"size\":580," +
+                   "\"digest\":\"sha256:" + sumsHash + "\"}]}";
+        }
+
+        private static void TestUpdateModeDetection()
+        {
+            var root = Path.Combine(Path.GetTempPath(),
+                "wechat-duokai-update-mode-" + Guid.NewGuid().ToString("N"));
+            try
+            {
+                Directory.CreateDirectory(root);
+                File.WriteAllText(Path.Combine(root, "wechat_duokai.exe"), "placeholder");
+                Assert(ApplicationUpdateService.DetectMode(root) == ApplicationInstallMode.Unknown,
+                    "An unmarked directory was accepted for automatic replacement.");
+
+                File.WriteAllText(Path.Combine(root, ApplicationUpdateService.InstallMarkerName),
+                    ApplicationUpdateService.InstallMarkerValue, Encoding.UTF8);
+                Assert(ApplicationUpdateService.DetectMode(root) == ApplicationInstallMode.Installed,
+                    "A marked installation was not recognized.");
+
+                File.Delete(Path.Combine(root, ApplicationUpdateService.InstallMarkerName));
+                File.WriteAllText(Path.Combine(root, ApplicationUpdateService.PortableMarkerName),
+                    ApplicationUpdateService.PortableMarkerValue, Encoding.UTF8);
+                Assert(ApplicationUpdateService.DetectMode(root) == ApplicationInstallMode.Portable,
+                    "A marked portable directory was not recognized.");
+
+                File.WriteAllText(Path.Combine(root, ApplicationUpdateService.InstallMarkerName),
+                    ApplicationUpdateService.InstallMarkerValue, Encoding.UTF8);
+                Assert(ApplicationUpdateService.DetectMode(root) == ApplicationInstallMode.Unknown,
+                    "An ambiguous directory with two identities was accepted.");
+            }
+            finally
+            {
+                if (Directory.Exists(root)) Directory.Delete(root, true);
+            }
+        }
+
+        private static void TestUpdateTransaction()
+        {
+            var root = Path.Combine(Path.GetTempPath(),
+                "wechat-duokai-update-transaction-" + Guid.NewGuid().ToString("N"));
+            var portableRoot = root + "-portable";
+            var data = Path.Combine(root, "data");
+            var originalFiles = new[]
+            {
+                "wechat_duokai.exe",
+                "wechat_duokai.exe.config",
+                "WechatDuokai.Core.dll",
+                "LICENSE.txt",
+                "wechat_duokai-uninstall.exe"
+            };
+            try
+            {
+                Directory.CreateDirectory(data);
+                File.WriteAllText(Path.Combine(data, ApplicationStorage.DataMarkerName),
+                    ApplicationStorage.DataMarkerValue, Encoding.UTF8);
+                File.WriteAllText(Path.Combine(data, "settings.ini"), "sentinel-settings", Encoding.UTF8);
+                foreach (var name in originalFiles)
+                {
+                    File.WriteAllText(Path.Combine(root, name), "old-" + name, Encoding.UTF8);
+                }
+
+                var interrupted = false;
+                try
+                {
+                    InstallerEngine.ApplyPayloadTransactionForTests(root, false, 2);
+                }
+                catch (IOException)
+                {
+                    interrupted = true;
+                }
+                Assert(interrupted, "The simulated interrupted update did not fail.");
+                foreach (var name in originalFiles)
+                {
+                    Assert(File.ReadAllText(Path.Combine(root, name), Encoding.UTF8) == "old-" + name,
+                        "Rollback did not restore " + name + ".");
+                }
+                Assert(File.ReadAllText(Path.Combine(data, "settings.ini"), Encoding.UTF8) ==
+                       "sentinel-settings", "Rollback changed persistent user data.");
+
+                InstallerEngine.ApplyPayloadTransactionForTests(root, false, 0);
+                Assert(FileVersionInfo.GetVersionInfo(Path.Combine(root, "wechat_duokai.exe"))
+                           .FileVersion.StartsWith("1.0.7", StringComparison.Ordinal),
+                    "Successful transaction did not install the V1.0.7 application payload.");
+                Assert(File.ReadAllText(Path.Combine(data, "settings.ini"), Encoding.UTF8) ==
+                       "sentinel-settings", "Successful update changed persistent user data.");
+
+                var portableData = Path.Combine(portableRoot, "data");
+                Directory.CreateDirectory(portableData);
+                File.WriteAllText(Path.Combine(portableData, ApplicationStorage.DataMarkerName),
+                    ApplicationStorage.DataMarkerValue, Encoding.UTF8);
+                File.WriteAllText(Path.Combine(portableData, "settings.ini"),
+                    "portable-sentinel-settings", Encoding.UTF8);
+                File.WriteAllText(Path.Combine(portableRoot, "wechat_duokai.exe"),
+                    "old-portable-application", Encoding.UTF8);
+                File.WriteAllText(Path.Combine(portableRoot, "README.md"),
+                    "old-portable-readme", Encoding.UTF8);
+
+                InstallerEngine.ApplyPayloadTransactionForTests(portableRoot, true, 0);
+                Assert(FileVersionInfo.GetVersionInfo(Path.Combine(portableRoot, "wechat_duokai.exe"))
+                           .FileVersion.StartsWith("1.0.7", StringComparison.Ordinal),
+                    "Portable transaction did not install the V1.0.7 application payload.");
+                Assert(File.Exists(Path.Combine(portableRoot, "wechat_duokai-cleanup-v1.0.7.exe")) &&
+                       File.Exists(Path.Combine(portableRoot, "README.md")) &&
+                       File.Exists(Path.Combine(portableRoot, "版本说明.md")) &&
+                       File.Exists(Path.Combine(portableRoot, "一键更新安全验证报告.md")),
+                    "Portable transaction did not install its cleanup tool and release documents.");
+                Assert(File.ReadAllText(Path.Combine(portableData, "settings.ini"), Encoding.UTF8) ==
+                       "portable-sentinel-settings", "Portable update changed persistent user data.");
+            }
+            finally
+            {
+                if (Directory.Exists(root)) Directory.Delete(root, true);
+                if (Directory.Exists(portableRoot)) Directory.Delete(portableRoot, true);
+            }
         }
 
         private static void TestExplicitLaunchPolicy()
@@ -771,14 +981,14 @@ namespace WechatDuokai.Tests
             AssertEmbeddedEquals("Payload.WechatDuokai.Core.dll",
                 Path.Combine(root, "duokai", "bin", "Release", "net48", "WechatDuokai.Core.dll"));
             AssertEmbeddedEquals("Payload.wechat_duokai-cleanup.exe",
-                Path.Combine(root, "cleanup", "bin", "Release", "net48", "wechat_duokai-cleanup-v1.0.6.exe"));
+                Path.Combine(root, "cleanup", "bin", "Release", "net48", "wechat_duokai-cleanup-v1.0.7.exe"));
         }
 
         private static void TestSeparateInstallerIdentities()
         {
             var root = FindProjectRoot();
-            var setup = Path.Combine(root, "installer", "bin", "Release", "net48", "wechat_duokai-setup-v1.0.6.exe");
-            var cleanup = Path.Combine(root, "cleanup", "bin", "Release", "net48", "wechat_duokai-cleanup-v1.0.6.exe");
+            var setup = Path.Combine(root, "installer", "bin", "Release", "net48", "wechat_duokai-setup-v1.0.7.exe");
+            var cleanup = Path.Combine(root, "cleanup", "bin", "Release", "net48", "wechat_duokai-cleanup-v1.0.7.exe");
             Assert(File.Exists(setup) && File.Exists(cleanup), "Setup or cleanup output is missing.");
             Assert(!File.ReadAllBytes(setup).SequenceEqual(File.ReadAllBytes(cleanup)),
                 "Setup and cleanup must not be byte-identical copies.");
@@ -791,7 +1001,7 @@ namespace WechatDuokai.Tests
         private static Type LoadCleanupWindowType()
         {
             var path = Path.Combine(FindProjectRoot(), "cleanup", "bin", "Release", "net48",
-                "wechat_duokai-cleanup-v1.0.6.exe");
+                "wechat_duokai-cleanup-v1.0.7.exe");
             var assembly = Assembly.LoadFrom(path);
             return assembly.GetType("WechatDuokai.Installer.UninstallWindow", true);
         }

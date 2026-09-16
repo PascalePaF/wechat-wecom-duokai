@@ -4,7 +4,7 @@
     <TargetFramework>net48</TargetFramework>
     <UseWPF>true</UseWPF>
     <UseWindowsForms>true</UseWindowsForms>
-    <AssemblyName>wechat_duokai-setup-v1.0.6</AssemblyName>
+    <AssemblyName>wechat_duokai-setup-v1.0.7</AssemblyName>
     <RootNamespace>WechatDuokai.Installer</RootNamespace>
     <StartupObject>WechatDuokai.Installer.Program</StartupObject>
     <PlatformTarget>x64</PlatformTarget>
@@ -13,9 +13,9 @@
     <Deterministic>true</Deterministic>
     <ApplicationIcon>..\duokai\favicon.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
-    <AssemblyVersion>1.0.6.0</AssemblyVersion>
-    <FileVersion>1.0.6.0</FileVersion>
-    <Version>1.0.6</Version>
+    <AssemblyVersion>1.0.7.0</AssemblyVersion>
+    <FileVersion>1.0.7.0</FileVersion>
+    <Version>1.0.7</Version>
     <Company>wechat_duokai contributors</Company>
     <Product>微信 · 企业微信多开助手安装程序</Product>
     <Description>微信与企业微信多开助手安装程序</Description>
@@ -24,6 +24,7 @@
   <ItemGroup>
     <Compile Remove="UninstallWindow.xaml.cs" />
     <Page Remove="UninstallWindow.xaml" />
+    <Compile Include="..\shared\UpdateProtocol.cs" Link="Update\UpdateProtocol.cs" />
     <Compile Include="..\shared\WpfPresentation.cs" Link="Presentation\WpfPresentation.cs" />
     <Page Include="..\shared\ThemeResources.xaml" Link="Themes\ThemeResources.xaml" />
   </ItemGroup>
@@ -37,11 +38,29 @@
     <EmbeddedResource Include="..\duokai\bin\Release\net48\WechatDuokai.Core.dll">
       <LogicalName>Payload.WechatDuokai.Core.dll</LogicalName>
     </EmbeddedResource>
-    <EmbeddedResource Include="..\cleanup\bin\$(Configuration)\net48\wechat_duokai-cleanup-v1.0.6.exe">
+    <EmbeddedResource Include="..\cleanup\bin\$(Configuration)\net48\wechat_duokai-cleanup-v1.0.7.exe">
       <LogicalName>Payload.wechat_duokai-cleanup.exe</LogicalName>
     </EmbeddedResource>
     <EmbeddedResource Include="..\LICENSE">
       <LogicalName>Payload.LICENSE.txt</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="..\README.md">
+      <LogicalName>Payload.README.md</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="..\SECURITY-AUDIT.md">
+      <LogicalName>Payload.SECURITY-AUDIT.md</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="..\packaging\PORTABLE-README.txt">
+      <LogicalName>Payload.PORTABLE-README.txt</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="..\docs\release-notes-v1.0.7.md">
+      <LogicalName>Payload.release-notes.md</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="..\docs\微信企业微信多开助手_V1.0.7_完整安全审计报告.txt">
+      <LogicalName>Payload.security-report.txt</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="..\docs\V1.0.7-一键更新安全验证报告.md">
+      <LogicalName>Payload.update-validation.md</LogicalName>
     </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>

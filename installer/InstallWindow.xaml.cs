@@ -1,9 +1,11 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
 using WechatDuokai.Presentation;
+using WechatDuokai.Update;
 using WinForms = System.Windows.Forms;
 
 namespace WechatDuokai.Installer
@@ -13,6 +15,9 @@ namespace WechatDuokai.Installer
         private string _selectedInstallDirectory;
         private InstallResult _installedResult;
         private bool _installCompleted;
+        private readonly UpdatePlan _updatePlan;
+        private readonly string _updatePlanPath;
+        private bool _autoUpdateRunning;
 
         public InstallWindow()
         {
@@ -20,6 +25,18 @@ namespace WechatDuokai.Installer
             _selectedInstallDirectory = InstallerEngine.SuggestedInstallDirectory;
             InstallPathText.Text = _selectedInstallDirectory;
             UpdateThemeButton();
+        }
+
+        internal InstallWindow(UpdatePlan updatePlan, string updatePlanPath)
+        {
+            _updatePlan = updatePlan ?? throw new ArgumentNullException(nameof(updatePlan));
+            _updatePlanPath = Path.GetFullPath(updatePlanPath);
+            InitializeComponent();
+            _selectedInstallDirectory = _updatePlan.TargetDirectory;
+            InstallPathText.Text = _selectedInstallDirectory;
+            ConfigureAutoUpdatePresentation();
+            UpdateThemeButton();
+            Loaded += async (sender, args) => await BeginAutoUpdateAsync();
         }
 
         private void Window_SourceInitialized(object sender, EventArgs e)
@@ -59,6 +76,11 @@ namespace WechatDuokai.Installer
 
         private void PrimaryButton_Click(object sender, RoutedEventArgs e)
         {
+            if (_updatePlan != null)
+            {
+                return;
+            }
+
             if (_installCompleted)
             {
                 if (InstallFlowPolicy.CanLaunch(_installCompleted, true))
@@ -152,6 +174,64 @@ namespace WechatDuokai.Installer
             PrimaryButton.Focus();
         }
 
+        private void ConfigureAutoUpdatePresentation()
+        {
+            Title = "微信 · 企业微信多开助手 V" + _updatePlan.TargetVersion + " 更新程序";
+            HeaderGlyph.Text = "更";
+            HeaderTitle.Text = "更新多开助手";
+            HeaderSubtitle.Text = "校验正式 Release · 安全覆盖 · 保留本地数据";
+            VersionText.Text = "V" + _updatePlan.TargetVersion;
+            LocationTitle.Text = "当前程序位置";
+            LocationSubtitle.Text = "只更新经过标记验证的安装版或绿色版目录";
+            LocationHint.Text = "更新前会再次验证安装包 SHA-256；失败时自动恢复旧程序文件，data 文件夹不会被覆盖。";
+            System.Windows.Controls.Grid.SetColumnSpan(InstallPathText, 2);
+            BrowseButton.Visibility = Visibility.Collapsed;
+            DesktopShortcutCheckBox.Visibility = Visibility.Collapsed;
+            CompletionTitle.Text = "更新完成，正在重新启动";
+            CompletionSubtitle.Text = "设置、主题、诊断和恢复日志均已保留。";
+            PrimaryButton.Visibility = Visibility.Collapsed;
+            SecondaryButton.Content = "取消";
+            SetStatus("准备验证更新计划", "AccentBrush");
+        }
+
+        private async Task BeginAutoUpdateAsync()
+        {
+            if (_autoUpdateRunning)
+            {
+                return;
+            }
+
+            _autoUpdateRunning = true;
+            SetInteractiveState(false);
+            PrimaryButton.Visibility = Visibility.Collapsed;
+            SetStatus("正在等待旧版本安全退出…", "AccentBrush");
+            Mouse.OverrideCursor = Cursors.Wait;
+            await Task.Delay(120);
+            try
+            {
+                _installedResult = InstallerEngine.ApplyVerifiedUpdate(_updatePlan, _updatePlanPath);
+                _installCompleted = true;
+                CompletionPanel.Visibility = Visibility.Visible;
+                SetStatus("更新完成 · 即将重新启动 V" + _updatePlan.TargetVersion, "SuccessBrush");
+                await Task.Delay(650);
+                LaunchInstalledApplication();
+            }
+            catch (Exception ex)
+            {
+                SetStatus("更新未完成 · 已保留或恢复原版本", "DangerBrush");
+                MessageBox.Show("一键更新没有完成。程序已停止覆盖，并尽可能恢复原版本。\r\n\r\n" +
+                                ex.Message + "\r\n\r\n如仍有问题，可从 GitHub Release 手动下载安装。",
+                    "更新失败", MessageBoxButton.OK, MessageBoxImage.Error);
+                SecondaryButton.Content = "关闭";
+                SecondaryButton.IsEnabled = true;
+            }
+            finally
+            {
+                _autoUpdateRunning = false;
+                Mouse.OverrideCursor = null;
+            }
+        }
+
         private void LaunchInstalledApplication()
         {
             try
@@ -171,14 +251,19 @@ namespace WechatDuokai.Installer
             }
             catch (Exception ex)
             {
-                SetStatus("应用未能启动；安装内容仍然保留", "WarningBrush");
-                MessageBox.Show("安装已经完成，但启动应用失败：\r\n" + ex.Message,
+                SetStatus("应用未能启动；已写入的程序仍然保留", "WarningBrush");
+                MessageBox.Show((_updatePlan == null ? "安装" : "更新") +
+                                "已经完成，但启动应用失败：\r\n" + ex.Message,
                     "启动提示", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
         }
 
         private void SecondaryButton_Click(object sender, RoutedEventArgs e)
         {
+            if (_autoUpdateRunning)
+            {
+                return;
+            }
             Close();
         }
 

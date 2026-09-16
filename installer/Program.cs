@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using System.Windows;
 using WechatDuokai.Presentation;
+using WechatDuokai.Update;
 
 namespace WechatDuokai.Installer
 {
@@ -16,6 +17,22 @@ namespace WechatDuokai.Installer
                 Source = new Uri("Themes/ThemeResources.xaml", UriKind.Relative)
             });
             ThemeManager.Initialize(ParseForcedTheme(args));
+            if (args != null && args.Length >= 2 &&
+                string.Equals(args[0], "/auto-update", StringComparison.OrdinalIgnoreCase))
+            {
+                try
+                {
+                    var plan = UpdatePlan.Read(args[1]);
+                    return application.Run(new InstallWindow(plan, args[1]));
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show("更新计划未通过验证，未修改任何程序文件。\r\n\r\n" + ex.Message,
+                        "无法开始更新", MessageBoxButton.OK, MessageBoxImage.Error);
+                    return 2;
+                }
+            }
+
             return application.Run(new InstallWindow());
         }
 

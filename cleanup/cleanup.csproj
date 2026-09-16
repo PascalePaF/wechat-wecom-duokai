@@ -4,7 +4,7 @@
     <TargetFramework>net48</TargetFramework>
     <UseWPF>true</UseWPF>
     <UseWindowsForms>true</UseWindowsForms>
-    <AssemblyName>wechat_duokai-cleanup-v1.0.6</AssemblyName>
+    <AssemblyName>wechat_duokai-cleanup-v1.0.7</AssemblyName>
     <RootNamespace>WechatDuokai.Cleanup</RootNamespace>
     <StartupObject>WechatDuokai.Cleanup.Program</StartupObject>
     <PlatformTarget>x64</PlatformTarget>
@@ -13,9 +13,9 @@
     <Deterministic>true</Deterministic>
     <ApplicationIcon>..\duokai\favicon.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
-    <AssemblyVersion>1.0.6.0</AssemblyVersion>
-    <FileVersion>1.0.6.0</FileVersion>
-    <Version>1.0.6</Version>
+    <AssemblyVersion>1.0.7.0</AssemblyVersion>
+    <FileVersion>1.0.7.0</FileVersion>
+    <Version>1.0.7</Version>
     <Company>wechat_duokai contributors</Company>
     <Product>微信 · 企业微信多开助手清理器</Product>
     <Description>独立清理微信与企业微信多开助手、发布包和可选源码</Description>
@@ -24,6 +24,7 @@
   <ItemGroup>
     <Compile Include="..\installer\InstallerEngine.cs" Link="InstallerEngine.cs" />
     <Compile Include="..\installer\UninstallWindow.xaml.cs" Link="UninstallWindow.xaml.cs" />
+    <Compile Include="..\shared\UpdateProtocol.cs" Link="Update\UpdateProtocol.cs" />
     <Compile Include="..\shared\WpfPresentation.cs" Link="Presentation\WpfPresentation.cs" />
     <Page Include="..\installer\UninstallWindow.xaml" Link="UninstallWindow.xaml" />
     <Page Include="..\shared\ThemeResources.xaml" Link="Themes\ThemeResources.xaml" />

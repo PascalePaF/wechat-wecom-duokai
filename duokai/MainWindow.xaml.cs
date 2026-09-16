@@ -19,20 +19,23 @@ namespace WechatDuokai.App
     {
         internal const double MinimumWindowWidth = 901d;
         internal const double MinimumWindowHeight = 513d;
-        private const string CurrentVersion = "1.0.6";
+        private const string CurrentVersion = "1.0.7";
         private static readonly Regex DigitsOnly = new Regex("^[0-9]+$", RegexOptions.Compiled);
         private readonly InstanceManager _instanceManager;
         private readonly DiagnosticReportService _diagnostics = new DiagnosticReportService();
         private readonly ReleaseUpdateChecker _updateChecker;
+        private readonly ApplicationUpdateService _applicationUpdater = new ApplicationUpdateService();
         private readonly DispatcherTimer _refreshTimer;
         private readonly CancellationTokenSource _lifetime = new CancellationTokenSource();
         private AppDefinition _weChat;
         private AppDefinition _weCom;
         private bool _busy;
-        private bool _updatingCounts;
+        private bool _updatingCount;
         private bool _checkingUpdates;
+        private bool _installingUpdate;
         private bool _showingSettings;
         private bool _initializingSettings = true;
+        private ReleaseUpdateResult _availableUpdate;
 
         public MainWindow()
             : this(new InstanceManager(), new ReleaseUpdateChecker())
@@ -44,12 +47,13 @@ namespace WechatDuokai.App
             _instanceManager = instanceManager ?? throw new ArgumentNullException(nameof(instanceManager));
             _updateChecker = updateChecker ?? throw new ArgumentNullException(nameof(updateChecker));
             InitializeComponent();
-            DataObject.AddPastingHandler(WeChatTargetCountBox, TargetCountBox_OnPaste);
-            DataObject.AddPastingHandler(WeComTargetCountBox, TargetCountBox_OnPaste);
-            _updatingCounts = true;
-            WeChatTargetCountBox.Text = UserPreferences.LoadTargetCount(AppKind.WeChat).ToString();
-            WeComTargetCountBox.Text = UserPreferences.LoadTargetCount(AppKind.WeCom).ToString();
-            _updatingCounts = false;
+            DataObject.AddPastingHandler(TargetCountBox, TargetCountBox_OnPaste);
+            var targetCount = UserPreferences.LoadTargetCount();
+            _updatingCount = true;
+            TargetCountBox.Text = targetCount.ToString();
+            _updatingCount = false;
+            // Canonicalize V1.0.6's two target-count keys into the single shared V1.0.7 key.
+            UserPreferences.SaveTargetCount(targetCount);
             SynchronizeSettingsControls();
             _initializingSettings = false;
             SetBusy(true);
@@ -69,6 +73,7 @@ namespace WechatDuokai.App
                 ApplyProportionalScale();
                 RefreshClientStatus();
                 _refreshTimer.Start();
+                await Task.Run(() => _applicationUpdater.CleanupStaleDownloads());
                 if (recovery.Outcome != WeComRegistryRecoveryOutcome.None &&
                     !string.IsNullOrWhiteSpace(recovery.Message))
                 {
@@ -292,8 +297,8 @@ namespace WechatDuokai.App
             SetBusy(true);
             try
             {
-                var target = GetTargetCount(kind);
-                UserPreferences.SaveTargetCount(kind, target);
+                var target = GetTargetCount();
+                UserPreferences.SaveTargetCount(target);
                 var result = await _instanceManager.EnsureTargetCountAsync(
                     application, target,
                     message => Dispatcher.Invoke(() => SetStatus(message, "InfoBrush")),
@@ -325,64 +330,40 @@ namespace WechatDuokai.App
             WeComButton.IsEnabled = !busy && _weCom != null && _weCom.IsAvailable;
             WeChatSelectButton.IsEnabled = !busy;
             WeComSelectButton.IsEnabled = !busy;
-            WeChatDecreaseButton.IsEnabled = !busy;
-            WeChatIncreaseButton.IsEnabled = !busy;
-            WeChatTargetCountBox.IsEnabled = !busy;
-            WeComDecreaseButton.IsEnabled = !busy;
-            WeComIncreaseButton.IsEnabled = !busy;
-            WeComTargetCountBox.IsEnabled = !busy;
+            DecreaseButton.IsEnabled = !busy;
+            IncreaseButton.IsEnabled = !busy;
+            TargetCountBox.IsEnabled = !busy;
             DiagnosticsButton.IsEnabled = !busy;
             AutoUpdateCheckBox.IsEnabled = !busy;
             SystemThemeRadio.IsEnabled = !busy;
             LightThemeRadio.IsEnabled = !busy;
             DarkThemeRadio.IsEnabled = !busy;
             CheckUpdateButton.IsEnabled = !busy && !_checkingUpdates;
+            UpdateNowButton.IsEnabled = !busy && !_installingUpdate &&
+                                        _availableUpdate != null && _availableUpdate.CanInstallUpdate;
             SettingsReleaseButton.IsEnabled = !busy;
         }
 
-        private int GetTargetCount(AppKind kind)
+        private int GetTargetCount()
         {
-            var textBox = GetTargetTextBox(kind);
             int count;
-            if (!int.TryParse(textBox.Text, out count)) count = UserPreferences.LoadTargetCount(kind);
+            if (!int.TryParse(TargetCountBox.Text, out count)) count = UserPreferences.LoadTargetCount();
             return Math.Max(1, Math.Min(10, count));
         }
 
-        private void SetTargetCount(AppKind kind, int count)
+        private void SetTargetCount(int count)
         {
             count = Math.Max(1, Math.Min(10, count));
-            var textBox = GetTargetTextBox(kind);
-            _updatingCounts = true;
-            textBox.Text = count.ToString();
-            textBox.CaretIndex = textBox.Text.Length;
-            _updatingCounts = false;
-            UserPreferences.SaveTargetCount(kind, count);
+            _updatingCount = true;
+            TargetCountBox.Text = count.ToString();
+            TargetCountBox.CaretIndex = TargetCountBox.Text.Length;
+            _updatingCount = false;
+            UserPreferences.SaveTargetCount(count);
         }
 
-        private TextBox GetTargetTextBox(AppKind kind)
-        {
-            return kind == AppKind.WeChat ? WeChatTargetCountBox : WeComTargetCountBox;
-        }
+        private void DecreaseButton_Click(object sender, RoutedEventArgs e) { SetTargetCount(GetTargetCount() - 1); }
 
-        private void WeChatDecreaseButton_Click(object sender, RoutedEventArgs e)
-        {
-            SetTargetCount(AppKind.WeChat, GetTargetCount(AppKind.WeChat) - 1);
-        }
-
-        private void WeChatIncreaseButton_Click(object sender, RoutedEventArgs e)
-        {
-            SetTargetCount(AppKind.WeChat, GetTargetCount(AppKind.WeChat) + 1);
-        }
-
-        private void WeComDecreaseButton_Click(object sender, RoutedEventArgs e)
-        {
-            SetTargetCount(AppKind.WeCom, GetTargetCount(AppKind.WeCom) - 1);
-        }
-
-        private void WeComIncreaseButton_Click(object sender, RoutedEventArgs e)
-        {
-            SetTargetCount(AppKind.WeCom, GetTargetCount(AppKind.WeCom) + 1);
-        }
+        private void IncreaseButton_Click(object sender, RoutedEventArgs e) { SetTargetCount(GetTargetCount() + 1); }
 
         private void TargetCountBox_PreviewTextInput(object sender, TextCompositionEventArgs e)
         {
@@ -397,28 +378,14 @@ namespace WechatDuokai.App
 
         private void TargetCountBox_TextChanged(object sender, TextChangedEventArgs e)
         {
-            var textBox = sender as TextBox;
-            AppKind kind;
             int count;
-            if (_updatingCounts || textBox == null || !TryGetTargetKind(textBox, out kind) ||
-                !int.TryParse(textBox.Text, out count)) return;
-            if (count >= 1 && count <= 10) UserPreferences.SaveTargetCount(kind, count);
+            if (_updatingCount || !int.TryParse(TargetCountBox.Text, out count)) return;
+            if (count >= 1 && count <= 10) UserPreferences.SaveTargetCount(count);
         }
 
         private void TargetCountBox_LostKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
         {
-            var textBox = sender as TextBox;
-            AppKind kind;
-            if (textBox != null && TryGetTargetKind(textBox, out kind))
-            {
-                SetTargetCount(kind, GetTargetCount(kind));
-            }
-        }
-
-        private static bool TryGetTargetKind(FrameworkElement element, out AppKind kind)
-        {
-            return Enum.TryParse(Convert.ToString(element.Tag), true, out kind) &&
-                   Enum.IsDefined(typeof(AppKind), kind);
+            SetTargetCount(GetTargetCount());
         }
 
         private void ThemeButton_Click(object sender, RoutedEventArgs e)
@@ -530,6 +497,7 @@ namespace WechatDuokai.App
             if (userInitiated)
             {
                 SetStatus("正在检查 GitHub 发布版本…", "InfoBrush");
+                UpdateStatusText.Text = "正在读取本项目最新正式 Release…";
             }
 
             ReleaseUpdateResult result;
@@ -550,6 +518,7 @@ namespace WechatDuokai.App
             if (!result.CheckSucceeded)
             {
                 ReleaseButton.ToolTip = "本次未能检查更新；点击仍可打开 GitHub 发布页";
+                UpdateStatusText.Text = "检查失败；核心多开功能不受影响，可稍后重试";
                 if (userInitiated)
                 {
                     SetStatus("暂时无法检查版本 · 可直接打开 GitHub 发布页", "WarningBrush");
@@ -559,20 +528,116 @@ namespace WechatDuokai.App
 
             if (result.IsUpdateAvailable)
             {
+                _availableUpdate = result;
                 ReleaseButton.Content = "发现 V" + result.LatestVersion + " ↗";
                 ReleaseButton.SetResourceReference(ForegroundProperty, "SuccessBrush");
-                ReleaseButton.ToolTip = "发现新版本；点击前往 GitHub 下载（不会在软件内更新）";
-                SetStatus("发现新版本 V" + result.LatestVersion + " · 可前往 GitHub 下载", "InfoBrush");
+                ReleaseButton.ToolTip = "发现新版本；可在设置中一键更新或查看 GitHub 发布页";
+                var mode = _applicationUpdater.DetectCurrentMode();
+                if (result.CanInstallUpdate && mode != ApplicationInstallMode.Unknown)
+                {
+                    UpdateNowButton.Content = "一键更新 V" + result.LatestVersion;
+                    UpdateNowButton.Visibility = Visibility.Visible;
+                    UpdateNowButton.IsEnabled = !_busy && !_installingUpdate;
+                    UpdateStatusText.Text = "已验证 Release 附件信息 · 点击后先下载并校验，再安全覆盖";
+                    SetStatus("发现新版本 V" + result.LatestVersion + " · 可一键更新", "InfoBrush");
+                }
+                else
+                {
+                    UpdateNowButton.Visibility = Visibility.Collapsed;
+                    UpdateStatusText.Text = mode == ApplicationInstallMode.Unknown
+                        ? "当前是未标记的开发目录，只允许从发布页手动更新"
+                        : (result.OneClickUpdateError ?? "该 Release 缺少一键更新所需附件");
+                    SetStatus("发现新版本 V" + result.LatestVersion + " · 请打开发布页更新", "WarningBrush");
+                }
             }
             else
             {
+                _availableUpdate = null;
+                UpdateNowButton.Visibility = Visibility.Collapsed;
+                UpdateProgressBar.Visibility = Visibility.Collapsed;
                 ReleaseButton.Content = "发布版本 ↗";
                 ReleaseButton.SetResourceReference(ForegroundProperty, "AccentBrush");
                 ReleaseButton.ToolTip = "当前已是最新版；点击查看 GitHub 发布页";
+                UpdateStatusText.Text = "当前已是最新版 V" + CurrentVersion;
                 if (userInitiated)
                 {
                     SetStatus("当前已是最新版 V" + CurrentVersion, "SuccessBrush");
                 }
+            }
+        }
+
+        private async void UpdateNowButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_busy || _installingUpdate || _availableUpdate == null ||
+                !_availableUpdate.CanInstallUpdate)
+            {
+                return;
+            }
+
+            var mode = _applicationUpdater.DetectCurrentMode();
+            if (mode == ApplicationInstallMode.Unknown)
+            {
+                MessageBox.Show("当前程序目录不是经过标记验证的安装版或绿色版。\r\n\r\n" +
+                                "为避免覆盖源码或其他文件，本次只能打开 GitHub Release 手动更新。",
+                    "不能自动覆盖当前目录", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            var description = mode == ApplicationInstallMode.Installed ? "安装版" : "绿色免安装版";
+            var choice = MessageBox.Show(
+                "将把当前" + description + "从 V" + CurrentVersion + " 更新到 V" +
+                _availableUpdate.LatestVersion + "。\r\n\r\n" +
+                "下载来源：本项目 GitHub Release\r\n" +
+                "安装包大小：" + FormatBytes(_availableUpdate.SetupAsset.Size) + "\r\n" +
+                "安全校验：GitHub 摘要 + SHA256SUMS.txt + 下载文件，三方必须一致\r\n" +
+                "本地数据：data 中的设置、主题、诊断和恢复日志全部保留\r\n\r\n" +
+                "校验通过后助手会关闭，由独立安装程序覆盖并重新启动。现在继续吗？",
+                "确认一键更新", MessageBoxButton.YesNo, MessageBoxImage.Question,
+                MessageBoxResult.Yes);
+            if (choice != MessageBoxResult.Yes)
+            {
+                SetStatus("已取消更新 · 未下载或执行任何文件", "InfoBrush");
+                return;
+            }
+
+            _installingUpdate = true;
+            SetBusy(true);
+            UpdateProgressBar.Value = 0;
+            UpdateProgressBar.Visibility = Visibility.Visible;
+            UpdateStatusText.Text = "正在建立安全下载…";
+            SetStatus("正在下载 V" + _availableUpdate.LatestVersion + " 正式安装包…", "InfoBrush");
+            try
+            {
+                var progress = new Progress<UpdateProgressInfo>(info =>
+                {
+                    UpdateStatusText.Text = info.Message +
+                                            (info.TotalBytes > 0
+                                                ? " · " + info.Percentage + "%"
+                                                : string.Empty);
+                    UpdateProgressBar.Value = info.Percentage;
+                });
+                var package = await _applicationUpdater.DownloadAndVerifyAsync(
+                    _availableUpdate, progress, _lifetime.Token);
+                UpdateProgressBar.Value = 100;
+                UpdateStatusText.Text = "三方 SHA-256 校验通过 · 正在交给独立更新程序";
+                SetStatus("更新包校验通过 · 正在安全切换版本", "SuccessBrush");
+                _applicationUpdater.LaunchVerifiedInstaller(package, CurrentVersion,
+                    ThemeManager.Current == AppTheme.Dark ? "dark" : "light");
+                Application.Current.Shutdown(0);
+            }
+            catch (OperationCanceledException) when (_lifetime.IsCancellationRequested)
+            {
+            }
+            catch (Exception ex)
+            {
+                _installingUpdate = false;
+                SetBusy(false);
+                UpdateProgressBar.Visibility = Visibility.Collapsed;
+                UpdateStatusText.Text = "更新已停止；未执行未通过校验的文件";
+                SetStatus("一键更新未完成 · 当前版本保持不变", "WarningBrush");
+                MessageBox.Show("没有执行更新安装包。\r\n\r\n" + ex.Message +
+                                "\r\n\r\n你仍可打开 GitHub 发布页手动下载并核对 SHA-256。",
+                    "更新提示", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
         }
 
@@ -608,9 +673,19 @@ namespace WechatDuokai.App
         {
             Process.Start(new ProcessStartInfo
             {
-                FileName = ReleaseUpdateChecker.ReleasesUrl,
+                FileName = _availableUpdate != null &&
+                           !string.IsNullOrWhiteSpace(_availableUpdate.ReleasePageUrl)
+                    ? _availableUpdate.ReleasePageUrl
+                    : ReleaseUpdateChecker.ReleasesUrl,
                 UseShellExecute = true
             });
+        }
+
+        private static string FormatBytes(long bytes)
+        {
+            if (bytes < 1024) return bytes + " B";
+            if (bytes < 1024 * 1024) return (bytes / 1024d).ToString("0.0") + " KB";
+            return (bytes / 1024d / 1024d).ToString("0.0") + " MB";
         }
 
         private void SetStatus(string message, string resourceKey)

@@ -21,30 +21,31 @@ namespace WechatDuokai.Core
 
         public static int LoadTargetCount()
         {
-            return LoadTargetCount(AppKind.WeChat);
+            return LoadTargetCount(DataDirectory);
         }
 
         internal static int LoadTargetCount(string dataDirectory)
-        {
-            return LoadTargetCount(dataDirectory, AppKind.WeChat);
-        }
-
-        public static int LoadTargetCount(AppKind kind)
-        {
-            return LoadTargetCount(DataDirectory, kind);
-        }
-
-        internal static int LoadTargetCount(string dataDirectory, AppKind kind)
         {
             try
             {
                 var values = LoadValues(dataDirectory);
                 int count;
                 string raw;
-                if (values.TryGetValue(GetTargetCountKey(kind), out raw) && int.TryParse(raw, out count))
-                    return Math.Max(1, Math.Min(10, count));
                 if (values.TryGetValue("TargetInstanceCount", out raw) && int.TryParse(raw, out count))
                     return Math.Max(1, Math.Min(10, count));
+
+                string weChat;
+                string weCom;
+                var weChatCount = 2;
+                var weComCount = 2;
+                var hasWeChat = values.TryGetValue("WeChatTargetInstanceCount", out weChat) &&
+                                int.TryParse(weChat, out weChatCount);
+                var hasWeCom = values.TryGetValue("WeComTargetInstanceCount", out weCom) &&
+                              int.TryParse(weCom, out weComCount);
+                if (hasWeChat)
+                    return Math.Max(1, Math.Min(10, weChatCount));
+                if (hasWeCom)
+                    return Math.Max(1, Math.Min(10, weComCount));
             }
             catch (Exception)
             {
@@ -54,44 +55,39 @@ namespace WechatDuokai.Core
             return 2;
         }
 
+        public static int LoadTargetCount(AppKind kind)
+        {
+            return LoadTargetCount();
+        }
+
+        internal static int LoadTargetCount(string dataDirectory, AppKind kind)
+        {
+            return LoadTargetCount(dataDirectory);
+        }
+
         public static void SaveTargetCount(int count)
         {
-            SaveTargetCount(AppKind.WeChat, count);
+            SaveTargetCount(DataDirectory, count);
         }
 
         internal static void SaveTargetCount(string dataDirectory, int count)
         {
-            SaveTargetCount(dataDirectory, AppKind.WeChat, count);
+            count = Math.Max(1, Math.Min(10, count));
+            var values = LoadValues(dataDirectory);
+            values["TargetInstanceCount"] = count.ToString();
+            values.Remove("WeChatTargetInstanceCount");
+            values.Remove("WeComTargetInstanceCount");
+            SaveValues(dataDirectory, values);
         }
 
         public static void SaveTargetCount(AppKind kind, int count)
         {
-            SaveTargetCount(DataDirectory, kind, count);
+            SaveTargetCount(count);
         }
 
         internal static void SaveTargetCount(string dataDirectory, AppKind kind, int count)
         {
-            count = Math.Max(1, Math.Min(10, count));
-            var values = LoadValues(dataDirectory);
-            int legacyCount;
-            string legacyRaw;
-            if (values.TryGetValue("TargetInstanceCount", out legacyRaw) &&
-                int.TryParse(legacyRaw, out legacyCount))
-            {
-                legacyCount = Math.Max(1, Math.Min(10, legacyCount));
-                if (!values.ContainsKey("WeChatTargetInstanceCount"))
-                    values["WeChatTargetInstanceCount"] = legacyCount.ToString();
-                if (!values.ContainsKey("WeComTargetInstanceCount"))
-                    values["WeComTargetInstanceCount"] = legacyCount.ToString();
-            }
-
-            values[GetTargetCountKey(kind)] = count.ToString();
-            if (values.ContainsKey("WeChatTargetInstanceCount") &&
-                values.ContainsKey("WeComTargetInstanceCount"))
-            {
-                values.Remove("TargetInstanceCount");
-            }
-            SaveValues(dataDirectory, values);
+            SaveTargetCount(dataDirectory, count);
         }
 
         public static bool LoadAutoCheckForUpdates()
@@ -216,11 +212,5 @@ namespace WechatDuokai.Core
             return ApplicationStorage.HasValidMarker(dataDirectory);
         }
 
-        private static string GetTargetCountKey(AppKind kind)
-        {
-            return kind == AppKind.WeChat
-                ? "WeChatTargetInstanceCount"
-                : "WeComTargetInstanceCount";
-        }
     }
 }

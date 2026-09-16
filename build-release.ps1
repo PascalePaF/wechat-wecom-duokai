@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [string]$Version = '1.0.6'
+    [string]$Version = '1.0.7'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -84,9 +84,9 @@ $completeSecurityReport = Join-Path $sourceRoot ("docs\微信企业微信多开�
 if (Test-Path -LiteralPath $completeSecurityReport) {
     Copy-Item -LiteralPath $completeSecurityReport -Destination (Join-Path $portableDirectory '完整安全审计与卡巴斯基告警调查报告.txt')
 }
-$architectureReport = Join-Path $sourceRoot ("docs\V" + $Version + "-断电恢复与独立数量验证报告.md")
+$architectureReport = Join-Path $sourceRoot ("docs\V" + $Version + "-一键更新安全验证报告.md")
 if (Test-Path -LiteralPath $architectureReport) {
-    Copy-Item -LiteralPath $architectureReport -Destination (Join-Path $portableDirectory '断电恢复与独立数量验证报告.md')
+    Copy-Item -LiteralPath $architectureReport -Destination (Join-Path $portableDirectory '一键更新安全验证报告.md')
 }
 $releaseNotes = Join-Path $sourceRoot ("docs\release-notes-v" + $Version + ".md")
 if (Test-Path -LiteralPath $releaseNotes) {
@@ -103,7 +103,7 @@ if (Test-Path -LiteralPath $completeSecurityReport) {
     Copy-Item -LiteralPath $completeSecurityReport -Destination (Join-Path $artifactRoot ("wechat-duokai-v" + $Version + "-security-audit.txt"))
 }
 if (Test-Path -LiteralPath $architectureReport) {
-    Copy-Item -LiteralPath $architectureReport -Destination (Join-Path $artifactRoot ("wechat-duokai-v" + $Version + "-crash-recovery-storage-validation-report.md"))
+    Copy-Item -LiteralPath $architectureReport -Destination (Join-Path $artifactRoot ("wechat-duokai-v" + $Version + "-one-click-update-validation-report.md"))
 }
 
 $portableZip = Join-Path (Split-Path -Parent $portableDirectory) ("wechat_duokai-portable-" + $versionSuffix + '.zip')
@@ -162,12 +162,14 @@ $manifest = @(
     'UI=Uniform proportional scaling from 901x513 through maximized layouts; no outer scrollbars',
     'LaunchPolicy=Explicit confirmation after install',
     'UpgradePolicy=Prompt before closing exact-path running helper',
-    'UpdatePolicy=Optional startup check or manual GitHub Releases metadata check; browser download only',
+    'UpdatePolicy=Explicitly confirmed in-app update from this repository GitHub Release; manual browser download remains available',
+    'UpdateVerification=GitHub asset digest plus SHA256SUMS plus downloaded file must match before execution',
+    'UpdateRollback=Same-volume staging and per-file backups preserve the previous executable set on failure',
     'InstallerIdentity=Setup and cleanup are separate assemblies',
     'WeComExtendedMode=Temporary registry policy plus exact known mutex release; restore only if temporary state is still owned',
     'RegistryCrashRecovery=Durable pre-write journal under data/recovery; startup restore remains conditional on temporary-state ownership',
-    'TargetCounts=Independent persisted 1-10 targets for WeChat and WeCom',
-    'RuntimeStorage=Persistent configuration, theme, diagnostics and recovery evidence stay below the application data directory',
+    'TargetCounts=One shared persisted 1-10 target for WeChat and WeCom; V1.0.6 split values migrate deterministically',
+    'RuntimeStorage=Configuration, theme, diagnostics, recovery and update evidence stay below the application data directory',
     'CI=Fresh GitHub-hosted Windows build, tests, SHA-256 verification and SPDX 2.2 SBOM',
     ("Installer=installer/wechat_duokai-setup-" + $versionSuffix + '.exe'),
     ("Cleanup=installer/wechat_duokai-cleanup-" + $versionSuffix + '.exe'),

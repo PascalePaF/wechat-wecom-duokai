@@ -8,7 +8,7 @@
         UseLayoutRounding="True" SnapsToDevicePixels="False"
         TextOptions.TextFormattingMode="Ideal" TextOptions.TextRenderingMode="ClearType"
         SourceInitialized="Window_SourceInitialized">
-    <Grid>
+    <Grid Background="{DynamicResource WindowBackgroundBrush}">
         <Grid.RowDefinitions>
             <RowDefinition Height="108" />
             <RowDefinition Height="*" />
