@@ -44,6 +44,7 @@ namespace WechatDuokai.Tests
                     Assert(new InstanceManager().GetInstanceCount(null) == 0, "Expected zero."));
                 Run("Shared target count migrates V1.0.6 preferences and survives a restart", TestPreferenceRoundTrip);
                 Run("Footer counts and settings navigation stay live and visible", TestFooterCountsAndSettings);
+                Run("Dark theme uses a restrained palette and theme-aware icon surfaces", TestDarkThemeComfortPalette);
                 Run("Renamed executables cannot impersonate an official client", TestClientExecutableValidation);
                 Run("Process environment groups roots and supports deterministic launch tests", TestProcessEnvironmentAbstraction);
                 Run("WeCom extended launch policy is temporary and reaches three instances", TestWeComExtendedLaunchPolicy);
@@ -281,8 +282,10 @@ namespace WechatDuokai.Tests
                     "Footer count labels must reserve enough width in every view.");
 
                 var settingsButton = (Button)window.FindName("SettingsButton");
-                Assert(Grid.GetColumn(settingsButton) == 5,
+                Assert(Grid.GetColumn(settingsButton) == 3,
                     "Settings must remain the right-most footer action.");
+                Assert(window.FindName("ReleaseButton") == null,
+                    "The main footer must not expose a separate release action.");
                 window.SetSettingsViewVisible(true);
                 Assert(((FrameworkElement)window.FindName("SettingsWorkspace")).Visibility == Visibility.Visible &&
                        ((FrameworkElement)window.FindName("WorkspaceGrid")).Visibility == Visibility.Collapsed,
@@ -293,8 +296,10 @@ namespace WechatDuokai.Tests
                        window.FindName("UpdateProgressBar") != null &&
                        window.FindName("SystemThemeRadio") != null &&
                        window.FindName("LightThemeRadio") != null &&
-                       window.FindName("DarkThemeRadio") != null,
-                    "Settings must expose one-click update and three-way theme preferences.");
+                       window.FindName("DarkThemeRadio") != null &&
+                       window.FindName("DiagnosticsButton") != null &&
+                       window.FindName("SettingsReleaseButton") != null,
+                    "Settings must expose diagnostics, release/update actions and three-way theme preferences.");
                 Assert(((FrameworkElement)window.FindName("UpdateNowButton")).Visibility == Visibility.Collapsed,
                     "One-click update must stay hidden until trusted update metadata is available.");
                 var target = (TextBox)window.FindName("TargetCountBox");
@@ -310,6 +315,59 @@ namespace WechatDuokai.Tests
                 window.Close();
                 if (Directory.Exists(folder)) Directory.Delete(folder, true);
             }
+        }
+
+        private static void TestDarkThemeComfortPalette()
+        {
+            SetAssemblyTheme(typeof(MainWindow), "Dark");
+            var window = new MainWindow();
+            try
+            {
+                var success = GetThemeColor("SuccessBrush");
+                var accent = GetThemeColor("AccentBrush");
+                var info = GetThemeColor("InfoBrush");
+                var text = GetThemeColor("TextBrush");
+                var surface = GetThemeColor("SurfaceRaisedBrush");
+                var weChatSurface = GetThemeColor("WeChatIconSurfaceBrush");
+                var weComSurface = GetThemeColor("WeComIconSurfaceBrush");
+
+                Assert(success.G <= 160 && Math.Max(success.R, Math.Max(success.G, success.B)) <= 170,
+                    "Dark-theme green is too bright or saturated.");
+                Assert(accent.R <= 185 && accent.G <= 160 && info.B <= 180,
+                    "Dark-theme accent/status colors are too bright.");
+                Assert(GetLuminance(text) >= 0.70 && GetLuminance(surface) <= 0.04,
+                    "Dark-theme text/surface contrast is outside the comfortable readable range.");
+                Assert(GetLuminance(weChatSurface) <= 0.035 && GetLuminance(weComSurface) <= 0.035,
+                    "Client icon surroundings must stay dark in the night theme.");
+
+                var weChatIcon = (Border)window.FindName("WeChatIconSurface");
+                var weComIcon = (Border)window.FindName("WeComIconSurface");
+                Assert(((SolidColorBrush)weChatIcon.Background).Color == weChatSurface &&
+                       ((SolidColorBrush)weComIcon.Background).Color == weComSurface,
+                    "Client icon surfaces are not bound to the live theme resources.");
+            }
+            finally
+            {
+                window.Close();
+                SetAssemblyTheme(typeof(MainWindow), "Light");
+            }
+        }
+
+        private static Color GetThemeColor(string resourceKey)
+        {
+            var brush = Application.Current.Resources[resourceKey] as SolidColorBrush;
+            Assert(brush != null, "Missing theme brush: " + resourceKey);
+            return brush.Color;
+        }
+
+        private static double GetLuminance(Color color)
+        {
+            Func<byte, double> linear = value =>
+            {
+                var channel = value / 255d;
+                return channel <= 0.04045 ? channel / 12.92 : Math.Pow((channel + 0.055) / 1.055, 2.4);
+            };
+            return (0.2126 * linear(color.R)) + (0.7152 * linear(color.G)) + (0.0722 * linear(color.B));
         }
 
         private static void SetPrivateField(object target, string name, object value)
@@ -779,35 +837,35 @@ namespace WechatDuokai.Tests
             var setupHash = new string('a', 64);
             var sumsHash = new string('b', 64);
             var newer = ReleaseUpdateChecker.ParseResponse(
-                BuildReleaseJson("1.0.8", setupHash, sumsHash, null), "1.0.7");
-            Assert(newer.CheckSucceeded && newer.IsUpdateAvailable && newer.LatestVersion == "1.0.8" &&
+                BuildReleaseJson("1.0.9", setupHash, sumsHash, null), "1.0.8");
+            Assert(newer.CheckSucceeded && newer.IsUpdateAvailable && newer.LatestVersion == "1.0.9" &&
                    newer.CanInstallUpdate && newer.SetupAsset.Sha256 == setupHash &&
                    newer.ChecksumAsset.Sha256 == sumsHash,
                 "Newer release and its update assets were not recognized.");
 
             var malicious = ReleaseUpdateChecker.ParseResponse(
-                BuildReleaseJson("1.0.8", setupHash, sumsHash,
-                    "https://example.com/PascalePaF/wechat-wecom-duokai/releases/download/v1.0.8/" +
-                    "wechat_duokai-setup-v1.0.8.exe"), "1.0.7");
+                BuildReleaseJson("1.0.9", setupHash, sumsHash,
+                    "https://example.com/PascalePaF/wechat-wecom-duokai/releases/download/v1.0.9/" +
+                    "wechat_duokai-setup-v1.0.9.exe"), "1.0.8");
             Assert(malicious.CheckSucceeded && malicious.IsUpdateAvailable && !malicious.CanInstallUpdate &&
                    !string.IsNullOrWhiteSpace(malicious.OneClickUpdateError),
                 "A non-GitHub update asset was accepted for execution.");
 
             var nestedPath = ReleaseUpdateChecker.ParseResponse(
-                BuildReleaseJson("1.0.8", setupHash, sumsHash,
-                    "https://github.com/PascalePaF/wechat-wecom-duokai/releases/download/v1.0.8/extra/" +
-                    "wechat_duokai-setup-v1.0.8.exe"), "1.0.7");
+                BuildReleaseJson("1.0.9", setupHash, sumsHash,
+                    "https://github.com/PascalePaF/wechat-wecom-duokai/releases/download/v1.0.9/extra/" +
+                    "wechat_duokai-setup-v1.0.9.exe"), "1.0.8");
             Assert(!nestedPath.CanInstallUpdate,
                 "A non-canonical GitHub Release asset path was accepted for execution.");
 
             var duplicateAsset = ReleaseUpdateChecker.ParseResponse(
-                BuildReleaseJson("1.0.8", setupHash, sumsHash, null, true), "1.0.7");
+                BuildReleaseJson("1.0.9", setupHash, sumsHash, null, true), "1.0.8");
             Assert(!duplicateAsset.CanInstallUpdate &&
                    duplicateAsset.OneClickUpdateError.IndexOf("重名", StringComparison.Ordinal) >= 0,
                 "Ambiguous duplicate GitHub Release assets were accepted.");
 
             var same = ReleaseUpdateChecker.ParseResponse(
-                BuildReleaseJson("1.0.7", setupHash, sumsHash, null), "1.0.7");
+                BuildReleaseJson("1.0.8", setupHash, sumsHash, null), "1.0.8");
             Assert(same.CheckSucceeded && !same.IsUpdateAvailable,
                 "Current version must not be presented as an update.");
             var parsedHash = ApplicationUpdateService.ParseChecksum(
@@ -930,8 +988,8 @@ namespace WechatDuokai.Tests
 
                 InstallerEngine.ApplyPayloadTransactionForTests(root, false, 0);
                 Assert(FileVersionInfo.GetVersionInfo(Path.Combine(root, "wechat_duokai.exe"))
-                           .FileVersion.StartsWith("1.0.7", StringComparison.Ordinal),
-                    "Successful transaction did not install the V1.0.7 application payload.");
+                           .FileVersion.StartsWith("1.0.8", StringComparison.Ordinal),
+                    "Successful transaction did not install the V1.0.8 application payload.");
                 Assert(File.ReadAllText(Path.Combine(data, "settings.ini"), Encoding.UTF8) ==
                        "sentinel-settings", "Successful update changed persistent user data.");
 
@@ -948,9 +1006,9 @@ namespace WechatDuokai.Tests
 
                 InstallerEngine.ApplyPayloadTransactionForTests(portableRoot, true, 0);
                 Assert(FileVersionInfo.GetVersionInfo(Path.Combine(portableRoot, "wechat_duokai.exe"))
-                           .FileVersion.StartsWith("1.0.7", StringComparison.Ordinal),
-                    "Portable transaction did not install the V1.0.7 application payload.");
-                Assert(File.Exists(Path.Combine(portableRoot, "wechat_duokai-cleanup-v1.0.7.exe")) &&
+                           .FileVersion.StartsWith("1.0.8", StringComparison.Ordinal),
+                    "Portable transaction did not install the V1.0.8 application payload.");
+                Assert(File.Exists(Path.Combine(portableRoot, "wechat_duokai-cleanup-v1.0.8.exe")) &&
                        File.Exists(Path.Combine(portableRoot, "README.md")) &&
                        File.Exists(Path.Combine(portableRoot, "版本说明.md")) &&
                        File.Exists(Path.Combine(portableRoot, "一键更新安全验证报告.md")),
@@ -981,14 +1039,14 @@ namespace WechatDuokai.Tests
             AssertEmbeddedEquals("Payload.WechatDuokai.Core.dll",
                 Path.Combine(root, "duokai", "bin", "Release", "net48", "WechatDuokai.Core.dll"));
             AssertEmbeddedEquals("Payload.wechat_duokai-cleanup.exe",
-                Path.Combine(root, "cleanup", "bin", "Release", "net48", "wechat_duokai-cleanup-v1.0.7.exe"));
+                Path.Combine(root, "cleanup", "bin", "Release", "net48", "wechat_duokai-cleanup-v1.0.8.exe"));
         }
 
         private static void TestSeparateInstallerIdentities()
         {
             var root = FindProjectRoot();
-            var setup = Path.Combine(root, "installer", "bin", "Release", "net48", "wechat_duokai-setup-v1.0.7.exe");
-            var cleanup = Path.Combine(root, "cleanup", "bin", "Release", "net48", "wechat_duokai-cleanup-v1.0.7.exe");
+            var setup = Path.Combine(root, "installer", "bin", "Release", "net48", "wechat_duokai-setup-v1.0.8.exe");
+            var cleanup = Path.Combine(root, "cleanup", "bin", "Release", "net48", "wechat_duokai-cleanup-v1.0.8.exe");
             Assert(File.Exists(setup) && File.Exists(cleanup), "Setup or cleanup output is missing.");
             Assert(!File.ReadAllBytes(setup).SequenceEqual(File.ReadAllBytes(cleanup)),
                 "Setup and cleanup must not be byte-identical copies.");
@@ -1001,7 +1059,7 @@ namespace WechatDuokai.Tests
         private static Type LoadCleanupWindowType()
         {
             var path = Path.Combine(FindProjectRoot(), "cleanup", "bin", "Release", "net48",
-                "wechat_duokai-cleanup-v1.0.7.exe");
+                "wechat_duokai-cleanup-v1.0.8.exe");
             var assembly = Assembly.LoadFrom(path);
             return assembly.GetType("WechatDuokai.Installer.UninstallWindow", true);
         }

@@ -53,34 +53,38 @@ namespace WechatDuokai.Presentation
             DangerHover = "#AE3A3A",
             DangerSurface = "#FFF1F1",
             Selection = "#F2E9DA",
+            WeChatIconSurface = "#E9F8F1",
+            WeComIconSurface = "#EAF5FC",
             Shadow = "#2A2B211B"
         };
 
         private static readonly ThemeColors Dark = new ThemeColors
         {
-            Window = "#101216",
-            WindowTop = "#14171C",
-            Surface = "#181B21",
-            SurfaceRaised = "#1E222A",
-            SurfaceHover = "#272C35",
-            Border = "#2D323C",
-            BorderStrong = "#514736",
-            Text = "#F4F1E9",
-            TextSecondary = "#A7ADB8",
-            TextTertiary = "#767D89",
-            Accent = "#D5B476",
-            AccentHover = "#E3C78F",
-            AccentPressed = "#B99A61",
-            AccentText = "#17130D",
-            Green = "#5FD3A1",
-            GreenSurface = "#183127",
-            Blue = "#72B8F4",
-            Warning = "#E7A958",
-            Danger = "#F08080",
-            DangerHover = "#FF9A9A",
-            DangerSurface = "#351F23",
-            Selection = "#2B271F",
-            Shadow = "#72000000"
+            Window = "#111318",
+            WindowTop = "#15181E",
+            Surface = "#191D24",
+            SurfaceRaised = "#1E232B",
+            SurfaceHover = "#252B34",
+            Border = "#2B323C",
+            BorderStrong = "#3A414B",
+            Text = "#E4E7EB",
+            TextSecondary = "#9AA2AD",
+            TextTertiary = "#737C88",
+            Accent = "#A98755",
+            AccentHover = "#B89560",
+            AccentPressed = "#8B6D43",
+            AccentText = "#F5EFE5",
+            Green = "#4E9B7D",
+            GreenSurface = "#162B24",
+            Blue = "#5C83A4",
+            Warning = "#B3844D",
+            Danger = "#B85E61",
+            DangerHover = "#C86C70",
+            DangerSurface = "#2D1D21",
+            Selection = "#26231E",
+            WeChatIconSurface = "#172A24",
+            WeComIconSurface = "#18262F",
+            Shadow = "#7A000000"
         };
 
         internal static AppTheme Current { get; private set; }
@@ -181,6 +185,8 @@ namespace WechatDuokai.Presentation
             SetBrush(application, "DangerHoverBrush", colors.DangerHover);
             SetBrush(application, "DangerSurfaceBrush", colors.DangerSurface);
             SetBrush(application, "SelectionBrush", colors.Selection);
+            SetBrush(application, "WeChatIconSurfaceBrush", colors.WeChatIconSurface);
+            SetBrush(application, "WeComIconSurfaceBrush", colors.WeComIconSurface);
             application.Resources["ShadowColor"] = ParseColor(colors.Shadow);
         }
 
@@ -298,6 +304,8 @@ namespace WechatDuokai.Presentation
             internal string DangerHover { get; set; }
             internal string DangerSurface { get; set; }
             internal string Selection { get; set; }
+            internal string WeChatIconSurface { get; set; }
+            internal string WeComIconSurface { get; set; }
             internal string Shadow { get; set; }
         }
     }

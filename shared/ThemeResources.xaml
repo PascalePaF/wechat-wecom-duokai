@@ -24,6 +24,8 @@
     <SolidColorBrush x:Key="DangerHoverBrush" Color="#AE3A3A" />
     <SolidColorBrush x:Key="DangerSurfaceBrush" Color="#FFF1F1" />
     <SolidColorBrush x:Key="SelectionBrush" Color="#F2E9DA" />
+    <SolidColorBrush x:Key="WeChatIconSurfaceBrush" Color="#E9F8F1" />
+    <SolidColorBrush x:Key="WeComIconSurfaceBrush" Color="#EAF5FC" />
     <Color x:Key="ShadowColor">#2A2B211B</Color>
 
     <Style TargetType="TextBlock">

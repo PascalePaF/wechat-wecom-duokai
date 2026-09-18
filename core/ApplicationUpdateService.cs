@@ -373,7 +373,7 @@ namespace WechatDuokai.Core
         private static HttpRequestMessage CreateDownloadRequest(string url)
         {
             var request = new HttpRequestMessage(HttpMethod.Get, url);
-            request.Headers.UserAgent.ParseAdd("wechat-duokai-updater/1.0.7");
+            request.Headers.UserAgent.ParseAdd("wechat-duokai-updater/1.0.8");
             request.Headers.Accept.ParseAdd("application/octet-stream");
             return request;
         }

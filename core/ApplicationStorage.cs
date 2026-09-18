@@ -6,7 +6,7 @@ using System.Text;
 namespace WechatDuokai.Core
 {
     /// <summary>
-    /// Owns every persistent runtime file created by the application. V1.0.7 keeps
+    /// Owns every persistent runtime file created by the application. V1.0.8 keeps
     /// configuration, diagnostics and recovery evidence below the executable folder
     /// so an installation remains self-contained and can be removed as one directory.
     /// </summary>

@@ -19,7 +19,7 @@ namespace WechatDuokai.App
     {
         internal const double MinimumWindowWidth = 901d;
         internal const double MinimumWindowHeight = 513d;
-        private const string CurrentVersion = "1.0.7";
+        private const string CurrentVersion = "1.0.8";
         private static readonly Regex DigitsOnly = new Regex("^[0-9]+$", RegexOptions.Compiled);
         private readonly InstanceManager _instanceManager;
         private readonly DiagnosticReportService _diagnostics = new DiagnosticReportService();
@@ -517,7 +517,7 @@ namespace WechatDuokai.App
 
             if (!result.CheckSucceeded)
             {
-                ReleaseButton.ToolTip = "本次未能检查更新；点击仍可打开 GitHub 发布页";
+                SettingsReleaseButton.ToolTip = "本次未能检查更新；点击仍可打开 GitHub 发布页";
                 UpdateStatusText.Text = "检查失败；核心多开功能不受影响，可稍后重试";
                 if (userInitiated)
                 {
@@ -529,9 +529,9 @@ namespace WechatDuokai.App
             if (result.IsUpdateAvailable)
             {
                 _availableUpdate = result;
-                ReleaseButton.Content = "发现 V" + result.LatestVersion + " ↗";
-                ReleaseButton.SetResourceReference(ForegroundProperty, "SuccessBrush");
-                ReleaseButton.ToolTip = "发现新版本；可在设置中一键更新或查看 GitHub 发布页";
+                SettingsReleaseButton.Content = "发现 V" + result.LatestVersion + " ↗";
+                SettingsReleaseButton.SetResourceReference(ForegroundProperty, "SuccessBrush");
+                SettingsReleaseButton.ToolTip = "发现新版本；可在设置中一键更新或查看 GitHub 发布页";
                 var mode = _applicationUpdater.DetectCurrentMode();
                 if (result.CanInstallUpdate && mode != ApplicationInstallMode.Unknown)
                 {
@@ -555,9 +555,9 @@ namespace WechatDuokai.App
                 _availableUpdate = null;
                 UpdateNowButton.Visibility = Visibility.Collapsed;
                 UpdateProgressBar.Visibility = Visibility.Collapsed;
-                ReleaseButton.Content = "发布版本 ↗";
-                ReleaseButton.SetResourceReference(ForegroundProperty, "AccentBrush");
-                ReleaseButton.ToolTip = "当前已是最新版；点击查看 GitHub 发布页";
+                SettingsReleaseButton.Content = "发布版本 ↗";
+                SettingsReleaseButton.SetResourceReference(ForegroundProperty, "AccentBrush");
+                SettingsReleaseButton.ToolTip = "当前已是最新版；点击查看 GitHub 发布页";
                 UpdateStatusText.Text = "当前已是最新版 V" + CurrentVersion;
                 if (userInitiated)
                 {
