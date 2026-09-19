@@ -19,7 +19,7 @@ namespace WechatDuokai.App
     {
         internal const double MinimumWindowWidth = 901d;
         internal const double MinimumWindowHeight = 513d;
-        private const string CurrentVersion = "1.0.8";
+        private const string CurrentVersion = "1.0.9";
         private static readonly Regex DigitsOnly = new Regex("^[0-9]+$", RegexOptions.Compiled);
         private readonly InstanceManager _instanceManager;
         private readonly DiagnosticReportService _diagnostics = new DiagnosticReportService();
@@ -462,6 +462,33 @@ namespace WechatDuokai.App
             SetSettingsViewVisible(!_showingSettings);
         }
 
+        private void GeneralSettingsTabButton_Click(object sender, RoutedEventArgs e)
+        {
+            SetSettingsSection(false);
+        }
+
+        private void AboutSettingsTabButton_Click(object sender, RoutedEventArgs e)
+        {
+            SetSettingsSection(true);
+        }
+
+        internal void SetSettingsSection(bool showAbout)
+        {
+            GeneralSettingsPanel.Visibility = showAbout ? Visibility.Collapsed : Visibility.Visible;
+            AboutSettingsPanel.Visibility = showAbout ? Visibility.Visible : Visibility.Collapsed;
+            GeneralSettingsTabButton.FontWeight = showAbout ? FontWeights.Normal : FontWeights.SemiBold;
+            AboutSettingsTabButton.FontWeight = showAbout ? FontWeights.SemiBold : FontWeights.Normal;
+            GeneralSettingsTabButton.Opacity = showAbout ? 0.68 : 1d;
+            AboutSettingsTabButton.Opacity = showAbout ? 1d : 0.68;
+
+            if (_showingSettings)
+            {
+                SetStatus(showAbout
+                    ? "软件介绍 · 使用说明与安全边界"
+                    : "常规设置 · 更改会自动保存在本机", "InfoBrush");
+            }
+        }
+
         internal void SetSettingsViewVisible(bool visible)
         {
             _showingSettings = visible;
@@ -472,11 +499,11 @@ namespace WechatDuokai.App
             if (visible)
             {
                 SynchronizeSettingsControls();
-                SetStatus("设置 · 更改会自动保存在本机", "InfoBrush");
+                SetSettingsSection(false);
             }
             else
             {
-                SetStatus("就绪 · 选择数量后启动", "SuccessBrush");
+                SetStatus(string.Empty, "SuccessBrush");
             }
         }
 

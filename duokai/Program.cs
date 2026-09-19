@@ -16,7 +16,7 @@ namespace WechatDuokai.App
             {
                 if (!mutexCreated)
                 {
-                    MessageBox.Show("多开助手已经在运行。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                    MessageBox.Show("开开助手已经在运行。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
                     return 0;
                 }
 

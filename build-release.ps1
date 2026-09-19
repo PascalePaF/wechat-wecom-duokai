@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [string]$Version = '1.0.8'
+    [string]$Version = '1.0.9'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -80,7 +80,7 @@ $hardcodedPathReport = Join-Path $sourceRoot 'docs\旧版EXE硬编码路径说�
 if (Test-Path -LiteralPath $hardcodedPathReport) {
     Copy-Item -LiteralPath $hardcodedPathReport -Destination (Join-Path $portableDirectory '安全说明-旧版EXE硬编码路径报告.txt')
 }
-$completeSecurityReport = Join-Path $sourceRoot ("docs\微信企业微信多开助手_V" + $Version + "_完整安全审计报告.txt")
+$completeSecurityReport = Join-Path $sourceRoot ("docs\开开助手_V" + $Version + "_完整安全审计报告.txt")
 if (Test-Path -LiteralPath $completeSecurityReport) {
     Copy-Item -LiteralPath $completeSecurityReport -Destination (Join-Path $portableDirectory '完整安全审计与卡巴斯基告警调查报告.txt')
 }
@@ -157,6 +157,7 @@ $hashLines | Set-Content -LiteralPath (Join-Path $artifactRoot 'SHA256SUMS.txt')
 
 $manifest = @(
     "Product=$Version",
+    'Brand=开开助手',
     'Framework=.NET Framework 4.8',
     'Platform=Windows 10/11 x64',
     'UI=Uniform proportional scaling from 901x513 through maximized layouts; no outer scrollbars',

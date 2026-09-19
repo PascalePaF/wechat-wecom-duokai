@@ -11,12 +11,12 @@
     <LangVersion>latest</LangVersion>
     <Deterministic>true</Deterministic>
     <ApplicationIcon>favicon.ico</ApplicationIcon>
-    <AssemblyVersion>1.0.8.0</AssemblyVersion>
-    <FileVersion>1.0.8.0</FileVersion>
-    <Version>1.0.8</Version>
+    <AssemblyVersion>1.0.9.0</AssemblyVersion>
+    <FileVersion>1.0.9.0</FileVersion>
+    <Version>1.0.9</Version>
     <Company>wechat_duokai contributors</Company>
-    <Product>微信 · 企业微信多开助手</Product>
-    <Description>按目标数量启动和补开微信、企业微信实例</Description>
+    <Product>开开助手</Product>
+    <Description>轻量的微信与企业微信多开和按缺口补开工具</Description>
     <Copyright>Copyright © CN-Root and contributors 2022-2026</Copyright>
   </PropertyGroup>
   <ItemGroup>
@@ -37,7 +37,9 @@
   <ItemGroup>
     <None Remove="Resources\WeChat.png" />
     <None Remove="Resources\WXWork.png" />
+    <None Remove="Resources\KaikaiLogo.png" />
     <Resource Include="Resources\WeChat.png" />
     <Resource Include="Resources\WXWork.png" />
+    <Resource Include="Resources\KaikaiLogo.png" />
   </ItemGroup>
 </Project>

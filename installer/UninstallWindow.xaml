@@ -1,7 +1,7 @@
 <Window x:Class="WechatDuokai.Installer.UninstallWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="完全卸载 · 微信与企业微信多开助手"
+        Title="完全卸载 · 开开助手"
         Width="810" Height="680" MinWidth="720" MinHeight="620"
         WindowStartupLocation="CenterScreen" ResizeMode="CanResize" WindowStyle="SingleBorderWindow"
         Background="{DynamicResource WindowBackgroundBrush}" FontFamily="{StaticResource AppFont}"
@@ -22,10 +22,8 @@
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
-                <Border Width="54" Height="54" CornerRadius="16" Background="{DynamicResource DangerSurfaceBrush}">
-                    <TextBlock Text="卸" FontSize="24" FontWeight="SemiBold" Foreground="{DynamicResource DangerBrush}"
-                               HorizontalAlignment="Center" VerticalAlignment="Center" />
-                </Border>
+                <Image x:Name="HeaderLogo" Width="56" Height="56" Source="Resources/KaikaiLogo.png" Stretch="Uniform"
+                       RenderOptions.BitmapScalingMode="HighQuality" />
                 <StackPanel Grid.Column="1" Margin="17,2,0,0">
                     <TextBlock Text="完全卸载与清理" Style="{StaticResource WindowTitleStyle}" />
                     <TextBlock Text="只处理通过项目标记和精确路径校验的内容" Margin="0,7,0,0"

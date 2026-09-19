@@ -25,7 +25,7 @@ namespace WechatDuokai.Core
             var path = Path.Combine(folder, "diagnostic-" + DateTime.Now.ToString("yyyyMMdd-HHmmss") + ".txt");
             var lines = new List<string>
             {
-                "微信 · 企业微信多开助手 本地诊断报告",
+                "开开助手 本地诊断报告",
                 "生成时间=" + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss zzz"),
                 "助手版本=" + GetVersion(),
                 "操作系统=" + Environment.OSVersion.VersionString,

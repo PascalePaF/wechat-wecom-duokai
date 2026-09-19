@@ -48,7 +48,7 @@ namespace WechatDuokai.Installer
         {
             using (var dialog = new WinForms.FolderBrowserDialog
             {
-                Description = "请选择或新建微信多开助手的专用安装文件夹",
+                Description = "请选择或新建开开助手的专用安装文件夹",
                 RootFolder = Environment.SpecialFolder.Desktop,
                 SelectedPath = FindNearestExistingDirectory(_selectedInstallDirectory),
                 ShowNewFolderButton = true
@@ -101,7 +101,7 @@ namespace WechatDuokai.Installer
             if (running.Count > 0)
             {
                 var closeChoice = MessageBox.Show(
-                    "检测到这个安装位置的多开助手正在运行。\r\n\r\n" +
+                    "检测到这个安装位置的开开助手正在运行。\r\n\r\n" +
                     "是否先正常关闭助手，再继续覆盖安装？微信和企业微信不会被关闭。",
                     "需要关闭正在运行的助手", MessageBoxButton.YesNo,
                     MessageBoxImage.Question, MessageBoxResult.Yes);
@@ -176,9 +176,8 @@ namespace WechatDuokai.Installer
 
         private void ConfigureAutoUpdatePresentation()
         {
-            Title = "微信 · 企业微信多开助手 V" + _updatePlan.TargetVersion + " 更新程序";
-            HeaderGlyph.Text = "更";
-            HeaderTitle.Text = "更新多开助手";
+            Title = "开开助手 V" + _updatePlan.TargetVersion + " 更新程序";
+            HeaderTitle.Text = "更新开开助手";
             HeaderSubtitle.Text = "校验正式 Release · 安全覆盖 · 保留本地数据";
             VersionText.Text = "V" + _updatePlan.TargetVersion;
             LocationTitle.Text = "当前程序位置";
