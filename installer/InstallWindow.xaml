@@ -1,7 +1,7 @@
 <Window x:Class="WechatDuokai.Installer.InstallWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="开开助手 V1.0.9 安装程序"
+        Title="微窗助手 V1.0.10 安装程序"
         Width="780" Height="570" MinWidth="700" MinHeight="540"
         WindowStartupLocation="CenterScreen" ResizeMode="CanResize" WindowStyle="SingleBorderWindow"
         Background="{DynamicResource WindowBackgroundBrush}" FontFamily="{StaticResource AppFont}"
@@ -22,16 +22,16 @@
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
-                <Image x:Name="HeaderLogo" Width="56" Height="56" Source="Resources/KaikaiLogo.png" Stretch="Uniform"
+                <Image x:Name="HeaderLogo" Width="56" Height="56" Source="Resources/WeichuangLogo.png" Stretch="Uniform"
                        RenderOptions.BitmapScalingMode="HighQuality" />
                 <StackPanel Grid.Column="1" Margin="17,2,0,0">
-                    <TextBlock x:Name="HeaderTitle" Text="安装开开助手" Style="{StaticResource WindowTitleStyle}" />
+                    <TextBlock x:Name="HeaderTitle" Text="安装微窗助手" Style="{StaticResource WindowTitleStyle}" />
                     <TextBlock x:Name="HeaderSubtitle" Text="选择专用位置 · 当前用户安装 · 无需管理员权限" Margin="0,7,0,0"
                                Style="{StaticResource BodyStyle}" />
                 </StackPanel>
                 <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
                     <Border Height="30" Padding="13,0" CornerRadius="15" Background="{DynamicResource SelectionBrush}">
-                        <TextBlock x:Name="VersionText" Text="V1.0.9" FontSize="11" FontWeight="SemiBold"
+                        <TextBlock x:Name="VersionText" Text="V1.0.10" FontSize="11" FontWeight="SemiBold"
                                    Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" />
                     </Border>
                     <Button x:Name="ThemeButton" Margin="10,0,0,0" Style="{StaticResource PillButtonStyle}" Click="ThemeButton_Click"

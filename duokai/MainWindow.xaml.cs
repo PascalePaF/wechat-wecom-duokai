@@ -19,7 +19,7 @@ namespace WechatDuokai.App
     {
         internal const double MinimumWindowWidth = 901d;
         internal const double MinimumWindowHeight = 513d;
-        private const string CurrentVersion = "1.0.9";
+        private const string CurrentVersion = "1.0.10";
         private static readonly Regex DigitsOnly = new Regex("^[0-9]+$", RegexOptions.Compiled);
         private readonly InstanceManager _instanceManager;
         private readonly DiagnosticReportService _diagnostics = new DiagnosticReportService();

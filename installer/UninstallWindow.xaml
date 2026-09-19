@@ -1,7 +1,7 @@
 <Window x:Class="WechatDuokai.Installer.UninstallWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="完全卸载 · 开开助手"
+        Title="完全卸载 · 微窗助手"
         Width="810" Height="680" MinWidth="720" MinHeight="620"
         WindowStartupLocation="CenterScreen" ResizeMode="CanResize" WindowStyle="SingleBorderWindow"
         Background="{DynamicResource WindowBackgroundBrush}" FontFamily="{StaticResource AppFont}"
@@ -22,7 +22,7 @@
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
-                <Image x:Name="HeaderLogo" Width="56" Height="56" Source="Resources/KaikaiLogo.png" Stretch="Uniform"
+                <Image x:Name="HeaderLogo" Width="56" Height="56" Source="Resources/WeichuangLogo.png" Stretch="Uniform"
                        RenderOptions.BitmapScalingMode="HighQuality" />
                 <StackPanel Grid.Column="1" Margin="17,2,0,0">
                     <TextBlock Text="完全卸载与清理" Style="{StaticResource WindowTitleStyle}" />

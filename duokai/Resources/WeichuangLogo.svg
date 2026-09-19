@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-labelledby="title desc">
+  <title id="title">微窗助手 Logo</title>
+  <desc id="desc">由微信绿与企微蓝两个相连的圆角窗口构成的原创标志</desc>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="116" y="126" width="522" height="522" rx="136" stroke="#20B26B" stroke-width="88"/>
+    <rect x="386" y="364" width="522" height="522" rx="136" stroke="#3D8EF7" stroke-width="88"/>
+  </g>
+  <circle cx="254" cy="252" r="31" fill="#F8FFFC"/>
+  <circle cx="362" cy="252" r="31" fill="#F8FFFC"/>
+  <circle cx="684" cy="490" r="31" fill="#F7FBFF"/>
+  <circle cx="792" cy="490" r="31" fill="#F7FBFF"/>
+  <rect x="491" y="522" width="178" height="76" rx="38" fill="#62D6C5"
+        transform="rotate(-32 580 560)"/>
+</svg>

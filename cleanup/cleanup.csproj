@@ -4,7 +4,7 @@
     <TargetFramework>net48</TargetFramework>
     <UseWPF>true</UseWPF>
     <UseWindowsForms>true</UseWindowsForms>
-    <AssemblyName>wechat_duokai-cleanup-v1.0.9</AssemblyName>
+    <AssemblyName>wechat_duokai-cleanup-v1.0.10</AssemblyName>
     <RootNamespace>WechatDuokai.Cleanup</RootNamespace>
     <StartupObject>WechatDuokai.Cleanup.Program</StartupObject>
     <PlatformTarget>x64</PlatformTarget>
@@ -13,12 +13,12 @@
     <Deterministic>true</Deterministic>
     <ApplicationIcon>..\duokai\favicon.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
-    <AssemblyVersion>1.0.9.0</AssemblyVersion>
-    <FileVersion>1.0.9.0</FileVersion>
-    <Version>1.0.9</Version>
+    <AssemblyVersion>1.0.10.0</AssemblyVersion>
+    <FileVersion>1.0.10.0</FileVersion>
+    <Version>1.0.10</Version>
     <Company>wechat_duokai contributors</Company>
-    <Product>开开助手清理器</Product>
-    <Description>独立清理开开助手、发布包和可选源码</Description>
+    <Product>微窗助手清理器</Product>
+    <Description>独立清理微窗助手、发布包和可选源码</Description>
     <Copyright>Copyright © CN-Root and contributors 2022-2026</Copyright>
   </PropertyGroup>
   <ItemGroup>
@@ -28,6 +28,6 @@
     <Compile Include="..\shared\WpfPresentation.cs" Link="Presentation\WpfPresentation.cs" />
     <Page Include="..\installer\UninstallWindow.xaml" Link="UninstallWindow.xaml" />
     <Page Include="..\shared\ThemeResources.xaml" Link="Themes\ThemeResources.xaml" />
-    <Resource Include="..\duokai\Resources\KaikaiLogo.png" Link="Resources\KaikaiLogo.png" />
+    <Resource Include="..\duokai\Resources\WeichuangLogo.png" Link="Resources\WeichuangLogo.png" />
   </ItemGroup>
 </Project>

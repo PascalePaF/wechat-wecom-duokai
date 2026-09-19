@@ -2,31 +2,31 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <FontFamily x:Key="AppFont">Microsoft YaHei UI</FontFamily>
 
-    <SolidColorBrush x:Key="WindowBackgroundBrush" Color="#F7F6F2" />
-    <SolidColorBrush x:Key="WindowTopBrush" Color="#FBFAF7" />
+    <SolidColorBrush x:Key="WindowBackgroundBrush" Color="#F4F8F7" />
+    <SolidColorBrush x:Key="WindowTopBrush" Color="#FAFCFC" />
     <SolidColorBrush x:Key="SurfaceBrush" Color="#FFFFFF" />
-    <SolidColorBrush x:Key="SurfaceRaisedBrush" Color="#FFFDF9" />
-    <SolidColorBrush x:Key="SurfaceHoverBrush" Color="#F5F1E9" />
-    <SolidColorBrush x:Key="BorderBrush" Color="#E5E0D7" />
-    <SolidColorBrush x:Key="BorderStrongBrush" Color="#D8CDBB" />
-    <SolidColorBrush x:Key="TextBrush" Color="#1D2025" />
-    <SolidColorBrush x:Key="TextSecondaryBrush" Color="#656B75" />
-    <SolidColorBrush x:Key="TextTertiaryBrush" Color="#969BA4" />
-    <SolidColorBrush x:Key="AccentBrush" Color="#A47A43" />
-    <SolidColorBrush x:Key="AccentHoverBrush" Color="#8C6637" />
-    <SolidColorBrush x:Key="AccentPressedBrush" Color="#76552E" />
+    <SolidColorBrush x:Key="SurfaceRaisedBrush" Color="#FBFDFC" />
+    <SolidColorBrush x:Key="SurfaceHoverBrush" Color="#EFF6F4" />
+    <SolidColorBrush x:Key="BorderBrush" Color="#DCE9E5" />
+    <SolidColorBrush x:Key="BorderStrongBrush" Color="#C4D8D2" />
+    <SolidColorBrush x:Key="TextBrush" Color="#18221F" />
+    <SolidColorBrush x:Key="TextSecondaryBrush" Color="#5E6C67" />
+    <SolidColorBrush x:Key="TextTertiaryBrush" Color="#899791" />
+    <SolidColorBrush x:Key="AccentBrush" Color="#168F55" />
+    <SolidColorBrush x:Key="AccentHoverBrush" Color="#117945" />
+    <SolidColorBrush x:Key="AccentPressedBrush" Color="#0E663A" />
     <SolidColorBrush x:Key="AccentTextBrush" Color="#FFFFFF" />
-    <SolidColorBrush x:Key="SuccessBrush" Color="#16845D" />
-    <SolidColorBrush x:Key="SuccessSurfaceBrush" Color="#EAF7F1" />
-    <SolidColorBrush x:Key="InfoBrush" Color="#2379C8" />
+    <SolidColorBrush x:Key="SuccessBrush" Color="#168F55" />
+    <SolidColorBrush x:Key="SuccessSurfaceBrush" Color="#E7F7EF" />
+    <SolidColorBrush x:Key="InfoBrush" Color="#2F78D5" />
     <SolidColorBrush x:Key="WarningBrush" Color="#B66A12" />
     <SolidColorBrush x:Key="DangerBrush" Color="#C54848" />
     <SolidColorBrush x:Key="DangerHoverBrush" Color="#AE3A3A" />
     <SolidColorBrush x:Key="DangerSurfaceBrush" Color="#FFF1F1" />
-    <SolidColorBrush x:Key="SelectionBrush" Color="#F2E9DA" />
-    <SolidColorBrush x:Key="WeChatIconSurfaceBrush" Color="#E9F8F1" />
-    <SolidColorBrush x:Key="WeComIconSurfaceBrush" Color="#EAF5FC" />
-    <Color x:Key="ShadowColor">#2A2B211B</Color>
+    <SolidColorBrush x:Key="SelectionBrush" Color="#E8F7F0" />
+    <SolidColorBrush x:Key="WeChatIconSurfaceBrush" Color="#E4F8EE" />
+    <SolidColorBrush x:Key="WeComIconSurfaceBrush" Color="#E7F2FE" />
+    <Color x:Key="ShadowColor">#24304B43</Color>
 
     <Style TargetType="TextBlock">
         <Setter Property="FontFamily" Value="{StaticResource AppFont}" />

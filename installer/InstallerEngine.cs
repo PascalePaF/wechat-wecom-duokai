@@ -16,8 +16,8 @@ namespace WechatDuokai.Installer
 {
     internal static class InstallerEngine
     {
-        internal const string ProductName = "开开助手";
-        internal const string Version = "1.0.9";
+        internal const string ProductName = "微窗助手";
+        internal const string Version = "1.0.10";
         internal const string SourceMarkerName = ".wechat-duokai-source-root";
         internal const string SourceMarkerValue = "wechat-duokai-source-root:8f8b922d-244d-45c6-b7a8-a47ab3073f7d";
         internal const string ArtifactMarkerName = ".wechat-duokai-artifacts";
@@ -52,9 +52,16 @@ namespace WechatDuokai.Installer
 
         internal static string StartMenuDirectory => Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "Microsoft", "Windows", "Start Menu", "Programs", "开开助手");
+            "Microsoft", "Windows", "Start Menu", "Programs", "微窗助手");
 
         internal static string DesktopShortcut => Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), "微窗助手.lnk");
+
+        internal static string PreviousStartMenuDirectory => Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+            "Microsoft", "Windows", "Start Menu", "Programs", "开开助手");
+
+        internal static string PreviousDesktopShortcut => Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), "开开助手.lnk");
 
         internal static string LegacyStartMenuDirectory => Path.Combine(
@@ -137,15 +144,15 @@ namespace WechatDuokai.Installer
             }
 
             Directory.CreateDirectory(StartMenuDirectory);
-            Shortcut.Create(Path.Combine(StartMenuDirectory, "开开助手.lnk"), installedExecutable, string.Empty,
-                installDirectory, installedExecutable, "启动开开助手");
+            Shortcut.Create(Path.Combine(StartMenuDirectory, "微窗助手.lnk"), installedExecutable, string.Empty,
+                installDirectory, installedExecutable, "启动微窗助手");
             Shortcut.Create(Path.Combine(StartMenuDirectory, "完全卸载.lnk"), installedUninstaller, "/uninstall",
-                installDirectory, installedUninstaller, "卸载并清理开开助手");
+                installDirectory, installedUninstaller, "卸载并清理微窗助手");
 
             if (createDesktopShortcut)
             {
                 Shortcut.Create(DesktopShortcut, installedExecutable, string.Empty,
-                    installDirectory, installedExecutable, "开开助手");
+                    installDirectory, installedExecutable, "微窗助手");
             }
             else if (File.Exists(DesktopShortcut))
             {
@@ -191,7 +198,9 @@ namespace WechatDuokai.Installer
 
             var installed = plan.Mode == UpdateTargetMode.Installed;
             var desktopShortcutExisted = installed &&
-                                         (File.Exists(DesktopShortcut) || File.Exists(LegacyDesktopShortcut));
+                                         (File.Exists(DesktopShortcut) ||
+                                          File.Exists(PreviousDesktopShortcut) ||
+                                          File.Exists(LegacyDesktopShortcut));
             try
             {
                 ApplyPayloadTransaction(plan.TargetDirectory, plan.Mode, 0);
@@ -487,16 +496,16 @@ namespace WechatDuokai.Installer
             var installedExecutable = GetInstalledExecutable(installDirectory);
             var installedUninstaller = GetInstalledUninstaller(installDirectory);
             Directory.CreateDirectory(StartMenuDirectory);
-            Shortcut.Create(Path.Combine(StartMenuDirectory, "开开助手.lnk"),
+            Shortcut.Create(Path.Combine(StartMenuDirectory, "微窗助手.lnk"),
                 installedExecutable, string.Empty, installDirectory, installedExecutable,
-                "启动开开助手");
+                "启动微窗助手");
             Shortcut.Create(Path.Combine(StartMenuDirectory, "完全卸载.lnk"),
                 installedUninstaller, "/uninstall", installDirectory, installedUninstaller,
-                "卸载并清理开开助手");
+                "卸载并清理微窗助手");
             if (createDesktopShortcut)
             {
                 Shortcut.Create(DesktopShortcut, installedExecutable, string.Empty,
-                    installDirectory, installedExecutable, "开开助手");
+                    installDirectory, installedExecutable, "微窗助手");
             }
             RemoveLegacyIntegration();
 
@@ -516,28 +525,39 @@ namespace WechatDuokai.Installer
 
         internal static void RemoveLegacyIntegration()
         {
+            RemoveKnownDesktopShortcut(PreviousDesktopShortcut);
+            RemoveKnownStartMenuIntegration(PreviousStartMenuDirectory, "开开助手.lnk");
+            RemoveKnownDesktopShortcut(LegacyDesktopShortcut);
+            RemoveKnownStartMenuIntegration(LegacyStartMenuDirectory, "微信企业微信多开助手.lnk");
+        }
+
+        private static void RemoveKnownDesktopShortcut(string shortcutPath)
+        {
             try
             {
-                if (File.Exists(LegacyDesktopShortcut))
+                if (File.Exists(shortcutPath))
                 {
-                    File.Delete(LegacyDesktopShortcut);
+                    File.Delete(shortcutPath);
                 }
             }
             catch (Exception)
             {
                 // A stale legacy shortcut is non-critical and can be removed during cleanup.
             }
+        }
 
+        private static void RemoveKnownStartMenuIntegration(string directory, string mainShortcutName)
+        {
             try
             {
-                var legacyMainShortcut = Path.Combine(LegacyStartMenuDirectory, "微信企业微信多开助手.lnk");
-                var legacyUninstallShortcut = Path.Combine(LegacyStartMenuDirectory, "完全卸载.lnk");
+                var legacyMainShortcut = Path.Combine(directory, mainShortcutName);
+                var legacyUninstallShortcut = Path.Combine(directory, "完全卸载.lnk");
                 if (File.Exists(legacyMainShortcut)) File.Delete(legacyMainShortcut);
                 if (File.Exists(legacyUninstallShortcut)) File.Delete(legacyUninstallShortcut);
-                if (Directory.Exists(LegacyStartMenuDirectory) &&
-                    !Directory.EnumerateFileSystemEntries(LegacyStartMenuDirectory).Any())
+                if (Directory.Exists(directory) &&
+                    !Directory.EnumerateFileSystemEntries(directory).Any())
                 {
-                    Directory.Delete(LegacyStartMenuDirectory, false);
+                    Directory.Delete(directory, false);
                 }
             }
             catch (Exception)
