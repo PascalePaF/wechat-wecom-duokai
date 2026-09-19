@@ -4,7 +4,7 @@
     <TargetFramework>net48</TargetFramework>
     <UseWPF>true</UseWPF>
     <UseWindowsForms>true</UseWindowsForms>
-    <AssemblyName>wechat_duokai-cleanup-v1.0.10</AssemblyName>
+    <AssemblyName>wechat_duokai-cleanup-v$(WechatDuokaiVersion)</AssemblyName>
     <RootNamespace>WechatDuokai.Cleanup</RootNamespace>
     <StartupObject>WechatDuokai.Cleanup.Program</StartupObject>
     <PlatformTarget>x64</PlatformTarget>
@@ -13,9 +13,9 @@
     <Deterministic>true</Deterministic>
     <ApplicationIcon>..\duokai\favicon.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
-    <AssemblyVersion>1.0.10.0</AssemblyVersion>
-    <FileVersion>1.0.10.0</FileVersion>
-    <Version>1.0.10</Version>
+    <AssemblyVersion>$(WechatDuokaiVersion).0</AssemblyVersion>
+    <FileVersion>$(WechatDuokaiVersion).0</FileVersion>
+    <Version>$(WechatDuokaiVersion)</Version>
     <Company>wechat_duokai contributors</Company>
     <Product>微窗助手清理器</Product>
     <Description>独立清理微窗助手、发布包和可选源码</Description>
@@ -26,8 +26,10 @@
     <Compile Include="..\installer\UninstallWindow.xaml.cs" Link="UninstallWindow.xaml.cs" />
     <Compile Include="..\shared\UpdateProtocol.cs" Link="Update\UpdateProtocol.cs" />
     <Compile Include="..\shared\WpfPresentation.cs" Link="Presentation\WpfPresentation.cs" />
+    <Compile Include="..\shared\WindowsShellIntegration.cs" Link="Presentation\WindowsShellIntegration.cs" />
     <Page Include="..\installer\UninstallWindow.xaml" Link="UninstallWindow.xaml" />
     <Page Include="..\shared\ThemeResources.xaml" Link="Themes\ThemeResources.xaml" />
     <Resource Include="..\duokai\Resources\WeichuangLogo.png" Link="Resources\WeichuangLogo.png" />
+    <Resource Include="..\duokai\favicon.ico" Link="Resources\AppIcon.ico" />
   </ItemGroup>
 </Project>

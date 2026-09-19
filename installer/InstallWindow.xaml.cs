@@ -22,6 +22,7 @@ namespace WechatDuokai.Installer
         public InstallWindow()
         {
             InitializeComponent();
+            ApplyProductIdentity();
             _selectedInstallDirectory = InstallerEngine.SuggestedInstallDirectory;
             InstallPathText.Text = _selectedInstallDirectory;
             UpdateThemeButton();
@@ -32,11 +33,18 @@ namespace WechatDuokai.Installer
             _updatePlan = updatePlan ?? throw new ArgumentNullException(nameof(updatePlan));
             _updatePlanPath = Path.GetFullPath(updatePlanPath);
             InitializeComponent();
+            ApplyProductIdentity();
             _selectedInstallDirectory = _updatePlan.TargetDirectory;
             InstallPathText.Text = _selectedInstallDirectory;
             ConfigureAutoUpdatePresentation();
             UpdateThemeButton();
             Loaded += async (sender, args) => await BeginAutoUpdateAsync();
+        }
+
+        private void ApplyProductIdentity()
+        {
+            Title = ProductIdentity.Name + " V" + InstallerEngine.Version + " 安装程序";
+            VersionText.Text = "V" + InstallerEngine.Version;
         }
 
         private void Window_SourceInitialized(object sender, EventArgs e)

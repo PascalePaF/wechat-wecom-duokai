@@ -48,6 +48,7 @@ namespace WechatDuokai.Core
 
     public sealed class ApplicationUpdateService
     {
+        private static readonly string ClientVersion = GetClientVersion();
         internal const string InstallMarkerName = ".wechat-duokai-install";
         internal const string InstallMarkerValue =
             "wechat-duokai-install:e14d0ef8-9e2f-4020-899c-68aa4d04fa2c";
@@ -373,9 +374,17 @@ namespace WechatDuokai.Core
         private static HttpRequestMessage CreateDownloadRequest(string url)
         {
             var request = new HttpRequestMessage(HttpMethod.Get, url);
-            request.Headers.UserAgent.ParseAdd("wechat-duokai-updater/1.0.10");
+            request.Headers.UserAgent.ParseAdd("wechat-duokai-updater/" + ClientVersion);
             request.Headers.Accept.ParseAdd("application/octet-stream");
             return request;
+        }
+
+        private static string GetClientVersion()
+        {
+            var version = typeof(ApplicationUpdateService).Assembly.GetName().Version;
+            return version == null
+                ? "0.0.0"
+                : version.Major + "." + version.Minor + "." + Math.Max(0, version.Build);
         }
 
         private static void ValidateContentLength(HttpResponseMessage response, long expected)

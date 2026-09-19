@@ -11,7 +11,9 @@ $resourceDirectory = Join-Path $projectRoot 'duokai\Resources'
 $docsAssetDirectory = Join-Path $projectRoot 'docs\assets'
 $iconPath = Join-Path $projectRoot 'duokai\favicon.ico'
 $resourcePngPath = Join-Path $resourceDirectory 'WeichuangLogo.png'
-$docsPngPath = Join-Path $docsAssetDirectory 'weichuang-logo-v1.0.10.png'
+[xml]$centralVersionFile = Get-Content -LiteralPath (Join-Path $projectRoot 'Directory.Build.props')
+$version = [string]$centralVersionFile.Project.PropertyGroup.WechatDuokaiVersion
+$docsPngPath = Join-Path $docsAssetDirectory ("weichuang-logo-v" + $version + '.png')
 
 New-Item -ItemType Directory -Path $resourceDirectory -Force | Out-Null
 New-Item -ItemType Directory -Path $docsAssetDirectory -Force | Out-Null

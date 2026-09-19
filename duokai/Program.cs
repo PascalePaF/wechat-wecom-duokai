@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Windows;
@@ -11,6 +12,7 @@ namespace WechatDuokai.App
         [STAThread]
         private static int Main(string[] args)
         {
+            WindowsShellIntegration.TrySetCurrentProcessAppUserModelId(ProductIdentity.MainAppUserModelId);
             var mutexCreated = false;
             using (var mutex = new Mutex(true, "Local\\WechatDuokai.ControlCenter", out mutexCreated))
             {
@@ -31,6 +33,8 @@ namespace WechatDuokai.App
                 try
                 {
                     WechatDuokai.Core.ApplicationStorage.EnsureReady();
+                    var executablePath = Process.GetCurrentProcess().MainModule?.FileName;
+                    WindowsShellIntegration.NotifyIconChanged(executablePath);
                 }
                 catch (Exception ex)
                 {
@@ -47,6 +51,7 @@ namespace WechatDuokai.App
                     MessageBox.Show("程序遇到问题，但没有修改微信或企业微信文件。\r\n\r\n" + eventArgs.Exception.Message,
                         "运行提示", MessageBoxButton.OK, MessageBoxImage.Warning);
                     eventArgs.Handled = true;
+                    application.Shutdown(1);
                 };
 
                 return application.Run(new MainWindow());

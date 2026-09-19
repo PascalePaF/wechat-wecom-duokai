@@ -11,9 +11,9 @@
     <LangVersion>latest</LangVersion>
     <Deterministic>true</Deterministic>
     <ApplicationIcon>favicon.ico</ApplicationIcon>
-    <AssemblyVersion>1.0.10.0</AssemblyVersion>
-    <FileVersion>1.0.10.0</FileVersion>
-    <Version>1.0.10</Version>
+    <AssemblyVersion>$(WechatDuokaiVersion).0</AssemblyVersion>
+    <FileVersion>$(WechatDuokaiVersion).0</FileVersion>
+    <Version>$(WechatDuokaiVersion)</Version>
     <Company>wechat_duokai contributors</Company>
     <Product>微窗助手</Product>
     <Description>轻量的微信与企业微信多开和按缺口补开工具</Description>
@@ -32,6 +32,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="..\shared\WpfPresentation.cs" Link="Presentation\WpfPresentation.cs" />
+    <Compile Include="..\shared\WindowsShellIntegration.cs" Link="Presentation\WindowsShellIntegration.cs" />
     <Page Include="..\shared\ThemeResources.xaml" Link="Themes\ThemeResources.xaml" />
   </ItemGroup>
   <ItemGroup>
@@ -41,5 +42,6 @@
     <Resource Include="Resources\WeChat.png" />
     <Resource Include="Resources\WXWork.png" />
     <Resource Include="Resources\WeichuangLogo.png" />
+    <Resource Include="favicon.ico" Link="Resources\AppIcon.ico" />
   </ItemGroup>
 </Project>

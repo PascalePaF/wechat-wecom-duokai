@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/assets/weichuang-logo-v1.0.10.png" width="132" alt="微窗助手 Logo">
+  <img src="docs/assets/weichuang-logo-v1.0.11.png" width="132" alt="微窗助手 Logo">
 </p>
 
 <h1 align="center">微窗助手</h1>
@@ -19,21 +19,21 @@
 > 本项目基于 [CN-Root/wechat-wecom-duokai](https://github.com/CN-Root/wechat-wecom-duokai)
 > 持续改进。不会修改、替换或破解微信与企业微信客户端文件，也不是腾讯官方产品。
 
-![V1.0.10 日间主题最小界面](docs/assets/v1.0.10-main-light-901x513.png)
+![V1.0.11 日间主题最小界面](docs/assets/v1.0.11-main-light-901x513.png)
 
-## V1.0.10 有什么变化
+## V1.0.11 有什么变化
 
-- 正式产品名改为“微窗助手”，名称简短、容易输入，并准确对应微信/企微窗口管理。
-- 原创 Logo 由两个相连圆角窗口构成，使用微信同类绿、企微同类蓝与薄荷连接色；不复制官方商标。
-- 日间界面移除旧金棕色，改为浅灰绿背景、深微信绿主操作和企微蓝信息色。
-- 夜间界面采用低亮度深绿蓝灰，主绿、状态蓝、选择色和图标底色进一步压暗。
-- 覆盖旧版本时迁移“开开助手”和更早长名称快捷方式；内部文件名、安装身份与数据标记保持兼容。
-- UI 回归继续覆盖 14 个自动渲染场景，并新增绿/蓝品牌色方向断言。
-- 共用目标数、增量补开、注册表恢复保护、程序目录数据边界和确认式安全更新链保持不变。
+- 修复任务栏、标题栏和旧缓存没有跟上新 Logo 的问题；三个窗口现在显式绑定绿蓝图标。
+- 主程序、安装器和清理器获得稳定、独立的 Windows 任务栏身份；新快捷方式也写入与目标进程一致的身份。
+- 安装、覆盖更新、快捷方式迁移和清理后主动通知 Explorer 刷新图标，不删全局缓存、不重启 Explorer。
+- 版本号收拢为一个来源，发布时自动比对界面、manifest、app/core/setup/cleanup 文件版本，防止漏改。
+- 全项目自查修复了 UI 未处理异常后仍继续运行、更新 User-Agent 版本漂移等问题。
+- 新增窗口图标与三个原生 EXE 绿/蓝像素自动断言；共用目标数、增量补开和安全更新链保持不变。
 
 完整记录见 [CHANGELOG.md](CHANGELOG.md)。安全更新链、目录限制、主题回归和测试证据见
-[V1.0.10 一键更新安全验证报告](docs/V1.0.10-一键更新安全验证报告.md)与
-[V1.0.10 UI 回归矩阵](docs/V1.0.10-UI回归矩阵.md)。
+[V1.0.11 全项目自查报告](docs/V1.0.11-全项目自查与任务栏图标修复报告.md)、
+[V1.0.11 一键更新安全验证报告](docs/V1.0.11-一键更新安全验证报告.md)与
+[V1.0.11 UI 回归矩阵](docs/V1.0.11-UI回归矩阵.md)。
 
 ## 主要能力
 
@@ -59,12 +59,12 @@
 
 | 文件 | 适用场景 |
 | --- | --- |
-| `wechat_duokai-setup-v1.0.10.exe` | 推荐；可选择本机安装地址，也是经过校验的一键更新执行程序 |
-| `wechat_duokai-portable-v1.0.10.zip` | 绿色版；解压完整目录后直接运行，也支持保持绿色身份原地更新 |
-| `wechat_duokai-cleanup-v1.0.10.exe` | 独立完整卸载与清理工具；与安装器不是同一个二进制 |
+| `wechat_duokai-setup-v1.0.11.exe` | 推荐；可选择本机安装地址，也是经过校验的一键更新执行程序 |
+| `wechat_duokai-portable-v1.0.11.zip` | 绿色版；解压完整目录后直接运行，也支持保持绿色身份原地更新 |
+| `wechat_duokai-cleanup-v1.0.11.exe` | 独立完整卸载与清理工具；与安装器不是同一个二进制 |
 | `SHA256SUMS.txt` | 核对下载内容是否与发布文件一致 |
 | `manifest.spdx.json` | Microsoft SBOM Tool 生成并验证的 SPDX 2.2 软件物料清单 |
-| `kaspersky-scan-v1.0.10.txt` | Kaspersky 对正式发布附件原件的原始扫描日志 |
+| `kaspersky-scan-v1.0.11.txt` | Kaspersky 对正式发布附件原件的原始扫描日志 |
 
 当前版本没有受公共信任的 Authenticode 代码签名。首次运行可能出现“未知发布者”、SmartScreen 或
 第三方启发式信誉提示；这不等于文件一定有病毒，也不能反过来当作安全证明。请核对下载域名、Release
@@ -73,7 +73,7 @@
 
 ## 安装和升级
 
-1. 下载并运行 `wechat_duokai-setup-v1.0.10.exe`。
+1. 下载并运行 `wechat_duokai-setup-v1.0.11.exe`。
 2. 使用“选择文件夹”选择或新建一个专用安装目录；路径不需要手动输入。
 3. 选择是否创建桌面快捷方式，然后点击“立即安装”。
 4. 如果同一安装目录的旧助手正在运行，按提示选择关闭或取消。安装器只处理该目录中的助手，
@@ -81,12 +81,13 @@
 5. 安装完成后应用仍保持未启动；只有点击“确认并启动”才会运行，也可选择“稍后启动”。
 6. 从 V1.0.9 或更早版本覆盖安装时，新版会创建“微窗助手”快捷方式并清理已知的旧名称快捷方式；
    程序、设置和 `data` 内容不会因更名丢失。
+7. 如果任务栏上是用旧版历史快捷方式手工固定的独立项且仍显示旧图标，取消固定后从新的开始菜单快捷方式重新固定一次。
 
-![V1.0.10 日间主题安装器](docs/assets/v1.0.10-installer-light.png)
+![V1.0.11 日间主题安装器](docs/assets/v1.0.11-installer-light.png)
 
 ## 绿色版
 
-1. 将 `wechat_duokai-portable-v1.0.10.zip` 解压到一个独立文件夹。
+1. 将 `wechat_duokai-portable-v1.0.11.zip` 解压到一个独立文件夹。
 2. 运行 `wechat_duokai.exe`。
 3. 不要只把主 EXE 移走；它需要同目录的 `WechatDuokai.Core.dll`，完整目录还包含许可证、安全说明和清理器。
 
@@ -105,7 +106,7 @@
 
 共用目标数量、自定义路径和更新偏好保存在程序目录的 `data\settings.ini`，主题保存在
 `data\theme.ini`。自定义路径使用 Base64 只是为了避免特殊字符破坏配置格式，不是加密；配置不包含
-账号、聊天内容或凭据。V1.0.10 延续 V1.0.7 的迁移规则：把 V1.0.6 分开保存的两个数量合并为一个，
+账号、聊天内容或凭据。V1.0.11 延续 V1.0.7 的迁移规则：把 V1.0.6 分开保存的两个数量合并为一个，
 优先沿用微信的旧值；
 V1.0.5 及更早版本的 AppData 设置只迁移一次，迁移后不再写回旧目录。
 
@@ -131,18 +132,18 @@ compare-and-swap，外部程序仍可能在最后一次比较与写入之间竞�
 目录的 `data\updates`，并经过 GitHub 摘要、发布校验文件和本机文件三方 SHA-256 验证。安装版会刷新原有
 安装登记，绿色版保持绿色身份；二者都不会覆盖 `data`。失败时保留或恢复当前版本。
 
-![V1.0.10 设置页](docs/assets/v1.0.10-settings-light-901x513.png)
+![V1.0.11 设置页](docs/assets/v1.0.11-settings-light-901x513.png)
 
-![V1.0.10 软件介绍页](docs/assets/v1.0.10-about-light-901x513.png)
+![V1.0.11 软件介绍页](docs/assets/v1.0.11-about-light-901x513.png)
 
 <details>
 <summary>查看夜间主题与大尺寸适配</summary>
 
-![V1.0.10 夜间主题最小界面](docs/assets/v1.0.10-main-dark-901x513.png)
+![V1.0.11 夜间主题最小界面](docs/assets/v1.0.11-main-dark-901x513.png)
 
-![V1.0.10 1920×1080 夜间界面](docs/assets/v1.0.10-main-dark-1920x1080.png)
+![V1.0.11 1920×1080 夜间界面](docs/assets/v1.0.11-main-dark-1920x1080.png)
 
-![V1.0.10 3440×1392 超宽屏界面](docs/assets/v1.0.10-main-ultrawide-light-3440x1392.png)
+![V1.0.11 3440×1392 超宽屏界面](docs/assets/v1.0.11-main-ultrawide-light-3440x1392.png)
 
 </details>
 
@@ -197,9 +198,10 @@ compare-and-swap，外部程序仍可能在最后一次比较与写入之间竞�
 
 安全资料：
 
-- [V1.0.10 完整安全审计报告](docs/微窗助手_V1.0.10_完整安全审计报告.txt)
-- [V1.0.10 一键更新安全验证报告](docs/V1.0.10-一键更新安全验证报告.md)
-- [V1.0.10 UI 回归矩阵](docs/V1.0.10-UI回归矩阵.md)
+- [V1.0.11 完整安全审计报告](docs/微窗助手_V1.0.11_完整安全审计报告.txt)
+- [V1.0.11 全项目自查与任务栏图标修复报告](docs/V1.0.11-全项目自查与任务栏图标修复报告.md)
+- [V1.0.11 一键更新安全验证报告](docs/V1.0.11-一键更新安全验证报告.md)
+- [V1.0.11 UI 回归矩阵](docs/V1.0.11-UI回归矩阵.md)
 - [V1.0.1 源码与旧版二进制安全审计（历史）](SECURITY-AUDIT.md)
 - [旧版 EXE 硬编码路径说明](docs/旧版EXE硬编码路径说明与风险评估报告.txt)
 
@@ -215,7 +217,7 @@ compare-and-swap，外部程序仍可能在最后一次比较与写入之间竞�
 2. **全部删除，包括源码与全部发布包**：只有源码目录带正确标记且结构匹配时可选；还需要额外复选
    和最后一次确认。未提交的源码修改不可恢复。
 
-![V1.0.10 完整卸载器](docs/assets/v1.0.10-uninstaller-light.png)
+![V1.0.11 完整卸载器](docs/assets/v1.0.11-uninstaller-light.png)
 
 ## 从源码构建
 
@@ -225,10 +227,10 @@ compare-and-swap，外部程序仍可能在最后一次比较与写入之间竞�
 ```powershell
 MSBuild .\duokai.sln /restore /t:Rebuild /p:Configuration=Release
 .\tests\bin\Release\net48\WechatDuokai.Tests.exe
-PowerShell -ExecutionPolicy Bypass -File .\build-release.ps1 -Version 1.0.10
+PowerShell -ExecutionPolicy Bypass -File .\build-release.ps1 -Version 1.0.11
 ```
 
-发布目录为 `artifacts\V1.0.10`。脚本分别复制真正的 setup 与 cleanup 输出，并生成绿色版、发布清单
+发布目录为 `artifacts\V1.0.11`。脚本分别复制真正的 setup 与 cleanup 输出，并生成绿色版、发布清单
 和 SHA-256。界面回归样本可用 `scripts\capture-ui-matrix.ps1` 重新生成。GitHub 工作流还会在全新的
 `windows-2022` 虚拟机中重复这一过程，逐项复核哈希并生成、验证 SPDX 2.2 SBOM。
 
@@ -236,13 +238,13 @@ PowerShell -ExecutionPolicy Bypass -File .\build-release.ps1 -Version 1.0.10
 
 - 自动识别与手动选择覆盖微信旧版 `WeChat.exe`、微信 4.x `Weixin.exe` 和企业微信 `WXWork.exe`；
   不以小版本号作为白名单，因此官方维护版本升级不会仅因版本号变化被拒绝。
-- V1.0.10 沿用真机基线：微信 `4.1.15.6`、企业微信 `5.0.11.6018`、Windows 11 x64，二者腾讯签名有效；
+- V1.0.11 沿用真机基线：微信 `4.1.15.6`、企业微信 `5.0.11.6018`、Windows 11 x64，二者腾讯签名有效；
   企业微信已验证三个根实例同时运行并在测试后正常退出。
 - 支持 Windows 10/11 的 100%、125%、150%、175%、200% 缩放逻辑；Per-Monitor V2 允许跨显示器
   重新缩放。每种显卡驱动、辅助技术和超长本地路径仍需社区反馈继续覆盖。
 - 腾讯没有公开承诺第三方多开机制长期稳定。客户端改变锁机制时，本工具会失败关闭，不会转向注入
   或修改客户端；请先用测试账号验证，并遵守客户端许可、组织安全策略及账号风控规则。
-- V1.0.10 继续使用 WPF/.NET Framework 4.8；现有矢量框架和独立安装器可以实现主题动态资源与安全更新，无需迁移
+- V1.0.11 继续使用 WPF/.NET Framework 4.8；现有矢量框架和独立安装器可以实现主题动态资源与安全更新，无需迁移
   WinUI 3、Tauri 或 Python。
 
 ## 版本来源
@@ -260,6 +262,7 @@ PowerShell -ExecutionPolicy Bypass -File .\build-release.ps1 -Version 1.0.10
 - V1.0.8：低亮度舒适夜间主题、主题化客户端图标背景，以及诊断/发布入口归入设置页
 - V1.0.9：“开开助手”名称与正式 Logo、极简主界面、设置内软件介绍和旧快捷方式迁移
 - V1.0.10：“微窗助手”名称、绿蓝双窗口 Logo、微信绿 / 企微蓝主题和三代快捷方式迁移
+- V1.0.11：任务栏/标题栏图标同步、稳定 Shell 身份、图标缓存刷新、中央版本与全项目自查
 
 ## 许可证
 

@@ -16,12 +16,21 @@ namespace WechatDuokai.Cleanup
                 return 0;
             }
 
+            WechatDuokai.Presentation.WindowsShellIntegration.TrySetCurrentProcessAppUserModelId(
+                WechatDuokai.Presentation.ProductIdentity.CleanupAppUserModelId);
             var application = new Application { ShutdownMode = ShutdownMode.OnMainWindowClose };
             application.Resources.MergedDictionaries.Add(new ResourceDictionary
             {
                 Source = new Uri("Themes/ThemeResources.xaml", UriKind.Relative)
             });
             WechatDuokai.Presentation.ThemeManager.Initialize(ParseForcedTheme(args));
+            application.DispatcherUnhandledException += (sender, eventArgs) =>
+            {
+                MessageBox.Show("清理程序遇到未预期问题，已停止继续操作。\r\n\r\n" + eventArgs.Exception.Message,
+                    "清理程序已停止", MessageBoxButton.OK, MessageBoxImage.Error);
+                eventArgs.Handled = true;
+                application.Shutdown(1);
+            };
             return application.Run(new WechatDuokai.Installer.UninstallWindow());
         }
 

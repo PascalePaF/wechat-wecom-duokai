@@ -1,0 +1,8 @@
+<Project>
+  <PropertyGroup>
+    <WechatDuokaiVersion>1.0.11</WechatDuokaiVersion>
+    <Version>$(WechatDuokaiVersion)</Version>
+    <AssemblyVersion>$(WechatDuokaiVersion).0</AssemblyVersion>
+    <FileVersion>$(WechatDuokaiVersion).0</FileVersion>
+  </PropertyGroup>
+</Project>

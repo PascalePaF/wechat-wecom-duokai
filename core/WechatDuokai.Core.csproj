@@ -6,9 +6,9 @@
     <LangVersion>latest</LangVersion>
     <Deterministic>true</Deterministic>
     <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
-    <AssemblyVersion>1.0.10.0</AssemblyVersion>
-    <FileVersion>1.0.10.0</FileVersion>
-    <Version>1.0.10</Version>
+    <AssemblyVersion>$(WechatDuokaiVersion).0</AssemblyVersion>
+    <FileVersion>$(WechatDuokaiVersion).0</FileVersion>
+    <Version>$(WechatDuokaiVersion)</Version>
     <Company>wechat_duokai contributors</Company>
     <Product>微窗助手</Product>
     <Description>微信和企业微信多开、实例检测与安全句柄释放核心</Description>

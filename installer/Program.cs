@@ -11,12 +11,20 @@ namespace WechatDuokai.Installer
         [STAThread]
         private static int Main(string[] args)
         {
+            WindowsShellIntegration.TrySetCurrentProcessAppUserModelId(ProductIdentity.SetupAppUserModelId);
             var application = new Application { ShutdownMode = ShutdownMode.OnMainWindowClose };
             application.Resources.MergedDictionaries.Add(new ResourceDictionary
             {
                 Source = new Uri("Themes/ThemeResources.xaml", UriKind.Relative)
             });
             ThemeManager.Initialize(ParseForcedTheme(args));
+            application.DispatcherUnhandledException += (sender, eventArgs) =>
+            {
+                MessageBox.Show("安装程序遇到未预期问题，已停止继续操作。\r\n\r\n" + eventArgs.Exception.Message,
+                    "安装程序已停止", MessageBoxButton.OK, MessageBoxImage.Error);
+                eventArgs.Handled = true;
+                application.Shutdown(1);
+            };
             if (args != null && args.Length >= 2 &&
                 string.Equals(args[0], "/auto-update", StringComparison.OrdinalIgnoreCase))
             {

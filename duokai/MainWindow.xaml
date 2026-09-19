@@ -1,7 +1,7 @@
 <Window x:Class="WechatDuokai.App.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="微窗助手 V1.0.10"
+        Title="微窗助手" Icon="Resources/AppIcon.ico"
         Width="901" Height="513" MinWidth="901" MinHeight="513"
         WindowStartupLocation="CenterScreen" ResizeMode="CanResize" WindowStyle="SingleBorderWindow"
         Background="{DynamicResource WindowBackgroundBrush}" FontFamily="{StaticResource AppFont}"
@@ -40,7 +40,7 @@
                     <Border x:Name="VersionBadge" Height="30" Padding="13,0" CornerRadius="15"
                             Background="{DynamicResource SelectionBrush}" BorderBrush="{DynamicResource BorderBrush}"
                             BorderThickness="1">
-                        <TextBlock Text="V1.0.10" FontSize="11" FontWeight="SemiBold"
+                        <TextBlock x:Name="HeaderVersionText" Text="V" FontSize="11" FontWeight="SemiBold"
                                    Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" />
                     </Border>
                     <Button x:Name="ThemeButton" Margin="10,0,0,0" Style="{StaticResource PillButtonStyle}"
@@ -221,7 +221,7 @@
                         <Border Grid.Column="2" Height="28" Padding="12,0" CornerRadius="14"
                                 Background="{DynamicResource SelectionBrush}"
                                 BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
-                            <TextBlock Text="V1.0.10" FontSize="10" FontWeight="SemiBold"
+                            <TextBlock x:Name="SettingsVersionText" Text="V" FontSize="10" FontWeight="SemiBold"
                                        Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" />
                         </Border>
                     </Grid>

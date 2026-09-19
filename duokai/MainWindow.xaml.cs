@@ -19,7 +19,7 @@ namespace WechatDuokai.App
     {
         internal const double MinimumWindowWidth = 901d;
         internal const double MinimumWindowHeight = 513d;
-        private const string CurrentVersion = "1.0.10";
+        private static readonly string CurrentVersion = ProductIdentity.GetVersion(typeof(MainWindow).Assembly);
         private static readonly Regex DigitsOnly = new Regex("^[0-9]+$", RegexOptions.Compiled);
         private readonly InstanceManager _instanceManager;
         private readonly DiagnosticReportService _diagnostics = new DiagnosticReportService();
@@ -47,6 +47,9 @@ namespace WechatDuokai.App
             _instanceManager = instanceManager ?? throw new ArgumentNullException(nameof(instanceManager));
             _updateChecker = updateChecker ?? throw new ArgumentNullException(nameof(updateChecker));
             InitializeComponent();
+            Title = ProductIdentity.Name + " V" + CurrentVersion;
+            HeaderVersionText.Text = "V" + CurrentVersion;
+            SettingsVersionText.Text = "V" + CurrentVersion;
             DataObject.AddPastingHandler(TargetCountBox, TargetCountBox_OnPaste);
             var targetCount = UserPreferences.LoadTargetCount();
             _updatingCount = true;

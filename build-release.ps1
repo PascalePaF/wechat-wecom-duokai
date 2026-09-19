@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [string]$Version = '1.0.10'
+    [string]$Version = '1.0.11'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -10,6 +10,24 @@ $sourceRoot = [IO.Path]::GetFullPath($PSScriptRoot)
 $artifactParent = [IO.Path]::GetFullPath((Join-Path $sourceRoot 'artifacts'))
 $artifactRoot = [IO.Path]::GetFullPath((Join-Path $artifactParent ("V" + $Version)))
 $versionSuffix = 'v' + $Version
+
+if ($Version -notmatch '^\d+\.\d+\.\d+$') {
+    throw '版本号必须使用 major.minor.patch 格式。'
+}
+
+[xml]$centralVersionFile = Get-Content -LiteralPath (Join-Path $sourceRoot 'Directory.Build.props')
+$declaredVersion = [string]$centralVersionFile.Project.PropertyGroup.WechatDuokaiVersion
+if ($declaredVersion -ne $Version) {
+    throw "构建参数版本 $Version 与 Directory.Build.props 中的 $declaredVersion 不一致。"
+}
+
+$expectedManifestVersion = $Version + '.0'
+foreach ($manifestPath in @('duokai\app.manifest', 'installer\app.manifest', 'cleanup\app.manifest')) {
+    $manifestText = Get-Content -LiteralPath (Join-Path $sourceRoot $manifestPath) -Raw
+    if ($manifestText -notmatch ('assemblyIdentity\s+version="' + [Regex]::Escape($expectedManifestVersion) + '"')) {
+        throw "清单版本未同步：$manifestPath（应为 $expectedManifestVersion）。"
+    }
+}
 
 if (-not $artifactRoot.StartsWith($artifactParent + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) {
     throw '发布目录不在项目 artifacts 目录中，已停止构建。'
@@ -33,6 +51,23 @@ if (-not $msbuild) {
 & $msbuild (Join-Path $sourceRoot 'duokai.sln') /restore /t:Rebuild /p:Configuration=Release /m /v:minimal
 if ($LASTEXITCODE -ne 0) {
     throw "Release 编译失败，退出码：$LASTEXITCODE"
+}
+
+$expectedFileVersion = [Version]($Version + '.0')
+$versionedOutputs = @(
+    (Join-Path $sourceRoot 'duokai\bin\Release\net48\wechat_duokai.exe'),
+    (Join-Path $sourceRoot 'duokai\bin\Release\net48\WechatDuokai.Core.dll'),
+    (Join-Path $sourceRoot ("installer\bin\Release\net48\wechat_duokai-setup-v" + $Version + '.exe')),
+    (Join-Path $sourceRoot ("cleanup\bin\Release\net48\wechat_duokai-cleanup-v" + $Version + '.exe'))
+)
+foreach ($outputPath in $versionedOutputs) {
+    if (-not (Test-Path -LiteralPath $outputPath)) {
+        throw "缺少版本校验目标：$outputPath"
+    }
+    $actualVersion = [Version]([Diagnostics.FileVersionInfo]::GetVersionInfo($outputPath).FileVersion)
+    if ($actualVersion -ne $expectedFileVersion) {
+        throw "文件版本未同步：$outputPath（实际 $actualVersion，应为 $expectedFileVersion）。"
+    }
 }
 
 & (Join-Path $sourceRoot 'tests\bin\Release\net48\WechatDuokai.Tests.exe')
@@ -95,6 +130,10 @@ if (Test-Path -LiteralPath $releaseNotes) {
 $uiRegressionReport = Join-Path $sourceRoot ("docs\V" + $Version + "-UI回归矩阵.md")
 if (Test-Path -LiteralPath $uiRegressionReport) {
     Copy-Item -LiteralPath $uiRegressionReport -Destination (Join-Path $artifactRoot ("wechat-duokai-v" + $Version + "-ui-regression-matrix.md"))
+}
+$projectAuditReport = Join-Path $sourceRoot ("docs\V" + $Version + "-全项目自查与任务栏图标修复报告.md")
+if (Test-Path -LiteralPath $projectAuditReport) {
+    Copy-Item -LiteralPath $projectAuditReport -Destination (Join-Path $portableDirectory '全项目自查与任务栏图标修复报告.md')
 }
 
 # Keep the two release-facing reports beside the binaries as standalone GitHub
@@ -159,6 +198,7 @@ $manifest = @(
     "Product=$Version",
     'Brand=微窗助手',
     'BrandPalette=WeChat-adjacent green plus WeCom-adjacent blue; original dual-window mark',
+    'ShellIdentity=Explicit WPF window icon plus matching process/shortcut AppUserModelID and Explorer icon-cache notification',
     'Framework=.NET Framework 4.8',
     'Platform=Windows 10/11 x64',
     'UI=Uniform proportional scaling from 901x513 through maximized layouts; no outer scrollbars',

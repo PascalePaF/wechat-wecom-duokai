@@ -15,4 +15,7 @@
     <ProjectReference Include="..\duokai\duokai.csproj" />
     <ProjectReference Include="..\installer\installer.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <Reference Include="System.Drawing" />
+  </ItemGroup>
 </Project>

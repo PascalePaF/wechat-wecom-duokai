@@ -1,7 +1,7 @@
 <Window x:Class="WechatDuokai.Installer.InstallWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="微窗助手 V1.0.10 安装程序"
+        Title="微窗助手安装程序" Icon="Resources/AppIcon.ico"
         Width="780" Height="570" MinWidth="700" MinHeight="540"
         WindowStartupLocation="CenterScreen" ResizeMode="CanResize" WindowStyle="SingleBorderWindow"
         Background="{DynamicResource WindowBackgroundBrush}" FontFamily="{StaticResource AppFont}"
@@ -31,7 +31,7 @@
                 </StackPanel>
                 <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
                     <Border Height="30" Padding="13,0" CornerRadius="15" Background="{DynamicResource SelectionBrush}">
-                        <TextBlock x:Name="VersionText" Text="V1.0.10" FontSize="11" FontWeight="SemiBold"
+                        <TextBlock x:Name="VersionText" Text="V" FontSize="11" FontWeight="SemiBold"
                                    Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" />
                     </Border>
                     <Button x:Name="ThemeButton" Margin="10,0,0,0" Style="{StaticResource PillButtonStyle}" Click="ThemeButton_Click"

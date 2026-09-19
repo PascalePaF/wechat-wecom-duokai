@@ -4,7 +4,7 @@
     <TargetFramework>net48</TargetFramework>
     <UseWPF>true</UseWPF>
     <UseWindowsForms>true</UseWindowsForms>
-    <AssemblyName>wechat_duokai-setup-v1.0.10</AssemblyName>
+    <AssemblyName>wechat_duokai-setup-v$(WechatDuokaiVersion)</AssemblyName>
     <RootNamespace>WechatDuokai.Installer</RootNamespace>
     <StartupObject>WechatDuokai.Installer.Program</StartupObject>
     <PlatformTarget>x64</PlatformTarget>
@@ -13,9 +13,9 @@
     <Deterministic>true</Deterministic>
     <ApplicationIcon>..\duokai\favicon.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
-    <AssemblyVersion>1.0.10.0</AssemblyVersion>
-    <FileVersion>1.0.10.0</FileVersion>
-    <Version>1.0.10</Version>
+    <AssemblyVersion>$(WechatDuokaiVersion).0</AssemblyVersion>
+    <FileVersion>$(WechatDuokaiVersion).0</FileVersion>
+    <Version>$(WechatDuokaiVersion)</Version>
     <Company>wechat_duokai contributors</Company>
     <Product>微窗助手安装程序</Product>
     <Description>微窗助手安装与安全更新程序</Description>
@@ -26,8 +26,10 @@
     <Page Remove="UninstallWindow.xaml" />
     <Compile Include="..\shared\UpdateProtocol.cs" Link="Update\UpdateProtocol.cs" />
     <Compile Include="..\shared\WpfPresentation.cs" Link="Presentation\WpfPresentation.cs" />
+    <Compile Include="..\shared\WindowsShellIntegration.cs" Link="Presentation\WindowsShellIntegration.cs" />
     <Page Include="..\shared\ThemeResources.xaml" Link="Themes\ThemeResources.xaml" />
     <Resource Include="..\duokai\Resources\WeichuangLogo.png" Link="Resources\WeichuangLogo.png" />
+    <Resource Include="..\duokai\favicon.ico" Link="Resources\AppIcon.ico" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="..\duokai\bin\Release\net48\wechat_duokai.exe">
@@ -39,7 +41,7 @@
     <EmbeddedResource Include="..\duokai\bin\Release\net48\WechatDuokai.Core.dll">
       <LogicalName>Payload.WechatDuokai.Core.dll</LogicalName>
     </EmbeddedResource>
-    <EmbeddedResource Include="..\cleanup\bin\$(Configuration)\net48\wechat_duokai-cleanup-v1.0.10.exe">
+    <EmbeddedResource Include="..\cleanup\bin\$(Configuration)\net48\wechat_duokai-cleanup-v$(WechatDuokaiVersion).exe">
       <LogicalName>Payload.wechat_duokai-cleanup.exe</LogicalName>
     </EmbeddedResource>
     <EmbeddedResource Include="..\LICENSE">
@@ -54,14 +56,17 @@
     <EmbeddedResource Include="..\packaging\PORTABLE-README.txt">
       <LogicalName>Payload.PORTABLE-README.txt</LogicalName>
     </EmbeddedResource>
-    <EmbeddedResource Include="..\docs\release-notes-v1.0.10.md">
+    <EmbeddedResource Include="..\docs\release-notes-v$(WechatDuokaiVersion).md">
       <LogicalName>Payload.release-notes.md</LogicalName>
     </EmbeddedResource>
-    <EmbeddedResource Include="..\docs\微窗助手_V1.0.10_完整安全审计报告.txt">
+    <EmbeddedResource Include="..\docs\微窗助手_V$(WechatDuokaiVersion)_完整安全审计报告.txt">
       <LogicalName>Payload.security-report.txt</LogicalName>
     </EmbeddedResource>
-    <EmbeddedResource Include="..\docs\V1.0.10-一键更新安全验证报告.md">
+    <EmbeddedResource Include="..\docs\V$(WechatDuokaiVersion)-一键更新安全验证报告.md">
       <LogicalName>Payload.update-validation.md</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="..\docs\V$(WechatDuokaiVersion)-全项目自查与任务栏图标修复报告.md">
+      <LogicalName>Payload.project-audit.md</LogicalName>
     </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>

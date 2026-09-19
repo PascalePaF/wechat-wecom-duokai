@@ -10,6 +10,7 @@ using System.Text;
 using System.Threading;
 using System.Windows.Forms;
 using Microsoft.Win32;
+using WechatDuokai.Presentation;
 using WechatDuokai.Update;
 
 namespace WechatDuokai.Installer
@@ -17,7 +18,7 @@ namespace WechatDuokai.Installer
     internal static class InstallerEngine
     {
         internal const string ProductName = "微窗助手";
-        internal const string Version = "1.0.10";
+        internal static readonly string Version = ProductIdentity.GetVersion(typeof(InstallerEngine).Assembly);
         internal const string SourceMarkerName = ".wechat-duokai-source-root";
         internal const string SourceMarkerValue = "wechat-duokai-source-root:8f8b922d-244d-45c6-b7a8-a47ab3073f7d";
         internal const string ArtifactMarkerName = ".wechat-duokai-artifacts";
@@ -135,6 +136,13 @@ namespace WechatDuokai.Installer
             ExtractResource("Payload.wechat_duokai.exe.config", installedExecutable + ".config");
             ExtractResource("Payload.WechatDuokai.Core.dll", Path.Combine(installDirectory, "WechatDuokai.Core.dll"));
             ExtractResource("Payload.LICENSE.txt", Path.Combine(installDirectory, "LICENSE.txt"));
+            ExtractResource("Payload.README.md", Path.Combine(installDirectory, "README.md"));
+            ExtractResource("Payload.SECURITY-AUDIT.md", Path.Combine(installDirectory, "SECURITY-AUDIT.md"));
+            ExtractResource("Payload.release-notes.md", Path.Combine(installDirectory, "版本说明.md"));
+            ExtractResource("Payload.security-report.txt",
+                Path.Combine(installDirectory, "完整安全审计与卡巴斯基告警调查报告.txt"));
+            ExtractResource("Payload.update-validation.md", Path.Combine(installDirectory, "一键更新安全验证报告.md"));
+            ExtractResource("Payload.project-audit.md", Path.Combine(installDirectory, "全项目自查与任务栏图标修复报告.md"));
 
             ExtractResource("Payload.wechat_duokai-cleanup.exe", installedUninstaller);
             var legacyUninstaller = GetLegacyUninstaller(installDirectory);
@@ -145,20 +153,21 @@ namespace WechatDuokai.Installer
 
             Directory.CreateDirectory(StartMenuDirectory);
             Shortcut.Create(Path.Combine(StartMenuDirectory, "微窗助手.lnk"), installedExecutable, string.Empty,
-                installDirectory, installedExecutable, "启动微窗助手");
+                installDirectory, installedExecutable, "启动微窗助手", ProductIdentity.MainAppUserModelId);
             Shortcut.Create(Path.Combine(StartMenuDirectory, "完全卸载.lnk"), installedUninstaller, "/uninstall",
-                installDirectory, installedUninstaller, "卸载并清理微窗助手");
+                installDirectory, installedUninstaller, "卸载并清理微窗助手", ProductIdentity.CleanupAppUserModelId);
 
             if (createDesktopShortcut)
             {
                 Shortcut.Create(DesktopShortcut, installedExecutable, string.Empty,
-                    installDirectory, installedExecutable, "微窗助手");
+                    installDirectory, installedExecutable, "微窗助手", ProductIdentity.MainAppUserModelId);
             }
             else if (File.Exists(DesktopShortcut))
             {
                 File.Delete(DesktopShortcut);
             }
             RemoveLegacyIntegration();
+            NotifyInstalledIconChange(installedExecutable, installedUninstaller, createDesktopShortcut);
 
             var sourceRoot = FindMarkedParent(InstallerExecutablePath, SourceMarkerName, SourceMarkerValue);
             var artifactRoot = FindMarkedParent(InstallerExecutablePath, ArtifactMarkerName, ArtifactMarkerValue);
@@ -450,18 +459,16 @@ namespace WechatDuokai.Installer
                 mode == UpdateTargetMode.Installed
                     ? "wechat_duokai-uninstall.exe"
                     : "wechat_duokai-cleanup-v" + Version + ".exe");
-
-            if (mode != UpdateTargetMode.Portable)
-            {
-                yield break;
-            }
-
             yield return new UpdatePayload("Payload.README.md", "README.md");
             yield return new UpdatePayload("Payload.SECURITY-AUDIT.md", "SECURITY-AUDIT.md");
-            yield return new UpdatePayload("Payload.PORTABLE-README.txt", "使用说明.txt");
             yield return new UpdatePayload("Payload.release-notes.md", "版本说明.md");
             yield return new UpdatePayload("Payload.security-report.txt", "完整安全审计与卡巴斯基告警调查报告.txt");
             yield return new UpdatePayload("Payload.update-validation.md", "一键更新安全验证报告.md");
+            yield return new UpdatePayload("Payload.project-audit.md", "全项目自查与任务栏图标修复报告.md");
+            if (mode == UpdateTargetMode.Portable)
+            {
+                yield return new UpdatePayload("Payload.PORTABLE-README.txt", "使用说明.txt");
+            }
         }
 
         private static void RestorePayload(ReplacedPayload payload)
@@ -498,16 +505,17 @@ namespace WechatDuokai.Installer
             Directory.CreateDirectory(StartMenuDirectory);
             Shortcut.Create(Path.Combine(StartMenuDirectory, "微窗助手.lnk"),
                 installedExecutable, string.Empty, installDirectory, installedExecutable,
-                "启动微窗助手");
+                "启动微窗助手", ProductIdentity.MainAppUserModelId);
             Shortcut.Create(Path.Combine(StartMenuDirectory, "完全卸载.lnk"),
                 installedUninstaller, "/uninstall", installDirectory, installedUninstaller,
-                "卸载并清理微窗助手");
+                "卸载并清理微窗助手", ProductIdentity.CleanupAppUserModelId);
             if (createDesktopShortcut)
             {
                 Shortcut.Create(DesktopShortcut, installedExecutable, string.Empty,
-                    installDirectory, installedExecutable, "微窗助手");
+                    installDirectory, installedExecutable, "微窗助手", ProductIdentity.MainAppUserModelId);
             }
             RemoveLegacyIntegration();
+            NotifyInstalledIconChange(installedExecutable, installedUninstaller, createDesktopShortcut);
 
             using (var key = Registry.CurrentUser.CreateSubKey(UninstallRegistryPath))
             {
@@ -529,6 +537,19 @@ namespace WechatDuokai.Installer
             RemoveKnownStartMenuIntegration(PreviousStartMenuDirectory, "开开助手.lnk");
             RemoveKnownDesktopShortcut(LegacyDesktopShortcut);
             RemoveKnownStartMenuIntegration(LegacyStartMenuDirectory, "微信企业微信多开助手.lnk");
+        }
+
+        private static void NotifyInstalledIconChange(string installedExecutable,
+            string installedUninstaller, bool desktopShortcutExists)
+        {
+            WindowsShellIntegration.NotifyIconChanged(
+                installedExecutable,
+                installedUninstaller,
+                Path.Combine(StartMenuDirectory, "微窗助手.lnk"),
+                Path.Combine(StartMenuDirectory, "完全卸载.lnk"),
+                desktopShortcutExists ? DesktopShortcut : null,
+                PreviousDesktopShortcut,
+                LegacyDesktopShortcut);
         }
 
         private static void RemoveKnownDesktopShortcut(string shortcutPath)
@@ -1376,6 +1397,11 @@ namespace WechatDuokai.Installer
                 DeleteFileIfExact(plan.DesktopShortcut, InstallerEngine.DesktopShortcut);
                 DeleteDirectoryIfExact(plan.StartMenuDirectory, InstallerEngine.StartMenuDirectory);
                 InstallerEngine.RemoveLegacyIntegration();
+                WindowsShellIntegration.NotifyIconChanged(
+                    InstallerEngine.DesktopShortcut,
+                    Path.Combine(InstallerEngine.StartMenuDirectory, "微窗助手.lnk"),
+                    InstallerEngine.PreviousDesktopShortcut,
+                    InstallerEngine.LegacyDesktopShortcut);
 
                 if (InstallerEngine.ValidateInstallDirectory(plan.InstallDirectory))
                 {
@@ -1725,17 +1751,95 @@ namespace WechatDuokai.Installer
 
     internal static class Shortcut
     {
-        internal static void Create(string shortcutPath, string targetPath, string arguments, string workingDirectory, string iconPath, string description)
+        private const ushort VariantTypeUnicodeString = 31;
+        private static readonly PropertyKey AppUserModelIdKey = new PropertyKey(
+            new Guid("9F4C2855-9F79-4B39-A8D0-E1D42DE1D5F3"), 5);
+
+        internal static void Create(string shortcutPath, string targetPath, string arguments,
+            string workingDirectory, string iconPath, string description, string appUserModelId)
         {
             Directory.CreateDirectory(Path.GetDirectoryName(shortcutPath));
-            var link = (IShellLinkW)new ShellLink();
-            link.SetPath(targetPath);
-            link.SetArguments(arguments ?? string.Empty);
-            link.SetWorkingDirectory(workingDirectory ?? string.Empty);
-            link.SetIconLocation(iconPath ?? targetPath, 0);
-            link.SetDescription(description ?? string.Empty);
-            ((IPersistFile)link).Save(shortcutPath, false);
-            Marshal.FinalReleaseComObject(link);
+            IShellLinkW link = null;
+            try
+            {
+                link = (IShellLinkW)new ShellLink();
+                link.SetPath(targetPath);
+                link.SetArguments(arguments ?? string.Empty);
+                link.SetWorkingDirectory(workingDirectory ?? string.Empty);
+                link.SetIconLocation(iconPath ?? targetPath, 0);
+                link.SetDescription(description ?? string.Empty);
+                SetAppUserModelId(link, appUserModelId);
+                ((IPersistFile)link).Save(shortcutPath, false);
+            }
+            finally
+            {
+                if (link != null && Marshal.IsComObject(link)) Marshal.FinalReleaseComObject(link);
+            }
+        }
+
+        internal static string ReadAppUserModelId(string shortcutPath)
+        {
+            IShellLinkW link = null;
+            var value = new PropVariant();
+            try
+            {
+                link = (IShellLinkW)new ShellLink();
+                ((IPersistFile)link).Load(shortcutPath, 0);
+                var propertyStore = (IPropertyStore)link;
+                var key = AppUserModelIdKey;
+                Marshal.ThrowExceptionForHR(propertyStore.GetValue(ref key, out value));
+                return value.ValueType == VariantTypeUnicodeString && value.PointerValue != IntPtr.Zero
+                    ? Marshal.PtrToStringUni(value.PointerValue)
+                    : null;
+            }
+            finally
+            {
+                if (value.ValueType != 0) PropVariantClear(ref value);
+                if (link != null && Marshal.IsComObject(link)) Marshal.FinalReleaseComObject(link);
+            }
+        }
+
+        private static void SetAppUserModelId(IShellLinkW link, string appUserModelId)
+        {
+            if (string.IsNullOrWhiteSpace(appUserModelId))
+            {
+                throw new ArgumentException("快捷方式必须具有稳定的 AppUserModelID。", nameof(appUserModelId));
+            }
+
+            var value = new PropVariant();
+            try
+            {
+                value.ValueType = VariantTypeUnicodeString;
+                value.PointerValue = Marshal.StringToCoTaskMemUni(appUserModelId);
+                var propertyStore = (IPropertyStore)link;
+                var key = AppUserModelIdKey;
+                Marshal.ThrowExceptionForHR(propertyStore.SetValue(ref key, ref value));
+                Marshal.ThrowExceptionForHR(propertyStore.Commit());
+            }
+            finally
+            {
+                if (value.ValueType != 0) PropVariantClear(ref value);
+            }
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct PropertyKey
+        {
+            internal PropertyKey(Guid formatId, uint propertyId)
+            {
+                FormatId = formatId;
+                PropertyId = propertyId;
+            }
+
+            internal Guid FormatId;
+            internal uint PropertyId;
+        }
+
+        [StructLayout(LayoutKind.Explicit, Size = 24)]
+        private struct PropVariant
+        {
+            [FieldOffset(0)] internal ushort ValueType;
+            [FieldOffset(8)] internal IntPtr PointerValue;
         }
 
         [ComImport]
@@ -1768,5 +1872,20 @@ namespace WechatDuokai.Installer
             void Resolve(IntPtr windowHandle, uint flags);
             void SetPath([MarshalAs(UnmanagedType.LPWStr)] string path);
         }
+
+        [ComImport]
+        [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+        [Guid("886D8EEB-8CF2-4446-8D02-CDBA1DBDCF99")]
+        private interface IPropertyStore
+        {
+            [PreserveSig] int GetCount(out uint propertyCount);
+            [PreserveSig] int GetAt(uint propertyIndex, out PropertyKey key);
+            [PreserveSig] int GetValue(ref PropertyKey key, out PropVariant value);
+            [PreserveSig] int SetValue(ref PropertyKey key, ref PropVariant value);
+            [PreserveSig] int Commit();
+        }
+
+        [DllImport("ole32.dll", PreserveSig = true)]
+        private static extern int PropVariantClear(ref PropVariant propVariant);
     }
 }
