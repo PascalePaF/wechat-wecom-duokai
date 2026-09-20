@@ -307,12 +307,12 @@
                                 </Grid.RowDefinitions>
                                 <TextBlock Text="版本与更新" FontSize="14" FontWeight="SemiBold" />
                                 <CheckBox x:Name="AutoUpdateCheckBox" Grid.Row="1" Margin="0,15,0,0"
-                                          Content="启动时自动检查新版本"
+                                          Content="每天自动检查新版本"
                                           Style="{StaticResource PremiumCheckBoxStyle}"
                                           Checked="AutoUpdateCheckBox_Changed"
                                           Unchecked="AutoUpdateCheckBox_Changed" />
                                 <TextBlock Grid.Row="2" Margin="28,9,0,0"
-                                           Text="发现新版本后由你确认；仅下载本项目 GitHub Release，并完成三方 SHA-256 校验后更新。"
+                                           Text="发现新版本后由你确认；仅下载本项目 GitHub Release，并完成多重 SHA-256 校验后更新。"
                                            TextWrapping="Wrap" LineHeight="17" Style="{StaticResource CaptionStyle}" />
                                 <StackPanel Grid.Row="3" Margin="0,10,0,8" VerticalAlignment="Center">
                                     <TextBlock x:Name="UpdateStatusText" Text="可手动检查；不会在未确认时下载或安装"

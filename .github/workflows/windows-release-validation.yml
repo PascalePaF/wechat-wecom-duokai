@@ -23,7 +23,7 @@ jobs:
     runs-on: windows-2022
     timeout-minutes: 30
     env:
-      RELEASE_VERSION: 1.1.1
+      RELEASE_VERSION: 1.1.2
 
     steps:
       - name: Check out the exact source revision
@@ -59,6 +59,38 @@ jobs:
             }
           }
 
+      - name: Validate the quota-free update manifest
+        shell: pwsh
+        run: |
+          $drop = Join-Path $env:GITHUB_WORKSPACE ("artifacts\V" + $env:RELEASE_VERSION)
+          $manifestPath = Join-Path $drop "update-manifest.json"
+          $manifest = Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json
+          if ($manifest.schemaVersion -ne 1 -or $manifest.product -ne "wechat-duokai") {
+            throw "Unexpected update manifest identity"
+          }
+          if ($manifest.version -ne $env:RELEASE_VERSION -or
+              $manifest.tag -ne ("v" + $env:RELEASE_VERSION)) {
+            throw "Update manifest version mismatch"
+          }
+          $setup = Join-Path $drop ("installer\" + $manifest.setup.name)
+          $checksums = Join-Path $drop $manifest.checksums.name
+          $portable = Join-Path $drop ("portable\" + $manifest.portable.name)
+          foreach ($entry in @(
+            @{ Item = $manifest.setup; Path = $setup },
+            @{ Item = $manifest.checksums; Path = $checksums },
+            @{ Item = $manifest.portable; Path = $portable }
+          )) {
+            $actualFile = Get-Item -LiteralPath $entry.Path
+            $actualHash = (Get-FileHash -LiteralPath $entry.Path -Algorithm SHA256).Hash.ToLowerInvariant()
+            if ($actualFile.Length -ne [long]$entry.Item.size -or $actualHash -ne $entry.Item.sha256) {
+              throw "Update manifest asset mismatch: $($entry.Item.name)"
+            }
+            $expectedUrl = "https://github.com/PascalePaF/wechat-wecom-duokai/releases/download/v$($env:RELEASE_VERSION)/$($entry.Item.name)"
+            if ($entry.Item.downloadUrl -ne $expectedUrl) {
+              throw "Non-canonical update URL: $($entry.Item.downloadUrl)"
+            }
+          }
+
       - name: Install the pinned Microsoft SBOM tool
         shell: pwsh
         run: dotnet tool install --global Microsoft.Sbom.DotNetTool --version 4.1.2
@@ -84,8 +116,8 @@ jobs:
       - name: Upload tested Windows packages, hashes and SBOM
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: wechat-duokai-v1.1.1-windows-validation
-          path: artifacts/V1.1.1/
+          name: wechat-duokai-v1.1.2-windows-validation
+          path: artifacts/V1.1.2/
           if-no-files-found: error
           include-hidden-files: true
           retention-days: 14

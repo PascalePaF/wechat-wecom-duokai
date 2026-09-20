@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [string]$Version = '1.1.1'
+    [string]$Version = '1.1.2'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -194,6 +194,44 @@ $hashLines = foreach ($file in $hashTargets) {
 }
 $hashLines | Set-Content -LiteralPath (Join-Path $artifactRoot 'SHA256SUMS.txt') -Encoding ASCII
 
+$checksumTarget = Join-Path $artifactRoot 'SHA256SUMS.txt'
+$setupHash = (Get-FileHash -LiteralPath $setupTarget -Algorithm SHA256).Hash.ToLowerInvariant()
+$checksumHash = (Get-FileHash -LiteralPath $checksumTarget -Algorithm SHA256).Hash.ToLowerInvariant()
+$portableHash = (Get-FileHash -LiteralPath $portableZip -Algorithm SHA256).Hash.ToLowerInvariant()
+$setupName = [IO.Path]::GetFileName($setupTarget)
+$portableName = [IO.Path]::GetFileName($portableZip)
+$releaseAssetBase = "https://github.com/PascalePaF/wechat-wecom-duokai/releases/download/$versionSuffix/"
+$updateManifest = [ordered]@{
+    schemaVersion = 1
+    product = 'wechat-duokai'
+    version = $Version
+    tag = $versionSuffix
+    releasePage = "https://github.com/PascalePaF/wechat-wecom-duokai/releases/tag/$versionSuffix"
+    minimumUpdaterVersion = '1.1.1'
+    setup = [ordered]@{
+        name = $setupName
+        downloadUrl = $releaseAssetBase + $setupName
+        size = (Get-Item -LiteralPath $setupTarget).Length
+        sha256 = $setupHash
+    }
+    checksums = [ordered]@{
+        name = 'SHA256SUMS.txt'
+        downloadUrl = $releaseAssetBase + 'SHA256SUMS.txt'
+        size = (Get-Item -LiteralPath $checksumTarget).Length
+        sha256 = $checksumHash
+    }
+    portable = [ordered]@{
+        name = $portableName
+        downloadUrl = $releaseAssetBase + $portableName
+        size = (Get-Item -LiteralPath $portableZip).Length
+        sha256 = $portableHash
+    }
+}
+$updateManifestJson = $updateManifest | ConvertTo-Json -Depth 5
+$utf8NoBom = New-Object Text.UTF8Encoding($false)
+[IO.File]::WriteAllText((Join-Path $artifactRoot 'update-manifest.json'),
+    $updateManifestJson + "`n", $utf8NoBom)
+
 $manifest = @(
     "Product=$Version",
     'Brand=微窗助手',
@@ -206,7 +244,8 @@ $manifest = @(
     'ExitAllPolicy=Per-client confirmation; current session and exact verified executable path only; graceful close before force',
     'UpgradePolicy=Prompt before closing exact-path running helper',
     'UpdatePolicy=Explicitly confirmed in-app update from this repository GitHub Release; manual browser download remains available',
-    'UpdateVerification=Quota-free GitHub Release discovery; prefer GitHub asset digests, with canonical HTTPS release plus SHA256SUMS fallback when the public API is unavailable',
+    'UpdateVerification=Static Release update manifest is primary and quota-free; GitHub API digest is optional enrichment; SHA256SUMS and downloaded setup must match',
+    'UpdateSchedule=Automatic checks are cached for 24 hours, staggered by 30-300 seconds and backed off for 1/6/24 hours; manual checks remain immediate',
     'UpdateRollback=Same-volume staging and per-file backups preserve the previous executable set on failure',
     'InstallerIdentity=Setup and cleanup are separate assemblies',
     'WeComExtendedMode=Temporary registry policy plus exact known mutex release; restore only if temporary state is still owned',

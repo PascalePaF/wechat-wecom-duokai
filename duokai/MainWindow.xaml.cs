@@ -87,9 +87,22 @@ namespace WechatDuokai.App
                             : "WarningBrush";
                     SetStatus(recovery.Message, brush);
                 }
-                if (UserPreferences.LoadAutoCheckForUpdates())
+                if (UserPreferences.LoadAutoCheckForUpdates() &&
+                    UpdateCheckSchedule.ShouldCheckAutomatically())
                 {
-                    await CheckForUpdatesAsync(false);
+                    try
+                    {
+                        // A stable per-installation delay spreads simultaneous startup checks
+                        // without creating an identifier or sending any extra local information.
+                        await Task.Delay(UpdateCheckSchedule.GetStartupDelay(), _lifetime.Token);
+                        if (UpdateCheckSchedule.ShouldCheckAutomatically())
+                        {
+                            await CheckForUpdatesAsync(false);
+                        }
+                    }
+                    catch (OperationCanceledException) when (_lifetime.IsCancellationRequested)
+                    {
+                    }
                 }
             };
             Activated += (sender, args) =>
@@ -530,8 +543,8 @@ namespace WechatDuokai.App
             var enabled = AutoUpdateCheckBox.IsChecked == true;
             UserPreferences.SaveAutoCheckForUpdates(enabled);
             SetStatus(enabled
-                ? "已开启启动时版本检查"
-                : "已关闭启动时版本检查 · 仍可手动检查", "SuccessBrush");
+                ? "已开启每日版本检查"
+                : "已关闭每日版本检查 · 仍可手动检查", "SuccessBrush");
         }
 
         private void SettingsButton_Click(object sender, RoutedEventArgs e)
@@ -619,6 +632,15 @@ namespace WechatDuokai.App
                 CheckUpdateButton.IsEnabled = !_busy;
             }
 
+            if (result.CheckSucceeded)
+            {
+                UpdateCheckSchedule.RecordSuccess(result.LatestVersion);
+            }
+            else
+            {
+                UpdateCheckSchedule.RecordFailure(result.RetryAfterUtc);
+            }
+
             if (!result.CheckSucceeded)
             {
                 var reason = string.IsNullOrWhiteSpace(result.ErrorMessage)
@@ -646,8 +668,10 @@ namespace WechatDuokai.App
                     UpdateNowButton.Visibility = Visibility.Visible;
                     UpdateNowButton.IsEnabled = !_busy && !_installingUpdate;
                     UpdateStatusText.Text = result.HasGitHubAssetDigests
-                        ? "已验证 Release 附件摘要 · 点击后下载并执行三方 SHA-256 校验"
-                        : "已确认固定 Release 附件 · 点击后按 SHA256SUMS.txt 校验再覆盖";
+                        ? "静态清单与 GitHub 摘要已核对 · 点击后执行多重 SHA-256 校验"
+                        : result.HasReleaseManifestHashes
+                            ? "已读取免 API 静态更新清单 · 点击后执行多重 SHA-256 校验"
+                            : "已确认固定 Release 附件 · 点击后按 SHA256SUMS.txt 校验再覆盖";
                     SetStatus("发现新版本 V" + result.LatestVersion + " · 可一键更新", "InfoBrush");
                 }
                 else
@@ -694,8 +718,10 @@ namespace WechatDuokai.App
 
             var description = mode == ApplicationInstallMode.Installed ? "安装版" : "绿色免安装版";
             var verification = _availableUpdate.HasGitHubAssetDigests
-                ? "GitHub 摘要 + SHA256SUMS.txt + 下载文件，三方必须一致"
-                : "固定 GitHub Release 地址 + SHA256SUMS.txt + 下载文件必须一致";
+                ? "GitHub 摘要 + 静态清单 + SHA256SUMS.txt + 下载文件必须一致"
+                : _availableUpdate.HasReleaseManifestHashes
+                    ? "静态更新清单 + SHA256SUMS.txt + 下载文件必须一致"
+                    : "固定 GitHub Release 地址 + SHA256SUMS.txt + 下载文件必须一致";
             var choice = MessageBox.Show(
                 "将把当前" + description + "从 V" + CurrentVersion + " 更新到 V" +
                 _availableUpdate.LatestVersion + "。\r\n\r\n" +
@@ -732,8 +758,10 @@ namespace WechatDuokai.App
                     _availableUpdate, progress, _lifetime.Token);
                 UpdateProgressBar.Value = 100;
                 UpdateStatusText.Text = _availableUpdate.HasGitHubAssetDigests
-                    ? "三方 SHA-256 校验通过 · 正在交给独立更新程序"
-                    : "Release 清单与安装包 SHA-256 校验通过 · 正在启动更新";
+                    ? "多重 SHA-256 校验通过 · 正在交给独立更新程序"
+                    : _availableUpdate.HasReleaseManifestHashes
+                        ? "静态清单与本机文件校验通过 · 正在启动更新"
+                        : "Release 校验文件与安装包 SHA-256 校验通过 · 正在启动更新";
                 SetStatus("更新包校验通过 · 正在安全切换版本", "SuccessBrush");
                 _applicationUpdater.LaunchVerifiedInstaller(package, CurrentVersion,
                     ThemeManager.Current == AppTheme.Dark ? "dark" : "light");

@@ -60,7 +60,9 @@ namespace WechatDuokai.Tests
                 Run("All persistent runtime data stays below the application directory", TestApplicationStorageLayout);
                 Run("Legacy AppData settings migrate into the application directory", TestLegacyStorageMigration);
                 Run("GitHub release metadata exposes only verified one-click update assets", TestReleaseMetadataParsing);
+                Run("Static Release manifests provide quota-free verified update metadata", TestStaticUpdateManifest);
                 Run("Update checks survive an exhausted unauthenticated GitHub API quota", TestRateLimitedUpdateFallback);
+                Run("Automatic update checks cache, stagger and back off locally", TestUpdateCheckSchedule);
                 Run("Update mode detection accepts only marked install and portable roots", TestUpdateModeDetection);
                 Run("Transactional update preserves data and rolls back interrupted replacement", TestUpdateTransaction);
                 Run("Cleanup refuses drive roots", () =>
@@ -1150,7 +1152,134 @@ namespace WechatDuokai.Tests
                        new Uri("https://release-assets.githubusercontent.com/example")) &&
                    !ReleaseUpdateChecker.IsTrustedAssetDeliveryUri(
                        new Uri("https://example.com/release-assets/file")),
-                "The final update download domain boundary is incorrect.");
+                 "The final update download domain boundary is incorrect.");
+        }
+
+        private static void TestStaticUpdateManifest()
+        {
+            var setupHash = new string('c', 64);
+            var sumsHash = new string('d', 64);
+            var manifestJson = BuildUpdateManifestJson(NextVersion, setupHash, sumsHash, null);
+            var parsed = ReleaseUpdateChecker.ParseUpdateManifest(
+                Encoding.UTF8.GetBytes(manifestJson), "v" + NextVersion, CurrentVersion);
+            Assert(parsed.CheckSucceeded && parsed.IsUpdateAvailable && parsed.CanInstallUpdate &&
+                   parsed.HasReleaseManifestHashes && !parsed.HasGitHubAssetDigests &&
+                   parsed.SetupAsset.Sha256 == setupHash &&
+                   parsed.ChecksumAsset.Sha256 == sumsHash,
+                "A valid static update manifest was not accepted.");
+
+            var location = ReleaseUpdateChecker.ParseManifestLocation(
+                "https://github.com/PascalePaF/wechat-wecom-duokai/releases/download/v" +
+                NextVersion + "/update-manifest.json", CurrentVersion);
+            Assert(location.CheckSucceeded && location.IsUpdateAvailable &&
+                   location.LatestVersion == NextVersion,
+                "The canonical latest-manifest redirect was not recognized.");
+            var maliciousLocation = ReleaseUpdateChecker.ParseManifestLocation(
+                "https://example.com/PascalePaF/wechat-wecom-duokai/releases/download/v" +
+                NextVersion + "/update-manifest.json", CurrentVersion);
+            Assert(!maliciousLocation.CheckSucceeded,
+                "A static manifest redirect outside github.com was accepted.");
+
+            var maliciousJson = BuildUpdateManifestJson(NextVersion, setupHash, sumsHash,
+                "https://example.com/wechat_duokai-setup-v" + NextVersion + ".exe");
+            var malicious = ReleaseUpdateChecker.ParseUpdateManifest(
+                Encoding.UTF8.GetBytes(maliciousJson), "v" + NextVersion, CurrentVersion);
+            Assert(malicious.CheckSucceeded && malicious.IsUpdateAvailable &&
+                   !malicious.CanInstallUpdate &&
+                   !string.IsNullOrWhiteSpace(malicious.OneClickUpdateError),
+                "A non-canonical URL inside the static manifest was accepted.");
+
+            var requests = new List<string>();
+            var checker = new ReleaseUpdateChecker(allowAutoRedirect =>
+                new StaticManifestReleaseHandler(allowAutoRedirect, requests,
+                    manifestJson));
+            var result = checker.CheckAsync(CurrentVersion, CancellationToken.None)
+                .GetAwaiter().GetResult();
+            Assert(result.CheckSucceeded && result.IsUpdateAvailable && result.CanInstallUpdate &&
+                   result.HasReleaseManifestHashes && !result.HasGitHubAssetDigests,
+                "An exhausted optional API prevented static-manifest one-click updates.");
+            Assert(requests.Any(value => string.Equals(value,
+                       ReleaseUpdateChecker.LatestUpdateManifest,
+                       StringComparison.OrdinalIgnoreCase)) &&
+                   requests.Any(value => value.IndexOf("api.github.com",
+                       StringComparison.OrdinalIgnoreCase) >= 0) &&
+                   !requests.Any(value => string.Equals(value,
+                       ReleaseUpdateChecker.LatestReleasePage,
+                       StringComparison.OrdinalIgnoreCase)),
+                "The update checker did not prefer the static manifest path.");
+        }
+
+        private static void TestUpdateCheckSchedule()
+        {
+            var root = Path.Combine(Path.GetTempPath(),
+                "wechat-duokai-update-schedule-" + Guid.NewGuid().ToString("N"));
+            var now = new DateTimeOffset(2026, 9, 20, 12, 0, 0, TimeSpan.Zero);
+            try
+            {
+                Directory.CreateDirectory(root);
+                Assert(UpdateCheckSchedule.ShouldCheckAutomatically(root, now),
+                    "A first-run automatic check was suppressed.");
+
+                UpdateCheckSchedule.RecordSuccess(root, now, CurrentVersion);
+                Assert(!UpdateCheckSchedule.ShouldCheckAutomatically(root,
+                           now.AddHours(23).AddMinutes(59)) &&
+                       UpdateCheckSchedule.ShouldCheckAutomatically(root, now.AddHours(24)),
+                    "The successful-check cache did not enforce the 24-hour interval.");
+                var successState = UpdateCheckSchedule.Load(root);
+                Assert(successState.ConsecutiveFailures == 0 &&
+                       successState.LastSuccessUtc == now &&
+                       successState.LatestVersion == CurrentVersion,
+                    "Successful update-check state was not persisted.");
+
+                var firstFailure = now.AddHours(24);
+                UpdateCheckSchedule.RecordFailure(root, firstFailure, null);
+                var firstState = UpdateCheckSchedule.Load(root);
+                Assert(firstState.ConsecutiveFailures == 1 &&
+                       firstState.NextAutomaticCheckUtc == firstFailure.AddHours(1),
+                    "The first failed check did not back off for one hour.");
+
+                var secondFailure = firstFailure.AddHours(1);
+                UpdateCheckSchedule.RecordFailure(root, secondFailure, null);
+                var secondState = UpdateCheckSchedule.Load(root);
+                Assert(secondState.ConsecutiveFailures == 2 &&
+                       secondState.NextAutomaticCheckUtc == secondFailure.AddHours(6),
+                    "The second failed check did not back off for six hours.");
+
+                var thirdFailure = secondFailure.AddHours(6);
+                UpdateCheckSchedule.RecordFailure(root, thirdFailure,
+                    thirdFailure.AddDays(7));
+                var thirdState = UpdateCheckSchedule.Load(root);
+                Assert(thirdState.ConsecutiveFailures == 3 &&
+                       thirdState.NextAutomaticCheckUtc == thirdFailure.AddHours(24),
+                    "The retry delay was not capped at 24 hours.");
+
+                var delay = UpdateCheckSchedule.CalculateStartupDelay(
+                    @"C:\Program Files\WechatDuokai");
+                Assert(delay >= TimeSpan.FromSeconds(30) &&
+                       delay <= TimeSpan.FromMinutes(5) &&
+                       delay == UpdateCheckSchedule.CalculateStartupDelay(
+                           @"C:\Program Files\WechatDuokai"),
+                    "The per-installation startup stagger is not stable or bounded.");
+
+                using (var response = new HttpResponseMessage((HttpStatusCode)429))
+                {
+                    response.Headers.RetryAfter =
+                        new System.Net.Http.Headers.RetryConditionHeaderValue(
+                            TimeSpan.FromMinutes(45));
+                    Assert(ReleaseUpdateChecker.ParseRetryAfter(response, now) ==
+                           now.AddMinutes(45),
+                        "Retry-After was not honored.");
+                }
+
+                File.WriteAllText(Path.Combine(root, UpdateCheckSchedule.StateFileName),
+                    "NextAutomaticCheckUtc=" + now.AddDays(30).ToString("O"), Encoding.UTF8);
+                Assert(UpdateCheckSchedule.ShouldCheckAutomatically(root, now),
+                    "A damaged far-future cache suppressed checks indefinitely.");
+            }
+            finally
+            {
+                if (Directory.Exists(root)) Directory.Delete(root, true);
+            }
         }
 
         private static void TestRateLimitedUpdateFallback()
@@ -1190,8 +1319,28 @@ namespace WechatDuokai.Tests
                    "{\"name\":\"SHA256SUMS.txt\",\"state\":\"uploaded\"," +
                    "\"browser_download_url\":" +
                    "\"https://github.com/PascalePaF/wechat-wecom-duokai/releases/download/v" +
-                   version + "/SHA256SUMS.txt\",\"size\":580," +
-                   "\"digest\":\"sha256:" + sumsHash + "\"}]}";
+                    version + "/SHA256SUMS.txt\",\"size\":580," +
+                    "\"digest\":\"sha256:" + sumsHash + "\"}]}";
+        }
+
+        private static string BuildUpdateManifestJson(string version, string setupHash,
+            string sumsHash, string setupUrlOverride)
+        {
+            var tag = "v" + version;
+            var setupName = "wechat_duokai-setup-v" + version + ".exe";
+            var assetBase =
+                "https://github.com/PascalePaF/wechat-wecom-duokai/releases/download/" +
+                tag + "/";
+            var setupUrl = setupUrlOverride ?? assetBase + setupName;
+            return "{\"schemaVersion\":1,\"product\":\"wechat-duokai\"," +
+                   "\"version\":\"" + version + "\",\"tag\":\"" + tag + "\"," +
+                   "\"releasePage\":\"https://github.com/PascalePaF/wechat-wecom-duokai/releases/tag/" +
+                   tag + "\",\"minimumUpdaterVersion\":\"1.1.1\"," +
+                   "\"setup\":{\"name\":\"" + setupName + "\",\"downloadUrl\":\"" +
+                   setupUrl + "\",\"size\":481792,\"sha256\":\"" + setupHash + "\"}," +
+                   "\"checksums\":{\"name\":\"SHA256SUMS.txt\",\"downloadUrl\":\"" +
+                   assetBase + "SHA256SUMS.txt\",\"size\":580,\"sha256\":\"" +
+                   sumsHash + "\"}}";
         }
 
         private static void TestUpdateModeDetection()
@@ -1607,6 +1756,70 @@ namespace WechatDuokai.Tests
             }
 
             return version.Major + "." + version.Minor + "." + (version.Build + 1);
+        }
+
+        private sealed class StaticManifestReleaseHandler : HttpMessageHandler
+        {
+            private readonly bool _deliveryMode;
+            private readonly List<string> _requests;
+            private readonly string _manifestJson;
+
+            internal StaticManifestReleaseHandler(bool deliveryMode, List<string> requests,
+                string manifestJson)
+            {
+                _deliveryMode = deliveryMode;
+                _requests = requests;
+                _manifestJson = manifestJson;
+            }
+
+            protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request,
+                CancellationToken cancellationToken)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var url = request.RequestUri.AbsoluteUri;
+                lock (_requests)
+                {
+                    _requests.Add(url);
+                }
+
+                HttpResponseMessage response;
+                if (!_deliveryMode && string.Equals(url,
+                        ReleaseUpdateChecker.LatestUpdateManifest,
+                        StringComparison.OrdinalIgnoreCase))
+                {
+                    response = new HttpResponseMessage(HttpStatusCode.Found);
+                    response.Headers.Location = new Uri(
+                        "https://github.com/PascalePaF/wechat-wecom-duokai/releases/download/v" +
+                        NextVersion + "/update-manifest.json");
+                }
+                else if (_deliveryMode && url.EndsWith(
+                             "/v" + NextVersion + "/update-manifest.json",
+                             StringComparison.OrdinalIgnoreCase))
+                {
+                    response = new HttpResponseMessage(HttpStatusCode.OK)
+                    {
+                        Content = new StringContent(_manifestJson, Encoding.UTF8,
+                            "application/json")
+                    };
+                }
+                else if (!_deliveryMode &&
+                         string.Equals(request.RequestUri.Host, "api.github.com",
+                             StringComparison.OrdinalIgnoreCase))
+                {
+                    response = new HttpResponseMessage(HttpStatusCode.Forbidden)
+                    {
+                        Content = new StringContent("{\"message\":\"API rate limit exceeded\"}")
+                    };
+                    response.Headers.TryAddWithoutValidation("X-RateLimit-Remaining", "0");
+                }
+                else
+                {
+                    response = new HttpResponseMessage(HttpStatusCode.NotFound);
+                }
+
+                response.RequestMessage = request;
+                return Task.FromResult(response);
+            }
         }
 
         private sealed class RateLimitedReleaseHandler : HttpMessageHandler

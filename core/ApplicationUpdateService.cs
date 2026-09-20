@@ -87,19 +87,20 @@ namespace WechatDuokai.Core
             var checksumBytes = await DownloadSmallAssetAsync(release.ChecksumAsset,
                 progress, cancellationToken);
             var checksumHash = ComputeSha256(checksumBytes);
-            if (release.HasGitHubAssetDigests &&
+            if ((release.HasGitHubAssetDigests || release.HasReleaseManifestHashes) &&
                 !FixedTimeEquals(checksumHash, release.ChecksumAsset.Sha256))
             {
-                throw new InvalidDataException("SHA256SUMS.txt 与 GitHub 服务端摘要不一致，已停止更新。");
+                throw new InvalidDataException(
+                    "SHA256SUMS.txt 与经过验证的 Release 摘要不一致，已停止更新。");
             }
 
             var checksumText = Encoding.UTF8.GetString(checksumBytes);
             var manifestHash = ParseChecksum(checksumText, release.SetupAsset.Name);
-            if (release.HasGitHubAssetDigests &&
+            if ((release.HasGitHubAssetDigests || release.HasReleaseManifestHashes) &&
                 !FixedTimeEquals(manifestHash, release.SetupAsset.Sha256))
             {
                 throw new InvalidDataException(
-                    "安装包的 GitHub 摘要与 SHA256SUMS.txt 不一致，已停止更新。");
+                    "安装包的 Release 摘要与 SHA256SUMS.txt 不一致，已停止更新。");
             }
 
             var checksumEvidencePath = Path.Combine(updatesDirectory,
@@ -126,8 +127,10 @@ namespace WechatDuokai.Core
                 progress?.Report(new UpdateProgressInfo
                 {
                     Message = release.HasGitHubAssetDigests
-                        ? "三方 SHA-256 校验通过"
-                        : "Release 清单与安装包 SHA-256 校验通过",
+                        ? "GitHub 摘要、静态清单与本机文件校验通过"
+                        : release.HasReleaseManifestHashes
+                            ? "静态清单、SHA256SUMS 与本机文件校验通过"
+                            : "Release 校验文件与安装包 SHA-256 校验通过",
                     BytesReceived = release.SetupAsset.Size,
                     TotalBytes = release.SetupAsset.Size
                 });
