@@ -142,7 +142,7 @@ namespace WechatDuokai.Installer
             ExtractResource("Payload.security-report.txt",
                 Path.Combine(installDirectory, "完整安全审计与卡巴斯基告警调查报告.txt"));
             ExtractResource("Payload.update-validation.md", Path.Combine(installDirectory, "一键更新安全验证报告.md"));
-            ExtractResource("Payload.project-audit.md", Path.Combine(installDirectory, "全项目自查与任务栏图标修复报告.md"));
+            ExtractResource("Payload.project-audit.md", Path.Combine(installDirectory, "全项目自查报告.md"));
 
             ExtractResource("Payload.wechat_duokai-cleanup.exe", installedUninstaller);
             var legacyUninstaller = GetLegacyUninstaller(installDirectory);
@@ -464,7 +464,7 @@ namespace WechatDuokai.Installer
             yield return new UpdatePayload("Payload.release-notes.md", "版本说明.md");
             yield return new UpdatePayload("Payload.security-report.txt", "完整安全审计与卡巴斯基告警调查报告.txt");
             yield return new UpdatePayload("Payload.update-validation.md", "一键更新安全验证报告.md");
-            yield return new UpdatePayload("Payload.project-audit.md", "全项目自查与任务栏图标修复报告.md");
+            yield return new UpdatePayload("Payload.project-audit.md", "全项目自查报告.md");
             if (mode == UpdateTargetMode.Portable)
             {
                 yield return new UpdatePayload("Payload.PORTABLE-README.txt", "使用说明.txt");

@@ -180,14 +180,18 @@ namespace WechatDuokai.App
             var weComCount = GetCurrentCount(_weCom);
             UpdateFooterCounts(weChatCount, weComCount);
             if (_busy) return;
-            UpdateClientStatus(_weChat, WeChatStatus, WeChatButton, weChatCount);
-            UpdateClientStatus(_weCom, WeComStatus, WeComButton, weComCount);
+            UpdateClientStatus(_weChat, WeChatStatus, WeChatButton, WeChatExitButton, weChatCount);
+            UpdateClientStatus(_weCom, WeComStatus, WeComButton, WeComExitButton, weComCount);
         }
 
         private void UpdateFooterCounts(int weChatCount, int weComCount)
         {
-            FooterWeChatCount.Text = $"当前微信窗口 {weChatCount} 个";
-            FooterWeComCount.Text = $"当前企业微信窗口 {weComCount} 个";
+            FooterWeChatCount.Text = weChatCount.ToString();
+            FooterWeComCount.Text = weComCount.ToString();
+            AutomationProperties.SetName(FooterWeChatCountLine,
+                $"当前微信窗口 {weChatCount} 个");
+            AutomationProperties.SetName(FooterWeComCountLine,
+                $"当前企业微信窗口 {weComCount} 个");
         }
 
         private int GetCurrentCount(AppDefinition application)
@@ -207,19 +211,22 @@ namespace WechatDuokai.App
             }
         }
 
-        private void UpdateClientStatus(AppDefinition application, TextBlock status, Button button, int count)
+        private void UpdateClientStatus(AppDefinition application, TextBlock status, Button button,
+            Button exitButton, int count)
         {
             if (application == null || !application.IsAvailable)
             {
                 status.Text = "当前未检测到";
                 status.SetResourceReference(ForegroundProperty, "WarningBrush");
                 button.IsEnabled = false;
+                exitButton.IsEnabled = false;
                 return;
             }
 
             status.Text = count > 0 ? $"当前运行 {count} 个实例" : "已验证官方客户端";
             status.SetResourceReference(ForegroundProperty, count > 0 ? "SuccessBrush" : "TextSecondaryBrush");
             button.IsEnabled = !_busy;
+            exitButton.IsEnabled = !_busy && count > 0;
         }
 
         private async void WeChatButton_Click(object sender, RoutedEventArgs e)
@@ -230,6 +237,16 @@ namespace WechatDuokai.App
         private async void WeComButton_Click(object sender, RoutedEventArgs e)
         {
             await StartOrRestoreAsync(AppKind.WeCom);
+        }
+
+        private async void WeChatExitButton_Click(object sender, RoutedEventArgs e)
+        {
+            await ExitAllAsync(AppKind.WeChat);
+        }
+
+        private async void WeComExitButton_Click(object sender, RoutedEventArgs e)
+        {
+            await ExitAllAsync(AppKind.WeCom);
         }
 
         private void WeChatSelectButton_Click(object sender, RoutedEventArgs e)
@@ -326,11 +343,68 @@ namespace WechatDuokai.App
             }
         }
 
+        private async Task ExitAllAsync(AppKind kind)
+        {
+            if (_busy) return;
+            var application = kind == AppKind.WeChat ? _weChat : _weCom;
+            var name = kind == AppKind.WeChat ? "微信" : "企业微信";
+            var count = GetCurrentCount(application);
+            if (count == 0)
+            {
+                SetStatus("当前没有正在运行的" + name + "窗口。", "InfoBrush");
+                RefreshClientStatus();
+                return;
+            }
+
+            var confirmation = MessageBox.Show(
+                "将退出当前 Windows 会话中检测到的全部 " + count + " 个" + name + "窗口。\r\n\r\n" +
+                "这只会关闭客户端程序，不会注销账号；尚未发送的内容可能丢失。是否继续？",
+                "退出全部" + name + "窗口",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning,
+                MessageBoxResult.No);
+            if (confirmation != MessageBoxResult.Yes)
+            {
+                return;
+            }
+
+            SetBusy(true);
+            try
+            {
+                var result = await _instanceManager.ExitAllInstancesAsync(
+                    application,
+                    message => Dispatcher.Invoke(() => SetStatus(message, "InfoBrush")),
+                    _lifetime.Token);
+                SetStatus(result.Message, result.Success ? "SuccessBrush" : "WarningBrush");
+                if (!result.Success)
+                {
+                    MessageBox.Show(result.Message,
+                        "退出结果", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+            }
+            catch (OperationCanceledException) when (_lifetime.IsCancellationRequested)
+            {
+            }
+            catch (Exception ex)
+            {
+                SetStatus("退出未完成：" + ex.Message, "DangerBrush");
+                MessageBox.Show("退出未完成；程序只尝试处理路径完全匹配的官方客户端进程。\r\n\r\n" + ex.Message,
+                    "退出提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+            finally
+            {
+                SetBusy(false);
+                RefreshClientStatus();
+            }
+        }
+
         private void SetBusy(bool busy)
         {
             _busy = busy;
             WeChatButton.IsEnabled = !busy && _weChat != null && _weChat.IsAvailable;
             WeComButton.IsEnabled = !busy && _weCom != null && _weCom.IsAvailable;
+            WeChatExitButton.IsEnabled = !busy && GetCurrentCount(_weChat) > 0;
+            WeComExitButton.IsEnabled = !busy && GetCurrentCount(_weCom) > 0;
             WeChatSelectButton.IsEnabled = !busy;
             WeComSelectButton.IsEnabled = !busy;
             DecreaseButton.IsEnabled = !busy;

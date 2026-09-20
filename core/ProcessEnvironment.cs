@@ -22,6 +22,17 @@ namespace WechatDuokai.Core
         public string ExecutablePath { get; set; }
     }
 
+    public sealed class ProcessCloseSummary
+    {
+        public int EligibleProcessCount { get; set; }
+
+        public int GracefulExitCount { get; set; }
+
+        public int ForcedExitCount { get; set; }
+
+        public int RemainingProcessCount { get; set; }
+    }
+
     public interface IProcessEnvironment
     {
         int CurrentSessionId { get; }
@@ -31,6 +42,10 @@ namespace WechatDuokai.Core
         IReadOnlyDictionary<int, int> GetParentProcessMap();
 
         void StartApplication(string executablePath);
+
+        ProcessCloseSummary CloseProcesses(IReadOnlyCollection<int> processIds,
+            string expectedExecutablePath, TimeSpan gracefulTimeout,
+            CancellationToken cancellationToken);
 
         Task DelayAsync(TimeSpan delay, CancellationToken cancellationToken);
     }
@@ -146,9 +161,162 @@ namespace WechatDuokai.Core
             });
         }
 
+        public ProcessCloseSummary CloseProcesses(IReadOnlyCollection<int> processIds,
+            string expectedExecutablePath, TimeSpan gracefulTimeout,
+            CancellationToken cancellationToken)
+        {
+            var result = new ProcessCloseSummary();
+            if (processIds == null || processIds.Count == 0 ||
+                string.IsNullOrWhiteSpace(expectedExecutablePath))
+            {
+                return result;
+            }
+
+            var currentSession = CurrentSessionId;
+            var candidates = new List<Process>();
+            try
+            {
+                foreach (var processId in processIds.Where(value => value > 0).Distinct())
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    Process process = null;
+                    try
+                    {
+                        process = Process.GetProcessById(processId);
+                        if (!IsExactProcess(process, currentSession, expectedExecutablePath))
+                        {
+                            process.Dispose();
+                            continue;
+                        }
+
+                        candidates.Add(process);
+                    }
+                    catch (Exception)
+                    {
+                        process?.Dispose();
+                        // The process may already have exited, or Windows may deny inspection.
+                        // Never close a process whose live session and path cannot be revalidated.
+                    }
+                }
+
+                result.EligibleProcessCount = candidates.Count;
+                foreach (var process in candidates)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    try
+                    {
+                        if (!process.HasExited)
+                        {
+                            process.CloseMainWindow();
+                        }
+                    }
+                    catch (Exception)
+                    {
+                        // Some helper processes do not own a main window. They are handled only
+                        // after the graceful wait and another exact path/session validation.
+                    }
+                }
+
+                WaitForExit(candidates, gracefulTimeout, cancellationToken);
+                result.GracefulExitCount = candidates.Count(HasExited);
+
+                var forcedCandidates = new List<Process>();
+                foreach (var process in candidates.Where(value => !HasExited(value)).ToArray())
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    try
+                    {
+                        if (!IsExactProcess(process, currentSession, expectedExecutablePath))
+                        {
+                            continue;
+                        }
+
+                        process.Kill();
+                        forcedCandidates.Add(process);
+                    }
+                    catch (Exception)
+                    {
+                        // Access can be denied or a process can exit between validation and Kill.
+                        // The caller reports any remaining verified client instances to the user.
+                    }
+                }
+
+                // Wait once for the whole forced group instead of serially waiting per process;
+                // the user-facing operation therefore stays bounded even with many helpers.
+                WaitForExit(forcedCandidates, TimeSpan.FromSeconds(2), cancellationToken);
+                result.ForcedExitCount = forcedCandidates.Count(HasExited);
+                result.RemainingProcessCount = candidates.Count(value => !HasExited(value));
+                return result;
+            }
+            finally
+            {
+                foreach (var process in candidates)
+                {
+                    process.Dispose();
+                }
+            }
+        }
+
         public Task DelayAsync(TimeSpan delay, CancellationToken cancellationToken)
         {
             return Task.Delay(delay, cancellationToken);
+        }
+
+        private static void WaitForExit(IEnumerable<Process> processes, TimeSpan timeout,
+            CancellationToken cancellationToken)
+        {
+            var boundedTimeout = timeout < TimeSpan.Zero ? TimeSpan.Zero : timeout;
+            var deadline = DateTime.UtcNow.Add(boundedTimeout);
+            while (processes.Any(value => !HasExited(value)) && DateTime.UtcNow < deadline)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                Thread.Sleep(80);
+            }
+        }
+
+        private static bool HasExited(Process process)
+        {
+            try
+            {
+                return process == null || process.HasExited;
+            }
+            catch (Exception)
+            {
+                return true;
+            }
+        }
+
+        private static bool IsExactProcess(Process process, int expectedSessionId,
+            string expectedExecutablePath)
+        {
+            try
+            {
+                if (process == null || process.HasExited || process.SessionId != expectedSessionId)
+                {
+                    return false;
+                }
+
+                var livePath = process.MainModule?.FileName;
+                return PathsEqual(livePath, expectedExecutablePath);
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+        }
+
+        private static bool PathsEqual(string left, string right)
+        {
+            try
+            {
+                return !string.IsNullOrWhiteSpace(left) && !string.IsNullOrWhiteSpace(right) &&
+                       string.Equals(Path.GetFullPath(left), Path.GetFullPath(right),
+                           StringComparison.OrdinalIgnoreCase);
+            }
+            catch (Exception)
+            {
+                return false;
+            }
         }
 
         [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]

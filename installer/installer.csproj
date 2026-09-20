@@ -65,7 +65,7 @@
     <EmbeddedResource Include="..\docs\V$(WechatDuokaiVersion)-一键更新安全验证报告.md">
       <LogicalName>Payload.update-validation.md</LogicalName>
     </EmbeddedResource>
-    <EmbeddedResource Include="..\docs\V$(WechatDuokaiVersion)-全项目自查与任务栏图标修复报告.md">
+    <EmbeddedResource Include="..\docs\V$(WechatDuokaiVersion)-全项目自查报告.md">
       <LogicalName>Payload.project-audit.md</LogicalName>
     </EmbeddedResource>
   </ItemGroup>

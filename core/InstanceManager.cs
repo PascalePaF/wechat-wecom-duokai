@@ -143,6 +143,43 @@ namespace WechatDuokai.Core
             return result;
         }
 
+        public async Task<ExitAllResult> ExitAllInstancesAsync(
+            AppDefinition application,
+            Action<string> reportStatus,
+            CancellationToken cancellationToken)
+        {
+            var result = new ExitAllResult();
+            if (application == null || !application.IsAvailable)
+            {
+                result.Message = "未找到可用的程序文件。";
+                return result;
+            }
+
+            result.BeforeCount = GetInstanceCount(application);
+            if (result.BeforeCount == 0)
+            {
+                result.Success = true;
+                result.Message = "当前没有正在运行的" + application.DisplayName + "窗口。";
+                return result;
+            }
+
+            var processIds = GetApplicationProcessIds(application);
+            reportStatus?.Invoke("正在安全退出全部" + application.DisplayName + "窗口…");
+            var closeSummary = await Task.Run(() => _environment.CloseProcesses(
+                processIds, application.ExecutablePath, TimeSpan.FromSeconds(2),
+                cancellationToken), cancellationToken);
+
+            result.GracefulProcessCount = closeSummary.GracefulExitCount;
+            result.ForcedProcessCount = closeSummary.ForcedExitCount;
+            result.AfterCount = GetInstanceCount(application);
+            result.Success = result.AfterCount == 0;
+            result.Message = result.Success
+                ? application.DisplayName + "已全部退出，共关闭 " + result.BeforeCount + " 个窗口。"
+                : application.DisplayName + "仍有 " + result.AfterCount +
+                  " 个窗口未退出；请保存工作后手动关闭，或稍后重试。";
+            return result;
+        }
+
         public HashSet<int> GetApplicationProcessIds(AppDefinition application)
         {
             var result = new HashSet<int>();

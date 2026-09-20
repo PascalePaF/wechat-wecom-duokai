@@ -57,4 +57,19 @@ namespace WechatDuokai.Core
 
         public string Message { get; set; }
     }
+
+    public sealed class ExitAllResult
+    {
+        public bool Success { get; set; }
+
+        public int BeforeCount { get; set; }
+
+        public int AfterCount { get; set; }
+
+        public int GracefulProcessCount { get; set; }
+
+        public int ForcedProcessCount { get; set; }
+
+        public string Message { get; set; }
+    }
 }

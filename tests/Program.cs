@@ -49,6 +49,8 @@ namespace WechatDuokai.Tests
                 Run("Dark theme uses a restrained palette and theme-aware icon surfaces", TestDarkThemeComfortPalette);
                 Run("Renamed executables cannot impersonate an official client", TestClientExecutableValidation);
                 Run("Process environment groups roots and supports deterministic launch tests", TestProcessEnvironmentAbstraction);
+                Run("Exit-all closes only exact-path processes in the current Windows session", TestSafeExitAll);
+                Run("Windows exit layer revalidates and closes the exact requested process", TestWindowsProcessExitBoundary);
                 Run("WeCom extended launch policy is temporary and reaches three instances", TestWeComExtendedLaunchPolicy);
                 Run("WeCom registry journal recovers crashes and preserves external changes", TestWeComCrashRecovery);
                 Run("Diagnostics stay inside the selected local application directory", TestLocalDiagnostics);
@@ -288,12 +290,22 @@ namespace WechatDuokai.Tests
                 var weChatCount = (TextBlock)window.FindName("FooterWeChatCount");
                 var weComCount = (TextBlock)window.FindName("FooterWeComCount");
                 var footerCountsPanel = (FrameworkElement)window.FindName("FooterCountsPanel");
-                Assert(weChatCount.Text == "当前微信窗口 2 个", "WeChat footer count is not live.");
-                Assert(weComCount.Text == "当前企业微信窗口 3 个", "WeCom footer count is not live.");
-                Assert(weChatCount.TextAlignment == TextAlignment.Left &&
-                       weComCount.TextAlignment == TextAlignment.Left,
-                    "Footer counts must remain left-aligned on two rows.");
-                Assert(footerCountsPanel != null && footerCountsPanel.MinWidth >= 112,
+                var weChatCountLine = (FrameworkElement)window.FindName("FooterWeChatCountLine");
+                var weComCountLine = (FrameworkElement)window.FindName("FooterWeComCountLine");
+                Assert(weChatCount.Text == "2" &&
+                       AutomationProperties.GetName(weChatCountLine) == "当前微信窗口 2 个",
+                    "WeChat footer count is not live or accessible.");
+                Assert(weComCount.Text == "3" &&
+                       AutomationProperties.GetName(weComCountLine) == "当前企业微信窗口 3 个",
+                    "WeCom footer count is not live or accessible.");
+                Assert(weChatCount.FontWeight == FontWeights.Bold &&
+                       weComCount.FontWeight == FontWeights.Bold &&
+                       weChatCount.Margin.Left >= 8 && weComCount.Margin.Left >= 8,
+                    "Footer numbers must use bold colored emphasis with visible breathing room.");
+                Assert(((SolidColorBrush)weChatCount.Foreground).Color == GetThemeColor("SuccessBrush") &&
+                       ((SolidColorBrush)weComCount.Foreground).Color == GetThemeColor("InfoBrush"),
+                    "Footer numbers must distinguish WeChat green from WeCom blue.");
+                Assert(footerCountsPanel != null && footerCountsPanel.MinWidth >= 158,
                     "Footer count labels must reserve enough width in every view.");
 
                 var settingsButton = (Button)window.FindName("SettingsButton");
@@ -303,6 +315,12 @@ namespace WechatDuokai.Tests
                     "The current product name and formal logo must be present on the main window.");
                 Assert(Grid.GetColumn(settingsButton) == 3,
                     "Settings must remain the right-most footer action.");
+                Assert(window.FindName("WeChatExitButton") is Button &&
+                       window.FindName("WeComExitButton") is Button,
+                    "Each client card must expose its own compact exit-all action.");
+                var mainXaml = File.ReadAllText(Path.Combine(FindProjectRoot(), "duokai", "MainWindow.xaml"));
+                Assert(!mainXaml.Contains("Text=\"微信 · 企业微信\""),
+                    "The redundant product subtitle must not remain in the header.");
                 Assert(window.FindName("ReleaseButton") == null,
                     "The main footer must not expose a separate release action.");
                 window.SetSettingsViewVisible(true);
@@ -568,6 +586,11 @@ namespace WechatDuokai.Tests
                 Assert(double.IsPositiveInfinity(window.MaxWidth) && double.IsPositiveInfinity(window.MaxHeight),
                     "Main window must not impose a fixed maximum size.");
                 var panel = (FrameworkElement)window.FindName("CountPanel");
+                var applicationsPanel = (FrameworkElement)window.FindName("ApplicationsPanel");
+                var applicationsLayout = (Grid)window.FindName("ApplicationsLayout");
+                var countLayout = (Grid)window.FindName("CountLayout");
+                var applicationHeader = (FrameworkElement)window.FindName("ApplicationSectionHeader");
+                var countHeader = (FrameworkElement)window.FindName("CountSectionHeader");
                 var viewport = (FrameworkElement)window.FindName("ScaleViewport");
                 var scaledRoot = (FrameworkElement)window.FindName("ScaledRoot");
                 var workspace = (FrameworkElement)window.FindName("WorkspaceGrid");
@@ -591,6 +614,15 @@ namespace WechatDuokai.Tests
                     window.UpdateLayout();
                     Assert(panel.ActualWidth > 0 && panel.ActualHeight > 0,
                         "Count panel disappeared at " + size.Width + "x" + size.Height + ".");
+                    var applicationsOrigin = applicationsPanel.TranslatePoint(new Point(0, 0), workspace);
+                    var countOrigin = panel.TranslatePoint(new Point(0, 0), workspace);
+                    Assert(Math.Abs(applicationsOrigin.Y - countOrigin.Y) < 0.1 &&
+                           Math.Abs(applicationsPanel.ActualHeight - panel.ActualHeight) < 0.1,
+                        "The two main cards are not aligned at " + size.Width + "x" + size.Height + ".");
+                    var applicationHeaderOrigin = applicationHeader.TranslatePoint(new Point(0, 0), workspace);
+                    var countHeaderOrigin = countHeader.TranslatePoint(new Point(0, 0), workspace);
+                    Assert(Math.Abs(applicationHeaderOrigin.Y - countHeaderOrigin.Y) < 0.5,
+                        "The two main card titles do not share a visual baseline.");
                     Assert(weChatCard.ActualHeight >= 80d && weComCard.ActualHeight >= 80d,
                         "An application card was clipped at " + size.Width + "x" + size.Height + ".");
                     Assert(Math.Abs(transform.ScaleX - transform.ScaleY) < 0.001 && transform.ScaleX >= 1d,
@@ -602,6 +634,10 @@ namespace WechatDuokai.Tests
 
                 Assert(Grid.GetRow(panel) == 0 && Grid.GetColumn(panel) == 2 && Grid.GetColumnSpan(panel) == 1,
                     "The count panel must stay on the right at every supported size.");
+                Assert(applicationsLayout.RowDefinitions.Count == 4 && countLayout.RowDefinitions.Count == 4 &&
+                       applicationsLayout.RowDefinitions.Select(value => value.Height.Value)
+                           .SequenceEqual(countLayout.RowDefinitions.Select(value => value.Height.Value)),
+                    "Both main cards must use the same four proportional layout tracks.");
                 Assert(ReferenceEquals(VisualTreeHelper.GetParent(workspace), scaledRoot),
                     "The workspace must be placed directly in the scaled root without an outer ScrollViewer.");
                 var ultraWideScale = MainWindow.CalculateInterfaceScale(3440d, 1392d);
@@ -622,6 +658,66 @@ namespace WechatDuokai.Tests
             var app = new AppDefinition(AppKind.WeChat, "微信", path);
             Assert(manager.GetApplicationProcessIds(app).Count == 3, "Exact-path processes were not selected.");
             Assert(manager.GetInstanceCount(app) == 2, "Parent/child process roots were not grouped correctly.");
+        }
+
+        private static void TestSafeExitAll()
+        {
+            var folder = Path.Combine(Path.GetTempPath(), "wechat-duokai-exit-all-" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(folder);
+            var path = Path.Combine(folder, "Weixin.exe");
+            File.WriteAllText(path, string.Empty);
+            try
+            {
+                var environment = new FakeProcessEnvironment(path);
+                var manager = new InstanceManager(environment);
+                var app = new AppDefinition(AppKind.WeChat, "微信", path);
+                var statuses = new List<string>();
+                var result = manager.ExitAllInstancesAsync(app, statuses.Add, CancellationToken.None)
+                    .GetAwaiter().GetResult();
+
+                Assert(result.Success && result.BeforeCount == 2 && result.AfterCount == 0,
+                    "Exit-all did not close every detected root instance.");
+                Assert(environment.ClosedProcessIds.SetEquals(new[] { 10, 11, 20 }),
+                    "Exit-all must exclude processes from other Windows sessions.");
+                Assert(string.Equals(environment.ClosedExecutablePath, path, StringComparison.OrdinalIgnoreCase),
+                    "Exit-all did not preserve the exact verified executable path.");
+                Assert(result.GracefulProcessCount == 3 && result.ForcedProcessCount == 0,
+                    "The deterministic graceful-close summary is incorrect.");
+                Assert(statuses.Count == 1 && statuses[0].Contains("安全退出全部微信"),
+                    "Exit-all did not report its in-progress state.");
+            }
+            finally
+            {
+                if (Directory.Exists(folder)) Directory.Delete(folder, true);
+            }
+        }
+
+        private static void TestWindowsProcessExitBoundary()
+        {
+            var executablePath = Process.GetCurrentProcess().MainModule.FileName;
+            var child = Process.Start(new ProcessStartInfo
+            {
+                FileName = executablePath,
+                Arguments = "--idle",
+                UseShellExecute = false,
+                CreateNoWindow = true
+            });
+            try
+            {
+                Assert(child != null, "The exact-path exit helper did not start.");
+                var environment = new WindowsProcessEnvironment();
+                var result = environment.CloseProcesses(new[] { child.Id }, executablePath,
+                    TimeSpan.Zero, CancellationToken.None);
+                Assert(result.EligibleProcessCount == 1 && result.ForcedExitCount == 1 &&
+                       result.RemainingProcessCount == 0,
+                    "The Windows exit layer did not close the exact-path helper deterministically.");
+                Assert(child.WaitForExit(3000), "The exact-path exit helper is still running.");
+            }
+            finally
+            {
+                if (child != null && !child.HasExited) child.Kill();
+                child?.Dispose();
+            }
         }
 
         private static void TestWeComExtendedLaunchPolicy()
@@ -1139,7 +1235,7 @@ namespace WechatDuokai.Tests
                     "Successful transaction did not install the current application payload.");
                 Assert(File.Exists(Path.Combine(root, "README.md")) &&
                        File.Exists(Path.Combine(root, "完整安全审计与卡巴斯基告警调查报告.txt")) &&
-                       File.Exists(Path.Combine(root, "全项目自查与任务栏图标修复报告.md")),
+                       File.Exists(Path.Combine(root, "全项目自查报告.md")),
                     "Installed-mode update did not keep the release and audit documents with the application.");
                 Assert(File.ReadAllText(Path.Combine(data, "settings.ini"), Encoding.UTF8) ==
                        "sentinel-settings", "Successful update changed persistent user data.");
@@ -1163,7 +1259,7 @@ namespace WechatDuokai.Tests
                        File.Exists(Path.Combine(portableRoot, "README.md")) &&
                        File.Exists(Path.Combine(portableRoot, "版本说明.md")) &&
                        File.Exists(Path.Combine(portableRoot, "一键更新安全验证报告.md")) &&
-                       File.Exists(Path.Combine(portableRoot, "全项目自查与任务栏图标修复报告.md")),
+                       File.Exists(Path.Combine(portableRoot, "全项目自查报告.md")),
                     "Portable transaction did not install its cleanup tool and release documents.");
                 Assert(File.ReadAllText(Path.Combine(portableData, "settings.ini"), Encoding.UTF8) ==
                        "portable-sentinel-settings", "Portable update changed persistent user data.");
@@ -1331,7 +1427,7 @@ namespace WechatDuokai.Tests
             Assert(File.Exists(Path.Combine(result.InstallDirectory, "WechatDuokai.Core.dll")), "Installed core DLL is missing.");
             Assert(File.Exists(result.UninstallerPath), "Installed uninstaller is missing.");
             Assert(File.Exists(Path.Combine(result.InstallDirectory, "README.md")) &&
-                   File.Exists(Path.Combine(result.InstallDirectory, "全项目自查与任务栏图标修复报告.md")),
+                   File.Exists(Path.Combine(result.InstallDirectory, "全项目自查报告.md")),
                 "Installed release documentation is missing.");
             var dataDirectory = InstallerEngine.GetInstalledDataDirectory(result.InstallDirectory);
             Assert(Directory.Exists(dataDirectory) &&
@@ -1543,6 +1639,19 @@ namespace WechatDuokai.Tests
                 _count++;
             }
 
+            public ProcessCloseSummary CloseProcesses(IReadOnlyCollection<int> processIds,
+                string expectedExecutablePath, TimeSpan gracefulTimeout,
+                CancellationToken cancellationToken)
+            {
+                var eligible = processIds?.Count ?? 0;
+                _count = 0;
+                return new ProcessCloseSummary
+                {
+                    EligibleProcessCount = eligible,
+                    GracefulExitCount = eligible
+                };
+            }
+
             public System.Threading.Tasks.Task DelayAsync(TimeSpan delay, CancellationToken cancellationToken)
             {
                 Delays.Add(delay);
@@ -1553,9 +1662,9 @@ namespace WechatDuokai.Tests
         private sealed class MultiClientFakeProcessEnvironment : IProcessEnvironment
         {
             private readonly string _weChatPath;
-            private readonly int _weChatCount;
+            private int _weChatCount;
             private readonly string _weComPath;
-            private readonly int _weComCount;
+            private int _weComCount;
 
             internal MultiClientFakeProcessEnvironment(string weChatPath, int weChatCount,
                 string weComPath, int weComCount)
@@ -1592,6 +1701,27 @@ namespace WechatDuokai.Tests
             {
             }
 
+            public ProcessCloseSummary CloseProcesses(IReadOnlyCollection<int> processIds,
+                string expectedExecutablePath, TimeSpan gracefulTimeout,
+                CancellationToken cancellationToken)
+            {
+                var eligible = processIds?.Count ?? 0;
+                if (string.Equals(expectedExecutablePath, _weComPath, StringComparison.OrdinalIgnoreCase))
+                {
+                    _weComCount = 0;
+                }
+                else if (string.Equals(expectedExecutablePath, _weChatPath, StringComparison.OrdinalIgnoreCase))
+                {
+                    _weChatCount = 0;
+                }
+
+                return new ProcessCloseSummary
+                {
+                    EligibleProcessCount = eligible,
+                    GracefulExitCount = eligible
+                };
+            }
+
             public System.Threading.Tasks.Task DelayAsync(TimeSpan delay, CancellationToken cancellationToken)
             {
                 return System.Threading.Tasks.Task.CompletedTask;
@@ -1601,14 +1731,24 @@ namespace WechatDuokai.Tests
         private sealed class FakeProcessEnvironment : IProcessEnvironment
         {
             private readonly string _path;
+            private bool _closed;
 
             internal FakeProcessEnvironment(string path) { _path = path; }
+
+            internal HashSet<int> ClosedProcessIds { get; } = new HashSet<int>();
+
+            internal string ClosedExecutablePath { get; private set; }
 
             public int CurrentSessionId => 7;
 
             public System.Collections.Generic.IReadOnlyList<ProcessSnapshot> FindProcesses(
                 System.Collections.Generic.IEnumerable<string> processNames)
             {
+                if (_closed)
+                {
+                    return new ProcessSnapshot[0];
+                }
+
                 return new[]
                 {
                     new ProcessSnapshot { Id = 10, SessionId = 7, ExecutablePath = _path },
@@ -1624,6 +1764,22 @@ namespace WechatDuokai.Tests
             }
 
             public void StartApplication(string executablePath) { }
+
+            public ProcessCloseSummary CloseProcesses(IReadOnlyCollection<int> processIds,
+                string expectedExecutablePath, TimeSpan gracefulTimeout,
+                CancellationToken cancellationToken)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                ClosedProcessIds.Clear();
+                foreach (var processId in processIds ?? new int[0]) ClosedProcessIds.Add(processId);
+                ClosedExecutablePath = expectedExecutablePath;
+                _closed = true;
+                return new ProcessCloseSummary
+                {
+                    EligibleProcessCount = ClosedProcessIds.Count,
+                    GracefulExitCount = ClosedProcessIds.Count
+                };
+            }
 
             public System.Threading.Tasks.Task DelayAsync(TimeSpan delay, CancellationToken cancellationToken)
             {

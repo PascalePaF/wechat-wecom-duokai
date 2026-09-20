@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [string]$Version = '1.0.11'
+    [string]$Version = '1.1.0'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -131,9 +131,9 @@ $uiRegressionReport = Join-Path $sourceRoot ("docs\V" + $Version + "-UI回归矩
 if (Test-Path -LiteralPath $uiRegressionReport) {
     Copy-Item -LiteralPath $uiRegressionReport -Destination (Join-Path $artifactRoot ("wechat-duokai-v" + $Version + "-ui-regression-matrix.md"))
 }
-$projectAuditReport = Join-Path $sourceRoot ("docs\V" + $Version + "-全项目自查与任务栏图标修复报告.md")
+$projectAuditReport = Join-Path $sourceRoot ("docs\V" + $Version + "-全项目自查报告.md")
 if (Test-Path -LiteralPath $projectAuditReport) {
-    Copy-Item -LiteralPath $projectAuditReport -Destination (Join-Path $portableDirectory '全项目自查与任务栏图标修复报告.md')
+    Copy-Item -LiteralPath $projectAuditReport -Destination (Join-Path $portableDirectory '全项目自查报告.md')
 }
 
 # Keep the two release-facing reports beside the binaries as standalone GitHub
@@ -203,6 +203,7 @@ $manifest = @(
     'Platform=Windows 10/11 x64',
     'UI=Uniform proportional scaling from 901x513 through maximized layouts; no outer scrollbars',
     'LaunchPolicy=Explicit confirmation after install',
+    'ExitAllPolicy=Per-client confirmation; current session and exact verified executable path only; graceful close before force',
     'UpgradePolicy=Prompt before closing exact-path running helper',
     'UpdatePolicy=Explicitly confirmed in-app update from this repository GitHub Release; manual browser download remains available',
     'UpdateVerification=GitHub asset digest plus SHA256SUMS plus downloaded file must match before execution',
