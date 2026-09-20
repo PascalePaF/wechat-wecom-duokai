@@ -1,5 +1,21 @@
 # 更新记录
 
+## V1.1.3 — 2026-09-20
+
+- 修复系统代理关闭、但当前进程通过 `HTTPS_PROXY` / `HTTP_PROXY` 环境变量联网时，浏览器和 curl 可访问
+  GitHub、.NET Framework 4.8 客户端却可能超时或 TLS 失败的问题。
+- 新增统一网络策略：优先采用合法 `HTTPS_PROXY`，为空时采用 `HTTP_PROXY`；版本发现、校验文件与 setup
+  下载使用同一代理，不把代理地址或凭据写入设置、诊断或日志。
+- 代理 URI 只接受 `http` / `https`、主机、端口与根路径；拒绝文件 URI、额外路径、query 和 fragment，
+  URL user-info 只作为本地代理凭据。
+- GitHub 请求固定使用 TLS 1.2；静态清单首步由 GET 改为无正文 HEAD，再从规范版本地址下载受 64 KiB
+  上限保护的 JSON。
+- 在 `HTTPS_PROXY=http://127.0.0.1:7897`、WinHTTP Direct、Internet ProxyEnable=0 的实机环境中，以
+  .NET Framework 4.8 完成版本发现、API digest 交叉核验、SHA256SUMS/setup 下载与最终 SHA-256 校验。
+- 增加合法/非法代理 URI、凭据解析和静态清单 HEAD 跳转回归；静态清单、多重摘要、用户确认、事务回滚
+  与不可变 Release 边界保持不变。
+- 更新状态测试清理会短暂等待实时安全扫描器释放其临时文件，避免把外部瞬时占用误报成产品回归失败。
+
 ## V1.1.2 — 2026-09-20
 
 - 每个正式 Release 新增 `update-manifest.json`，客户端从固定 `latest/download` 地址取得版本、规范附件

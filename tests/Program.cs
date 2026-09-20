@@ -63,6 +63,7 @@ namespace WechatDuokai.Tests
                 Run("Static Release manifests provide quota-free verified update metadata", TestStaticUpdateManifest);
                 Run("Update checks survive an exhausted unauthenticated GitHub API quota", TestRateLimitedUpdateFallback);
                 Run("Automatic update checks cache, stagger and back off locally", TestUpdateCheckSchedule);
+                Run("GitHub networking safely honors explicit HTTP proxy environments", TestNetworkProxyPolicy);
                 Run("Update mode detection accepts only marked install and portable roots", TestUpdateModeDetection);
                 Run("Transactional update preserves data and rolls back interrupted replacement", TestUpdateTransaction);
                 Run("Cleanup refuses drive roots", () =>
@@ -1278,7 +1279,52 @@ namespace WechatDuokai.Tests
             }
             finally
             {
-                if (Directory.Exists(root)) Directory.Delete(root, true);
+                DeleteTestDirectoryWithRetries(root);
+            }
+        }
+
+        private static void TestNetworkProxyPolicy()
+        {
+            var proxy = NetworkProxyPolicy.TryCreateEnvironmentProxy(
+                "http://example-user:example-pass@127.0.0.1:7897");
+            Assert(proxy != null && proxy.GetProxy(new Uri("https://github.com/")).Host ==
+                   "127.0.0.1" && proxy.GetProxy(new Uri("https://github.com/")).Port == 7897,
+                "A valid HTTPS_PROXY-style URL was not accepted.");
+            var credentials = proxy.Credentials.GetCredential(
+                new Uri("http://127.0.0.1:7897/"), "Basic");
+            Assert(credentials != null && credentials.UserName == "example-user" &&
+                   credentials.Password == "example-pass",
+                "Proxy credentials were not decoded for the proxy endpoint.");
+            Assert(NetworkProxyPolicy.TryCreateEnvironmentProxy(
+                       "file:///C:/proxy") == null &&
+                   NetworkProxyPolicy.TryCreateEnvironmentProxy(
+                       "http://127.0.0.1:7897/untrusted-path") == null &&
+                   NetworkProxyPolicy.TryCreateEnvironmentProxy(
+                       "http://127.0.0.1:7897/?token=secret") == null,
+                "An invalid or path-bearing proxy URL was accepted.");
+        }
+
+        private static void DeleteTestDirectoryWithRetries(string path)
+        {
+            for (var attempt = 0; attempt < 50; attempt++)
+            {
+                if (!Directory.Exists(path)) return;
+                try
+                {
+                    Directory.Delete(path, true);
+                    return;
+                }
+                catch (IOException) when (attempt < 49)
+                {
+                    // Real-time security scanners can briefly hold their own temporary file
+                    // after a durable-state test. Wait for the handle instead of making an
+                    // otherwise successful regression test nondeterministic.
+                    Thread.Sleep(100);
+                }
+                catch (UnauthorizedAccessException) when (attempt < 49)
+                {
+                    Thread.Sleep(100);
+                }
             }
         }
 
@@ -1783,7 +1829,7 @@ namespace WechatDuokai.Tests
                 }
 
                 HttpResponseMessage response;
-                if (!_deliveryMode && string.Equals(url,
+                if (!_deliveryMode && request.Method == HttpMethod.Head && string.Equals(url,
                         ReleaseUpdateChecker.LatestUpdateManifest,
                         StringComparison.OrdinalIgnoreCase))
                 {

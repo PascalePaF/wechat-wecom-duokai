@@ -377,7 +377,10 @@ namespace WechatDuokai.Core
 
         private static HttpClient CreateDownloadClient()
         {
-            return new HttpClient { Timeout = TimeSpan.FromMinutes(5) };
+            return new HttpClient(NetworkProxyPolicy.CreateHandler(true), true)
+            {
+                Timeout = TimeSpan.FromMinutes(5)
+            };
         }
 
         private static HttpRequestMessage CreateDownloadRequest(string url)

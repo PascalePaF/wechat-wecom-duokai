@@ -19,25 +19,24 @@
 > 本项目基于 [CN-Root/wechat-wecom-duokai](https://github.com/CN-Root/wechat-wecom-duokai)
 > 持续改进。不会修改、替换或破解微信与企业微信客户端文件，也不是腾讯官方产品。
 
-![V1.1.2 日间主题最小界面](docs/assets/v1.1.0-main-light-901x513.png)
+![V1.1.3 日间主题最小界面](docs/assets/v1.1.0-main-light-901x513.png)
 
-## V1.1.2 有什么变化
+## V1.1.3 有什么变化
 
-- 每个正式 Release 新增静态 `update-manifest.json`。检查版本和安全一键更新均不再以公共 REST API
-  可用为前提，用户数量增加或共享网络配额耗尽也不会阻断主路径。
-- GitHub API 只在发现新版本后作为可选摘要交叉核验；不可用时仍强制静态清单、`SHA256SUMS.txt`
-  和本机下载文件一致。
-- 自动检查成功后缓存 24 小时，并按安装位置稳定错峰 30–300 秒；失败按 1 小时、6 小时、24 小时
-  退避并识别服务器 `Retry-After`。手动“检查更新”始终立即执行。
-- 新增 `data\update-state.ini`，只在安装目录保存检查时间、失败次数和版本号，不包含账号、路径、日志
-  或遥测，也不会上传。
-- 从本版启用 GitHub Immutable Releases：全部附件先上传到草稿，正式发布后标签和附件不能被替换。
+- 修复部分电脑上“浏览器可以打开 GitHub，但助手检查更新失败”的问题：.NET Framework 现在会显式识别
+  规范的 `HTTPS_PROXY`，为空时再识别 `HTTP_PROXY`，版本检查和附件下载使用同一网络策略。
+- GitHub 请求固定使用 TLS 1.2；静态清单先以无正文 `HEAD` 解析最新版本跳转，再下载最多 64 KiB 的
+  JSON，降低本地代理、HTTPS 扫描与网关对旧框架的兼容差异。
+- 代理地址只允许 `http` / `https`、主机、端口和根路径；拒绝文件 URI、额外路径、查询参数和片段。
+  代理凭据只交给本机网络层，不写设置、诊断或日志。
+- V1.1.2 引入的静态 `update-manifest.json`、24 小时缓存、30–300 秒错峰、1/6/24 小时退避、可选
+  GitHub API 摘要、多重 SHA-256 与不可变 Release 全部保留。
 - 更新仍必须由用户确认；没有静默下载、静默覆盖或后台自动安装。
 
 完整记录见 [CHANGELOG.md](CHANGELOG.md)。本次根因、回归和安全边界见
-[V1.1.2 一键更新安全验证报告](docs/V1.1.2-一键更新安全验证报告.md)、
-[V1.1.2 完整安全审计报告](docs/微窗助手_V1.1.2_完整安全审计报告.txt)与
-[V1.1.2 UI 回归矩阵](docs/V1.1.2-UI回归矩阵.md)。
+[V1.1.3 一键更新与代理兼容安全验证报告](docs/V1.1.3-一键更新安全验证报告.md)、
+[V1.1.3 完整安全审计报告](docs/微窗助手_V1.1.3_完整安全审计报告.txt)与
+[V1.1.3 UI 回归矩阵](docs/V1.1.3-UI回归矩阵.md)。
 
 ## 主要能力
 
@@ -64,13 +63,13 @@
 
 | 文件 | 适用场景 |
 | --- | --- |
-| `wechat_duokai-setup-v1.1.2.exe` | 推荐；可选择本机安装地址，也是经过校验的一键更新执行程序 |
-| `wechat_duokai-portable-v1.1.2.zip` | 绿色版；解压完整目录后直接运行，也支持保持绿色身份原地更新 |
-| `wechat_duokai-cleanup-v1.1.2.exe` | 独立完整卸载与清理工具；与安装器不是同一个二进制 |
+| `wechat_duokai-setup-v1.1.3.exe` | 推荐；可选择本机安装地址，也是经过校验的一键更新执行程序 |
+| `wechat_duokai-portable-v1.1.3.zip` | 绿色版；解压完整目录后直接运行，也支持保持绿色身份原地更新 |
+| `wechat_duokai-cleanup-v1.1.3.exe` | 独立完整卸载与清理工具；与安装器不是同一个二进制 |
 | `SHA256SUMS.txt` | 核对下载内容是否与发布文件一致 |
 | `update-manifest.json` | 客户端使用的免 API 静态版本、大小、地址和 SHA-256 清单 |
 | `manifest.spdx.json` | Microsoft SBOM Tool 生成并验证的 SPDX 2.2 软件物料清单 |
-| `kaspersky-scan-v1.1.2.txt` | Kaspersky 对正式发布附件原件的原始扫描日志 |
+| `kaspersky-scan-v1.1.3.txt` | Kaspersky 对正式发布附件原件的原始扫描日志 |
 
 当前版本没有受公共信任的 Authenticode 代码签名。首次运行可能出现“未知发布者”、SmartScreen 或
 第三方启发式信誉提示；这不等于文件一定有病毒，也不能反过来当作安全证明。请核对下载域名、Release
@@ -79,7 +78,7 @@
 
 ## 安装和升级
 
-1. 下载并运行 `wechat_duokai-setup-v1.1.2.exe`。
+1. 下载并运行 `wechat_duokai-setup-v1.1.3.exe`。
 2. 使用“选择文件夹”选择或新建一个专用安装目录；路径不需要手动输入。
 3. 选择是否创建桌面快捷方式，然后点击“立即安装”。
 4. 如果同一安装目录的旧助手正在运行，按提示选择关闭或取消。安装器只处理该目录中的助手，
@@ -89,11 +88,11 @@
    程序、设置和 `data` 内容不会因更名丢失。
 7. 如果任务栏上是用旧版历史快捷方式手工固定的独立项且仍显示旧图标，取消固定后从新的开始菜单快捷方式重新固定一次。
 
-![V1.1.2 日间主题安装器](docs/assets/v1.1.0-installer-light.png)
+![V1.1.3 日间主题安装器](docs/assets/v1.1.0-installer-light.png)
 
 ## 绿色版
 
-1. 将 `wechat_duokai-portable-v1.1.2.zip` 解压到一个独立文件夹。
+1. 将 `wechat_duokai-portable-v1.1.3.zip` 解压到一个独立文件夹。
 2. 运行 `wechat_duokai.exe`。
 3. 不要只把主 EXE 移走；它需要同目录的 `WechatDuokai.Core.dll`，完整目录还包含许可证、安全说明和清理器。
 
@@ -115,7 +114,7 @@
 
 共用目标数量、自定义路径和更新偏好保存在程序目录的 `data\settings.ini`，主题保存在
 `data\theme.ini`。自定义路径使用 Base64 只是为了避免特殊字符破坏配置格式，不是加密；配置不包含
-账号、聊天内容或凭据。更新检查时间与退避状态另存于 `data\update-state.ini`。V1.1.2 延续 V1.0.7
+账号、聊天内容或凭据。更新检查时间与退避状态另存于 `data\update-state.ini`。V1.1.3 延续 V1.0.7
 的迁移规则：把 V1.0.6 分开保存的两个数量合并为一个，
 优先沿用微信的旧值；
 V1.0.5 及更早版本的 AppData 设置只迁移一次，迁移后不再写回旧目录。
@@ -144,6 +143,8 @@ compare-and-swap，外部程序仍可能在最后一次比较与写入之间竞�
 退避；手动检查不受缓存或退避影响。点击一键更新后仍会显示确认框；只有确认后才下载
 `SHA256SUMS.txt` 和 setup，内容全部进入当前程序目录的 `data\updates`。静态清单、校验文件与下载
 文件必须一致；API 可用时其服务端摘要也必须一致。安装版会刷新登记，绿色版保持绿色身份；失败时回滚。
+若当前进程通过规范的 `HTTPS_PROXY` / `HTTP_PROXY` 环境变量联网，版本检查和下载会使用同一代理；
+代理地址或凭据不会写入程序目录，也不会上传。未配置环境代理时继续使用 Windows/.NET 默认代理行为。
 
 ![V1.1.0 设置页](docs/assets/v1.1.0-settings-light-901x513.png)
 
@@ -202,7 +203,8 @@ compare-and-swap，外部程序仍可能在最后一次比较与写入之间竞�
   新版本后尝试向 `api.github.com` 取得可选附件摘要，API 配额不可用不会阻断更新。自动请求有 24 小时
   缓存、30–300 秒错峰和 1/6/24 小时失败退避，可关闭；手动检查始终立即执行。
   只有用户确认一键更新后，才下载同一 Release 的 `SHA256SUMS.txt` 与精确版本 setup。程序不上传诊断、
-  路径、账号或日志；GitHub 会看到普通 HTTPS 请求所需的 IP 和 User-Agent。
+  路径、账号或日志；GitHub 会看到普通 HTTPS 请求所需的 IP 和 User-Agent。规范的环境变量代理仅用于
+  本机传输，代理地址和凭据不会持久化或进入诊断。
 - 自动覆盖只接受专用标记目录。静态清单、SHA256SUMS 与本机文件必须一致；能取得 GitHub digest 时
   再要求服务端摘要一致。API 不可用时仍要求固定仓库/标签/附件路径、HTTPS 和大小限制。替换使用
   暂存/备份事务，绿色版不会因为更新而新增快捷方式或卸载登记。
@@ -216,10 +218,10 @@ compare-and-swap，外部程序仍可能在最后一次比较与写入之间竞�
 
 安全资料：
 
-- [V1.1.2 完整安全审计报告](docs/微窗助手_V1.1.2_完整安全审计报告.txt)
-- [V1.1.2 一键更新安全验证报告](docs/V1.1.2-一键更新安全验证报告.md)
-- [V1.1.2 全项目自查报告](docs/V1.1.2-全项目自查报告.md)
-- [V1.1.2 UI 回归矩阵](docs/V1.1.2-UI回归矩阵.md)
+- [V1.1.3 完整安全审计报告](docs/微窗助手_V1.1.3_完整安全审计报告.txt)
+- [V1.1.3 一键更新与代理兼容安全验证报告](docs/V1.1.3-一键更新安全验证报告.md)
+- [V1.1.3 全项目自查报告](docs/V1.1.3-全项目自查报告.md)
+- [V1.1.3 UI 回归矩阵](docs/V1.1.3-UI回归矩阵.md)
 - [V1.0.1 源码与旧版二进制安全审计（历史）](SECURITY-AUDIT.md)
 - [旧版 EXE 硬编码路径说明](docs/旧版EXE硬编码路径说明与风险评估报告.txt)
 
@@ -235,7 +237,7 @@ compare-and-swap，外部程序仍可能在最后一次比较与写入之间竞�
 2. **全部删除，包括源码与全部发布包**：只有源码目录带正确标记且结构匹配时可选；还需要额外复选
    和最后一次确认。未提交的源码修改不可恢复。
 
-![V1.1.2 完整卸载器](docs/assets/v1.1.0-uninstaller-light.png)
+![V1.1.3 完整卸载器](docs/assets/v1.1.0-uninstaller-light.png)
 
 ## 从源码构建
 
@@ -245,10 +247,10 @@ compare-and-swap，外部程序仍可能在最后一次比较与写入之间竞�
 ```powershell
 MSBuild .\duokai.sln /restore /t:Rebuild /p:Configuration=Release
 .\tests\bin\Release\net48\WechatDuokai.Tests.exe
-PowerShell -ExecutionPolicy Bypass -File .\build-release.ps1 -Version 1.1.2
+PowerShell -ExecutionPolicy Bypass -File .\build-release.ps1 -Version 1.1.3
 ```
 
-发布目录为 `artifacts\V1.1.2`。脚本分别复制真正的 setup 与 cleanup 输出，并生成绿色版、发布清单、
+发布目录为 `artifacts\V1.1.3`。脚本分别复制真正的 setup 与 cleanup 输出，并生成绿色版、发布清单、
 静态更新清单和 SHA-256。界面回归样本可用 `scripts\capture-ui-matrix.ps1` 重新生成。GitHub 工作流还会
 在全新的 `windows-2022` 虚拟机中重复这一过程，逐项复核哈希与静态清单并生成、验证 SPDX 2.2 SBOM。
 
@@ -256,13 +258,13 @@ PowerShell -ExecutionPolicy Bypass -File .\build-release.ps1 -Version 1.1.2
 
 - 自动识别与手动选择覆盖微信旧版 `WeChat.exe`、微信 4.x `Weixin.exe` 和企业微信 `WXWork.exe`；
   不以小版本号作为白名单，因此官方维护版本升级不会仅因版本号变化被拒绝。
-- V1.1.2 沿用真机基线：微信 `4.1.15.6`、企业微信 `5.0.11.6018`、Windows 11 x64，二者腾讯签名有效；
+- V1.1.3 沿用真机基线：微信 `4.1.15.6`、企业微信 `5.0.11.6018`、Windows 11 x64，二者腾讯签名有效；
   企业微信已验证三个根实例同时运行并在测试后正常退出。
 - 支持 Windows 10/11 的 100%、125%、150%、175%、200% 缩放逻辑；Per-Monitor V2 允许跨显示器
   重新缩放。每种显卡驱动、辅助技术和超长本地路径仍需社区反馈继续覆盖。
 - 腾讯没有公开承诺第三方多开机制长期稳定。客户端改变锁机制时，本工具会失败关闭，不会转向注入
   或修改客户端；请先用测试账号验证，并遵守客户端许可、组织安全策略及账号风控规则。
-- V1.1.2 继续使用 WPF/.NET Framework 4.8；现有矢量框架和独立安装器可以实现主题动态资源与安全更新，无需迁移
+- V1.1.3 继续使用 WPF/.NET Framework 4.8；现有矢量框架和独立安装器可以实现主题动态资源与安全更新，无需迁移
   WinUI 3、Tauri 或 Python。
 
 ## 版本来源
@@ -284,6 +286,7 @@ PowerShell -ExecutionPolicy Bypass -File .\build-release.ps1 -Version 1.1.2
 - V1.1.0：微信/企微独立全部退出、精确进程边界、左右主卡片对齐、实时数量强调和极简标题区
 - V1.1.1：更新检查不再受 GitHub 未登录 API 配额阻断，并补充安全降级校验与具体错误提示
 - V1.1.2：静态更新清单、24 小时缓存与错峰、1/6/24 小时退避、可选 API 摘要及不可变 Release
+- V1.1.3：环境变量代理兼容、TLS 1.2、静态清单 HEAD 跳转和真实 .NET Framework 端到端校验
 
 ## 许可证
 

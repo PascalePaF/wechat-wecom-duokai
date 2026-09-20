@@ -1,6 +1,6 @@
 <Project>
   <PropertyGroup>
-    <WechatDuokaiVersion>1.1.2</WechatDuokaiVersion>
+    <WechatDuokaiVersion>1.1.3</WechatDuokaiVersion>
     <Version>$(WechatDuokaiVersion)</Version>
     <AssemblyVersion>$(WechatDuokaiVersion).0</AssemblyVersion>
     <FileVersion>$(WechatDuokaiVersion).0</FileVersion>

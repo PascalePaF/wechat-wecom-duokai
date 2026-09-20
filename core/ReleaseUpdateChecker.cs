@@ -205,13 +205,13 @@ namespace WechatDuokai.Core
         {
             return new HttpClient(_handlerFactory(allowAutoRedirect), true)
             {
-                Timeout = TimeSpan.FromSeconds(12)
+                Timeout = TimeSpan.FromSeconds(20)
             };
         }
 
         private static HttpMessageHandler CreateDefaultHandler(bool allowAutoRedirect)
         {
-            return new HttpClientHandler { AllowAutoRedirect = allowAutoRedirect };
+            return NetworkProxyPolicy.CreateHandler(allowAutoRedirect);
         }
 
         private static async Task<ReleaseUpdateResult> TryReadUpdateManifestAsync(
@@ -220,7 +220,7 @@ namespace WechatDuokai.Core
         {
             try
             {
-                using (var request = CreateRequest(HttpMethod.Get, LatestUpdateManifest,
+                using (var request = CreateRequest(HttpMethod.Head, LatestUpdateManifest,
                            currentVersion, "application/json"))
                 using (var response = await discoveryClient.SendAsync(request,
                            HttpCompletionOption.ResponseHeadersRead, cancellationToken))
