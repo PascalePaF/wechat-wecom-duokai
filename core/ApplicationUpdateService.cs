@@ -87,14 +87,16 @@ namespace WechatDuokai.Core
             var checksumBytes = await DownloadSmallAssetAsync(release.ChecksumAsset,
                 progress, cancellationToken);
             var checksumHash = ComputeSha256(checksumBytes);
-            if (!FixedTimeEquals(checksumHash, release.ChecksumAsset.Sha256))
+            if (release.HasGitHubAssetDigests &&
+                !FixedTimeEquals(checksumHash, release.ChecksumAsset.Sha256))
             {
                 throw new InvalidDataException("SHA256SUMS.txt 与 GitHub 服务端摘要不一致，已停止更新。");
             }
 
             var checksumText = Encoding.UTF8.GetString(checksumBytes);
             var manifestHash = ParseChecksum(checksumText, release.SetupAsset.Name);
-            if (!FixedTimeEquals(manifestHash, release.SetupAsset.Sha256))
+            if (release.HasGitHubAssetDigests &&
+                !FixedTimeEquals(manifestHash, release.SetupAsset.Sha256))
             {
                 throw new InvalidDataException(
                     "安装包的 GitHub 摘要与 SHA256SUMS.txt 不一致，已停止更新。");
@@ -123,7 +125,9 @@ namespace WechatDuokai.Core
 
                 progress?.Report(new UpdateProgressInfo
                 {
-                    Message = "三方 SHA-256 校验通过",
+                    Message = release.HasGitHubAssetDigests
+                        ? "三方 SHA-256 校验通过"
+                        : "Release 清单与安装包 SHA-256 校验通过",
                     BytesReceived = release.SetupAsset.Size,
                     TotalBytes = release.SetupAsset.Size
                 });
@@ -292,6 +296,7 @@ namespace WechatDuokai.Core
                        HttpCompletionOption.ResponseHeadersRead, cancellationToken))
             {
                 response.EnsureSuccessStatusCode();
+                ValidateFinalDownloadUri(response);
                 ValidateContentLength(response, asset.Size);
                 using (var input = await response.Content.ReadAsStreamAsync())
                 using (var output = new MemoryStream())
@@ -333,6 +338,7 @@ namespace WechatDuokai.Core
                        HttpCompletionOption.ResponseHeadersRead, cancellationToken))
             {
                 response.EnsureSuccessStatusCode();
+                ValidateFinalDownloadUri(response);
                 ValidateContentLength(response, asset.Size);
                 using (var input = await response.Content.ReadAsStreamAsync())
                 using (var output = new FileStream(temporaryPath, FileMode.Create, FileAccess.Write,
@@ -393,6 +399,16 @@ namespace WechatDuokai.Core
             if (contentLength.HasValue && contentLength.Value != expected)
             {
                 throw new InvalidDataException("下载内容大小与 GitHub Release 元数据不一致。");
+            }
+        }
+
+        private static void ValidateFinalDownloadUri(HttpResponseMessage response)
+        {
+            if (!ReleaseUpdateChecker.IsTrustedAssetDeliveryUri(
+                    response?.RequestMessage?.RequestUri))
+            {
+                throw new InvalidDataException(
+                    "更新附件被重定向到非 GitHub 交付地址，已停止下载。");
             }
         }
 

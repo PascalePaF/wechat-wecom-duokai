@@ -3,10 +3,13 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Net;
+using System.Net.Http;
 using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
@@ -57,6 +60,7 @@ namespace WechatDuokai.Tests
                 Run("All persistent runtime data stays below the application directory", TestApplicationStorageLayout);
                 Run("Legacy AppData settings migrate into the application directory", TestLegacyStorageMigration);
                 Run("GitHub release metadata exposes only verified one-click update assets", TestReleaseMetadataParsing);
+                Run("Update checks survive an exhausted unauthenticated GitHub API quota", TestRateLimitedUpdateFallback);
                 Run("Update mode detection accepts only marked install and portable roots", TestUpdateModeDetection);
                 Run("Transactional update preserves data and rolls back interrupted replacement", TestUpdateTransaction);
                 Run("Cleanup refuses drive roots", () =>
@@ -1083,8 +1087,20 @@ namespace WechatDuokai.Tests
                 BuildReleaseJson(NextVersion, setupHash, sumsHash, null), CurrentVersion);
             Assert(newer.CheckSucceeded && newer.IsUpdateAvailable && newer.LatestVersion == NextVersion &&
                    newer.CanInstallUpdate && newer.SetupAsset.Sha256 == setupHash &&
-                   newer.ChecksumAsset.Sha256 == sumsHash,
+                   newer.ChecksumAsset.Sha256 == sumsHash && newer.HasGitHubAssetDigests,
                 "Newer release and its update assets were not recognized.");
+
+            var redirect = ReleaseUpdateChecker.ParseLatestReleaseLocation(
+                "https://github.com/PascalePaF/wechat-wecom-duokai/releases/tag/v" + NextVersion,
+                CurrentVersion);
+            Assert(redirect.CheckSucceeded && redirect.IsUpdateAvailable &&
+                   redirect.LatestVersion == NextVersion,
+                "The quota-free GitHub latest-release redirect was not recognized.");
+            var untrustedRedirect = ReleaseUpdateChecker.ParseLatestReleaseLocation(
+                "https://example.com/PascalePaF/wechat-wecom-duokai/releases/tag/v" + NextVersion,
+                CurrentVersion);
+            Assert(!untrustedRedirect.CheckSucceeded,
+                "A latest-release redirect outside github.com was trusted.");
 
             var malicious = ReleaseUpdateChecker.ParseResponse(
                 BuildReleaseJson(NextVersion, setupHash, sumsHash,
@@ -1130,6 +1146,31 @@ namespace WechatDuokai.Tests
             Assert(duplicateRejected, "Ambiguous duplicate setup hashes were accepted.");
             Assert(ReleaseUpdateChecker.ReleasesUrl.StartsWith("https://github.com/", StringComparison.Ordinal),
                 "Release action must remain an HTTPS GitHub page.");
+            Assert(ReleaseUpdateChecker.IsTrustedAssetDeliveryUri(
+                       new Uri("https://release-assets.githubusercontent.com/example")) &&
+                   !ReleaseUpdateChecker.IsTrustedAssetDeliveryUri(
+                       new Uri("https://example.com/release-assets/file")),
+                "The final update download domain boundary is incorrect.");
+        }
+
+        private static void TestRateLimitedUpdateFallback()
+        {
+            var requests = new List<string>();
+            var checker = new ReleaseUpdateChecker(allowAutoRedirect =>
+                new RateLimitedReleaseHandler(allowAutoRedirect, requests));
+            var result = checker.CheckAsync(CurrentVersion, CancellationToken.None)
+                .GetAwaiter().GetResult();
+
+            Assert(result.CheckSucceeded && result.IsUpdateAvailable &&
+                   result.LatestVersion == NextVersion,
+                "A GitHub API 403 prevented the quota-free release check.");
+            Assert(result.CanInstallUpdate && !result.HasGitHubAssetDigests &&
+                   result.SetupAsset.Size == 481792 && result.ChecksumAsset.Size == 580,
+                "The canonical Release fallback did not preserve one-click update metadata.");
+            Assert(requests.Any(value => value.IndexOf("api.github.com", StringComparison.OrdinalIgnoreCase) >= 0),
+                "The regression test did not exercise the exhausted API path.");
+            Assert(requests.Any(value => value.EndsWith("/releases/latest", StringComparison.OrdinalIgnoreCase)),
+                "The quota-free latest Release endpoint was not used.");
         }
 
         private static string BuildReleaseJson(string version, string setupHash,
@@ -1566,6 +1607,78 @@ namespace WechatDuokai.Tests
             }
 
             return version.Major + "." + version.Minor + "." + (version.Build + 1);
+        }
+
+        private sealed class RateLimitedReleaseHandler : HttpMessageHandler
+        {
+            private readonly bool _assetMode;
+            private readonly List<string> _requests;
+
+            internal RateLimitedReleaseHandler(bool assetMode, List<string> requests)
+            {
+                _assetMode = assetMode;
+                _requests = requests;
+            }
+
+            protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request,
+                CancellationToken cancellationToken)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var url = request.RequestUri.AbsoluteUri;
+                lock (_requests)
+                {
+                    _requests.Add(url);
+                }
+
+                HttpResponseMessage response;
+                if (!_assetMode && request.Method == HttpMethod.Head &&
+                    string.Equals(url, ReleaseUpdateChecker.LatestReleasePage,
+                        StringComparison.OrdinalIgnoreCase))
+                {
+                    response = new HttpResponseMessage(HttpStatusCode.Found);
+                    response.Headers.Location = new Uri(
+                        "https://github.com/PascalePaF/wechat-wecom-duokai/releases/tag/v" +
+                        NextVersion);
+                }
+                else if (!_assetMode &&
+                         string.Equals(request.RequestUri.Host, "api.github.com",
+                             StringComparison.OrdinalIgnoreCase))
+                {
+                    response = new HttpResponseMessage(HttpStatusCode.Forbidden)
+                    {
+                        Content = new StringContent("{\"message\":\"API rate limit exceeded\"}")
+                    };
+                    response.Headers.TryAddWithoutValidation("X-RateLimit-Remaining", "0");
+                }
+                else if (_assetMode && request.Method == HttpMethod.Head &&
+                         url.EndsWith("/wechat_duokai-setup-v" + NextVersion + ".exe",
+                             StringComparison.OrdinalIgnoreCase))
+                {
+                    response = CreateAssetResponse(481792);
+                }
+                else if (_assetMode && request.Method == HttpMethod.Head &&
+                         url.EndsWith("/SHA256SUMS.txt", StringComparison.OrdinalIgnoreCase))
+                {
+                    response = CreateAssetResponse(580);
+                }
+                else
+                {
+                    response = new HttpResponseMessage(HttpStatusCode.NotFound);
+                }
+
+                response.RequestMessage = request;
+                return Task.FromResult(response);
+            }
+
+            private static HttpResponseMessage CreateAssetResponse(long size)
+            {
+                var response = new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new ByteArrayContent(new byte[0])
+                };
+                response.Content.Headers.ContentLength = size;
+                return response;
+            }
         }
 
         private sealed class TrackingWeComLaunchPolicy : IWeComLaunchPolicy

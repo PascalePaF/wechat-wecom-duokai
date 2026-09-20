@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [string]$Version = '1.1.0'
+    [string]$Version = '1.1.1'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -206,7 +206,7 @@ $manifest = @(
     'ExitAllPolicy=Per-client confirmation; current session and exact verified executable path only; graceful close before force',
     'UpgradePolicy=Prompt before closing exact-path running helper',
     'UpdatePolicy=Explicitly confirmed in-app update from this repository GitHub Release; manual browser download remains available',
-    'UpdateVerification=GitHub asset digest plus SHA256SUMS plus downloaded file must match before execution',
+    'UpdateVerification=Quota-free GitHub Release discovery; prefer GitHub asset digests, with canonical HTTPS release plus SHA256SUMS fallback when the public API is unavailable',
     'UpdateRollback=Same-volume staging and per-file backups preserve the previous executable set on failure',
     'InstallerIdentity=Setup and cleanup are separate assemblies',
     'WeComExtendedMode=Temporary registry policy plus exact known mutex release; restore only if temporary state is still owned',

@@ -621,11 +621,14 @@ namespace WechatDuokai.App
 
             if (!result.CheckSucceeded)
             {
-                SettingsReleaseButton.ToolTip = "本次未能检查更新；点击仍可打开 GitHub 发布页";
-                UpdateStatusText.Text = "检查失败；核心多开功能不受影响，可稍后重试";
+                var reason = string.IsNullOrWhiteSpace(result.ErrorMessage)
+                    ? "暂时无法读取 GitHub 版本信息。"
+                    : result.ErrorMessage;
+                SettingsReleaseButton.ToolTip = reason + " 点击仍可打开 GitHub 发布页";
+                UpdateStatusText.Text = reason + "\r\n核心多开功能不受影响，也可直接打开发布页。";
                 if (userInitiated)
                 {
-                    SetStatus("暂时无法检查版本 · 可直接打开 GitHub 发布页", "WarningBrush");
+                    SetStatus("检查更新失败 · 可直接打开 GitHub 发布页", "WarningBrush");
                 }
                 return;
             }
@@ -642,7 +645,9 @@ namespace WechatDuokai.App
                     UpdateNowButton.Content = "一键更新 V" + result.LatestVersion;
                     UpdateNowButton.Visibility = Visibility.Visible;
                     UpdateNowButton.IsEnabled = !_busy && !_installingUpdate;
-                    UpdateStatusText.Text = "已验证 Release 附件信息 · 点击后先下载并校验，再安全覆盖";
+                    UpdateStatusText.Text = result.HasGitHubAssetDigests
+                        ? "已验证 Release 附件摘要 · 点击后下载并执行三方 SHA-256 校验"
+                        : "已确认固定 Release 附件 · 点击后按 SHA256SUMS.txt 校验再覆盖";
                     SetStatus("发现新版本 V" + result.LatestVersion + " · 可一键更新", "InfoBrush");
                 }
                 else
@@ -688,12 +693,15 @@ namespace WechatDuokai.App
             }
 
             var description = mode == ApplicationInstallMode.Installed ? "安装版" : "绿色免安装版";
+            var verification = _availableUpdate.HasGitHubAssetDigests
+                ? "GitHub 摘要 + SHA256SUMS.txt + 下载文件，三方必须一致"
+                : "固定 GitHub Release 地址 + SHA256SUMS.txt + 下载文件必须一致";
             var choice = MessageBox.Show(
                 "将把当前" + description + "从 V" + CurrentVersion + " 更新到 V" +
                 _availableUpdate.LatestVersion + "。\r\n\r\n" +
                 "下载来源：本项目 GitHub Release\r\n" +
                 "安装包大小：" + FormatBytes(_availableUpdate.SetupAsset.Size) + "\r\n" +
-                "安全校验：GitHub 摘要 + SHA256SUMS.txt + 下载文件，三方必须一致\r\n" +
+                "安全校验：" + verification + "\r\n" +
                 "本地数据：data 中的设置、主题、诊断和恢复日志全部保留\r\n\r\n" +
                 "校验通过后助手会关闭，由独立安装程序覆盖并重新启动。现在继续吗？",
                 "确认一键更新", MessageBoxButton.YesNo, MessageBoxImage.Question,
@@ -723,7 +731,9 @@ namespace WechatDuokai.App
                 var package = await _applicationUpdater.DownloadAndVerifyAsync(
                     _availableUpdate, progress, _lifetime.Token);
                 UpdateProgressBar.Value = 100;
-                UpdateStatusText.Text = "三方 SHA-256 校验通过 · 正在交给独立更新程序";
+                UpdateStatusText.Text = _availableUpdate.HasGitHubAssetDigests
+                    ? "三方 SHA-256 校验通过 · 正在交给独立更新程序"
+                    : "Release 清单与安装包 SHA-256 校验通过 · 正在启动更新";
                 SetStatus("更新包校验通过 · 正在安全切换版本", "SuccessBrush");
                 _applicationUpdater.LaunchVerifiedInstaller(package, CurrentVersion,
                     ThemeManager.Current == AppTheme.Dark ? "dark" : "light");
