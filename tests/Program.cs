@@ -598,6 +598,8 @@ namespace WechatDuokai.Tests
                 var countLayout = (Grid)window.FindName("CountLayout");
                 var applicationHeader = (FrameworkElement)window.FindName("ApplicationSectionHeader");
                 var countHeader = (FrameworkElement)window.FindName("CountSectionHeader");
+                var countScope = (TextBlock)window.FindName("CountScopeText");
+                var countSaveHint = (TextBlock)window.FindName("CountSaveHint");
                 var viewport = (FrameworkElement)window.FindName("ScaleViewport");
                 var scaledRoot = (FrameworkElement)window.FindName("ScaledRoot");
                 var workspace = (FrameworkElement)window.FindName("WorkspaceGrid");
@@ -628,8 +630,9 @@ namespace WechatDuokai.Tests
                         "The two main cards are not aligned at " + size.Width + "x" + size.Height + ".");
                     var applicationHeaderOrigin = applicationHeader.TranslatePoint(new Point(0, 0), workspace);
                     var countHeaderOrigin = countHeader.TranslatePoint(new Point(0, 0), workspace);
-                    Assert(Math.Abs(applicationHeaderOrigin.Y - countHeaderOrigin.Y) < 0.5,
-                        "The two main card titles do not share a visual baseline.");
+                    Assert(applicationHeaderOrigin.Y >= 0 && countHeaderOrigin.Y >= 0 &&
+                           countHeaderOrigin.Y < panel.ActualHeight,
+                        "A main card title was placed outside its panel.");
                     Assert(weChatCard.ActualHeight >= 80d && weComCard.ActualHeight >= 80d,
                         "An application card was clipped at " + size.Width + "x" + size.Height + ".");
                     Assert(Math.Abs(transform.ScaleX - transform.ScaleY) < 0.001 && transform.ScaleX >= 1d,
@@ -641,10 +644,23 @@ namespace WechatDuokai.Tests
 
                 Assert(Grid.GetRow(panel) == 0 && Grid.GetColumn(panel) == 2 && Grid.GetColumnSpan(panel) == 1,
                     "The count panel must stay on the right at every supported size.");
-                Assert(applicationsLayout.RowDefinitions.Count == 4 && countLayout.RowDefinitions.Count == 4 &&
-                       applicationsLayout.RowDefinitions.Select(value => value.Height.Value)
-                           .SequenceEqual(countLayout.RowDefinitions.Select(value => value.Height.Value)),
-                    "Both main cards must use the same four proportional layout tracks.");
+                Assert(applicationsLayout.RowDefinitions.Count == 4,
+                    "The application card must preserve its four proportional layout tracks.");
+                Assert(countLayout.RowDefinitions.Count == 5 &&
+                       countLayout.VerticalAlignment == VerticalAlignment.Center &&
+                       countLayout.RowDefinitions[0].Height.IsAuto &&
+                       countLayout.RowDefinitions[1].Height.GridUnitType == GridUnitType.Pixel &&
+                       Math.Abs(countLayout.RowDefinitions[1].Height.Value - 18d) < 0.01 &&
+                       countLayout.RowDefinitions[2].Height.GridUnitType == GridUnitType.Pixel &&
+                       Math.Abs(countLayout.RowDefinitions[2].Height.Value - 76d) < 0.01 &&
+                       countLayout.RowDefinitions[3].Height.GridUnitType == GridUnitType.Pixel &&
+                       Math.Abs(countLayout.RowDefinitions[3].Height.Value - 12d) < 0.01 &&
+                       countLayout.RowDefinitions[4].Height.IsAuto,
+                    "The count card must preserve the centered five-track V1.0.10 layout.");
+                Assert(countScope.Text == "微信与企微共用" &&
+                       countSaveHint.Text == "●  数量会自动保存" &&
+                       Math.Abs(countSaveHint.FontSize - 11d) < 0.01,
+                    "The V1.0.10 count-card labels were not restored exactly.");
                 Assert(ReferenceEquals(VisualTreeHelper.GetParent(workspace), scaledRoot),
                     "The workspace must be placed directly in the scaled root without an outer ScrollViewer.");
                 var ultraWideScale = MainWindow.CalculateInterfaceScale(3440d, 1392d);

@@ -159,17 +159,22 @@
                       VerticalAlignment="Stretch">
                     <Border Style="{StaticResource ShadowLayerStyle}" />
                     <Border Style="{StaticResource SurfaceCardStyle}" Padding="20">
-                        <Grid x:Name="CountLayout">
+                        <Grid x:Name="CountLayout" VerticalAlignment="Center">
                             <Grid.RowDefinitions>
-                                <RowDefinition Height="42*" />
-                                <RowDefinition Height="88*" />
-                                <RowDefinition Height="14*" />
-                                <RowDefinition Height="88*" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="18" />
+                                <RowDefinition Height="76" />
+                                <RowDefinition Height="12" />
+                                <RowDefinition Height="Auto" />
                             </Grid.RowDefinitions>
-                            <TextBlock x:Name="CountSectionHeader" Text="目标窗口数"
-                                       Style="{StaticResource SectionTitleStyle}"
-                                       VerticalAlignment="Center" HorizontalAlignment="Center" />
-                            <Grid Grid.Row="1" VerticalAlignment="Center">
+                            <StackPanel>
+                                <TextBlock x:Name="CountSectionHeader" Text="目标窗口数"
+                                           Style="{StaticResource SectionTitleStyle}"
+                                           HorizontalAlignment="Center" />
+                                <TextBlock x:Name="CountScopeText" Text="微信与企微共用" Margin="0,6,0,0"
+                                           TextAlignment="Center" Style="{StaticResource CaptionStyle}" />
+                            </StackPanel>
+                            <Grid Grid.Row="2">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="48" />
                                     <ColumnDefinition Width="*" />
@@ -190,10 +195,10 @@
                                         AutomationProperties.Name="增加目标窗口数"
                                         Click="IncreaseButton_Click" />
                             </Grid>
-                            <Border Grid.Row="3" Padding="10,7" CornerRadius="10"
-                                    Background="{DynamicResource SuccessSurfaceBrush}"
-                                    VerticalAlignment="Center">
-                                <TextBlock Text="●  两端共用 · 自动保存" FontSize="10.5" HorizontalAlignment="Center"
+                            <Border Grid.Row="4" Padding="10,7" CornerRadius="10"
+                                    Background="{DynamicResource SuccessSurfaceBrush}">
+                                <TextBlock x:Name="CountSaveHint" Text="●  数量会自动保存" FontSize="11"
+                                           HorizontalAlignment="Center"
                                            Foreground="{DynamicResource SuccessBrush}" />
                             </Border>
                         </Grid>
