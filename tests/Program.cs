@@ -1664,9 +1664,18 @@ namespace WechatDuokai.Tests
             }
             finally
             {
-                if (child != null && !child.HasExited) child.Kill();
-                child?.Dispose();
-                if (Directory.Exists(root)) Directory.Delete(root, true);
+                if (child != null)
+                {
+                    if (!child.HasExited)
+                    {
+                        child.Kill();
+                        child.WaitForExit(10000);
+                    }
+
+                    child.Dispose();
+                }
+
+                DeleteTestDirectoryWithRetries(root);
             }
         }
 
