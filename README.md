@@ -1,158 +1,110 @@
 <p align="center">
-  <img src="docs/assets/weichuang-logo-v1.0.11.png" width="132" alt="微窗助手 Logo">
+  <img src="docs/assets/weichuang-logo-v1.0.11.png" width="128" alt="微窗助手 Logo">
 </p>
 
 <h1 align="center">微窗助手</h1>
 
-<p align="center">轻量、透明、可核验的 Windows 微信与企业微信多开工具</p>
+<p align="center">
+  一款轻量、透明、可核验的 Windows 微信与企业微信多开、补开工具
+</p>
 
-[![Release](https://img.shields.io/github/v/release/PascalePaF/wechat-wecom-duokai?display_name=tag&style=flat-square)](https://github.com/PascalePaF/wechat-wecom-duokai/releases)
-[![Windows build](https://github.com/PascalePaF/wechat-wecom-duokai/actions/workflows/windows-release-validation.yml/badge.svg)](https://github.com/PascalePaF/wechat-wecom-duokai/actions/workflows/windows-release-validation.yml)
-![Windows](https://img.shields.io/badge/Windows-10%20%7C%2011-5b8def?style=flat-square)
-![.NET Framework](https://img.shields.io/badge/.NET%20Framework-4.8-7057ff?style=flat-square)
-[![License](https://img.shields.io/badge/License-Apache--2.0-d3b579?style=flat-square)](LICENSE)
+<p align="center">
+  <a href="https://github.com/PascalePaF/wechat-wecom-duokai/releases/latest"><strong>下载最新版本</strong></a>
+  · <a href="#三步上手">三步上手</a>
+  · <a href="#安全与隐私边界">安全说明</a>
+  · <a href="#常见问题">常见问题</a>
+  · <a href="#从源码构建">从源码构建</a>
+</p>
 
-微窗助手是一个面向 Windows 10/11 的轻量级微信、企业微信多开与补开工具。它统计当前用户会话中、来自同一
-官方程序路径的真实根实例，只启动距离目标数量还缺少的窗口；误关一个窗口后，无需退出其余客户端，
-再次点击即可只补回一个。
+<p align="center">
+  <a href="https://github.com/PascalePaF/wechat-wecom-duokai/releases"><img src="https://img.shields.io/github/v/release/PascalePaF/wechat-wecom-duokai?display_name=tag&style=flat-square" alt="最新版本"></a>
+  <a href="https://github.com/PascalePaF/wechat-wecom-duokai/actions/workflows/windows-release-validation.yml"><img src="https://github.com/PascalePaF/wechat-wecom-duokai/actions/workflows/windows-release-validation.yml/badge.svg" alt="Windows 构建状态"></a>
+  <img src="https://img.shields.io/badge/Windows-10%20%7C%2011-5b8def?style=flat-square" alt="Windows 10 和 11">
+  <img src="https://img.shields.io/badge/.NET%20Framework-4.8-7057ff?style=flat-square" alt=".NET Framework 4.8">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache--2.0-d3b579?style=flat-square" alt="Apache 2.0 许可证"></a>
+</p>
 
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/v1.1.4-main-dark-901x513.png">
+    <source media="(prefers-color-scheme: light)" srcset="docs/assets/v1.1.4-main-light-901x513.png">
+    <img src="docs/assets/v1.1.4-main-light-901x513.png" width="901" alt="微窗助手 V1.1.4 主界面">
+  </picture>
+</p>
+
+微窗助手会统计当前 Windows 用户会话中、来自同一官方程序路径的真实微信或企业微信窗口，并且只启动
+距离目标数量还缺少的实例。目标是 3、误关 1 个时，再点一次只补回 1 个，不需要先退出其余窗口。
+
+> [!IMPORTANT]
 > 本项目基于 [CN-Root/wechat-wecom-duokai](https://github.com/CN-Root/wechat-wecom-duokai)
-> 持续改进。不会修改、替换或破解微信与企业微信客户端文件，也不是腾讯官方产品。
-
-![V1.1.4 日间主题最小界面](docs/assets/v1.1.4-main-light-901x513.png)
-
-## V1.1.4 有什么变化
-
-- 右侧“目标窗口数”卡片恢复 V1.0.10 的视觉结构：标题下重新显示“微信与企微共用”，底部恢复
-  “数量会自动保存”。
-- `− / 数字 / +` 回到卡片中部的 76 像素操作区，整组内容使用 `Auto / 18 / 76 / 12 / Auto`
-  五段结构垂直居中，修复 V1.1.3 中部偏空、提示贴近底部的问题。
-- 左右外框仍保持同顶同底；V1.1.0 以后新增的全部退出、页脚绿/蓝实时计数和极简标题区全部保留。
-- 901×513 最小界面、日间/夜间主题、全屏与超宽屏等比例填满、无外层滚动条行为不变。
-- V1.1.3 的静态更新清单、代理兼容、TLS 1.2、多重 SHA-256、缓存、错峰、退避和不可变 Release
-  安全边界全部保留。
-
-完整记录见 [CHANGELOG.md](CHANGELOG.md)。本次根因、回归和安全边界见
-[V1.1.4 一键更新安全验证报告](docs/V1.1.4-一键更新安全验证报告.md)、
-[V1.1.4 完整安全审计报告](docs/微窗助手_V1.1.4_完整安全审计报告.txt)与
-[V1.1.4 UI 回归矩阵](docs/V1.1.4-UI回归矩阵.md)。
-
-## 主要能力
-
-| 能力 | 行为 |
-| --- | --- |
-| 按需补开 | 目标为 3、误关 1 个后，再次点击只补开缺少的 1 个 |
-| 分端全部退出 | 微信与企业微信各自独立；确认后只关闭当前会话、精确官方路径的对应窗口 |
-| 自动记忆 | 微信和企业微信共用一个 1–10 目标窗口数，修改后自动保存 |
-| 实时状态 | 左下角分两行显示当前微信与企业微信根窗口数量 |
-| 设置中心 | 常规设置与软件介绍；支持跟随系统/日间/舒适夜间主题、本地诊断和确认式一键更新 |
-| 企业微信扩展模式 | 当前官方 5.0.11.6018 已实测三开；支持崩溃/断电恢复且不覆盖外部新值 |
-| 自动定位 | 从注册表、运行进程和官方常见目录识别客户端 |
-| 自定义客户端 | 可选择任意安装目录中的微信/企业微信，必须通过腾讯签名验证 |
-| 本地数据 | 设置、主题、诊断与恢复证据统一保存在程序目录的 `data` 文件夹 |
-| 一键更新 | 静态 Release 清单主路径，不受公共 API 配额阻断；多重 SHA-256、独立安装进程与失败回滚 |
-| 比例界面 | 901×513 起，原生标题栏、自由缩放、最大化、双主题和 Per-Monitor V2 DPI |
-| 两种发行方式 | 安装版与绿色免安装 ZIP；安装器和清理器为不同编译身份 |
-| 可核验发布 | 源码标签、SHA-256、SPDX SBOM、干净 Windows CI、UI 矩阵和 Kaspersky 日志 |
-| 完整卸载 | 可保留源码清理程序，也可在多重校验后删除源码与全部发布包 |
+> 持续改进，不是腾讯官方产品。它不会修改、替换或破解微信与企业微信客户端文件。使用前请遵守客户端
+> 许可、组织安全策略和账号风控规则。
 
 ## 下载
 
-只从 [GitHub Releases](https://github.com/PascalePaF/wechat-wecom-duokai/releases) 下载正式版本。
+当前正式版本：**V1.1.4**。请只从本仓库的
+[GitHub Releases](https://github.com/PascalePaF/wechat-wecom-duokai/releases/latest) 下载。
 
-| 文件 | 适用场景 |
+| 版本 | 适合谁 | 下载 |
+| --- | --- | --- |
+| 安装版（推荐） | 希望自选安装目录、创建快捷方式并使用完整卸载功能 | [下载 `wechat_duokai-setup-v1.1.4.exe`](https://github.com/PascalePaF/wechat-wecom-duokai/releases/download/v1.1.4/wechat_duokai-setup-v1.1.4.exe) |
+| 绿色免安装版 | 希望解压即用，不写入安装登记 | [下载 `wechat_duokai-portable-v1.1.4.zip`](https://github.com/PascalePaF/wechat-wecom-duokai/releases/download/v1.1.4/wechat_duokai-portable-v1.1.4.zip) |
+| 独立清理器 | 需要完整卸载，或清理本项目安装包与带标记的源码目录 | [下载 `wechat_duokai-cleanup-v1.1.4.exe`](https://github.com/PascalePaF/wechat-wecom-duokai/releases/download/v1.1.4/wechat_duokai-cleanup-v1.1.4.exe) |
+
+发布核验资料：
+
+- [SHA256SUMS.txt](https://github.com/PascalePaF/wechat-wecom-duokai/releases/download/v1.1.4/SHA256SUMS.txt)：正式附件 SHA-256 清单；
+- [SPDX 2.2 SBOM](https://github.com/PascalePaF/wechat-wecom-duokai/releases/download/v1.1.4/manifest.spdx.json)：软件物料清单；
+- [Kaspersky 原始扫描日志](https://github.com/PascalePaF/wechat-wecom-duokai/releases/download/v1.1.4/kaspersky-scan-v1.1.4.txt)：对正式发布原件的扫描记录；
+- [V1.1.4 发布说明](https://github.com/PascalePaF/wechat-wecom-duokai/releases/tag/v1.1.4)：变化、限制和全部附件。
+
+> [!CAUTION]
+> 当前版本没有受公共信任的 Authenticode 代码签名，首次运行可能出现“未知发布者”、SmartScreen 或
+> 第三方启发式信誉提示。提示不等于确认有病毒，也不能把“未检出”当作绝对安全证明。请核对下载域名、
+> Release 标签和 SHA-256，保持安全软件开启；遇到明确告警时先隔离核查，不要盲目忽略或设置永久白名单。
+
+## 三步上手
+
+1. 打开微窗助手，在右侧用 `−` / `+` 设置目标窗口数；微信和企业微信共用这个 `1–10` 的目标值。
+2. 点击对应客户端的“启动 / 补开”；程序会先统计现有窗口，只启动缺少的数量。
+3. 某个窗口被误关后，再点一次对应按钮即可补回；要退出某一端的全部窗口，点击“全部退出”并确认。
+
+没有自动识别客户端时，点击卡片中的 `…` 手动选择官方程序：微信为 `Weixin.exe` 或 `WeChat.exe`，
+企业微信通常为 `WXWork.exe`。自定义程序必须通过腾讯 Authenticode 数字签名验证。
+
+## 核心能力
+
+| 能力 | 实际行为 |
 | --- | --- |
-| `wechat_duokai-setup-v1.1.4.exe` | 推荐；可选择本机安装地址，也是经过校验的一键更新执行程序 |
-| `wechat_duokai-portable-v1.1.4.zip` | 绿色版；解压完整目录后直接运行，也支持保持绿色身份原地更新 |
-| `wechat_duokai-cleanup-v1.1.4.exe` | 独立完整卸载与清理工具；与安装器不是同一个二进制 |
-| `SHA256SUMS.txt` | 核对下载内容是否与发布文件一致 |
-| `update-manifest.json` | 客户端使用的免 API 静态版本、大小、地址和 SHA-256 清单 |
-| `manifest.spdx.json` | Microsoft SBOM Tool 生成并验证的 SPDX 2.2 软件物料清单 |
-| `kaspersky-scan-v1.1.4.txt` | Kaspersky 对正式发布附件原件的原始扫描日志 |
+| 按需补开 | 按“目标数量 − 当前根窗口数”补足，误关一个只补一个 |
+| 微信与企微独立操作 | 两端分别启动、补开和全部退出，共用一个自动保存的目标数量 |
+| 精确窗口统计 | 识别微信 4.x 多子进程结构，不把所有同名子进程误算成窗口 |
+| 企业微信扩展模式 | 当前官方 5.0.11.6018 已实测三开，并带注册表崩溃恢复与外部冲突保护 |
+| 官方客户端校验 | 自动定位或手动选择后，核对文件名、产品信息和腾讯数字签名 |
+| 本地数据 | 设置、主题、诊断、恢复证据和更新临时文件统一位于程序目录 `data` |
+| 日间与舒适夜间主题 | 支持跟随 Windows、固定日间或固定夜间；图标背景与状态色同步适配 |
+| 比例界面 | 901×513 起自由缩放到最大化，支持 Per-Monitor V2 DPI，不使用外层滚动条 |
+| 确认式一键更新 | 发现版本后由用户确认；多重 SHA-256、独立安装进程与失败回滚 |
+| 可核验发布 | 源码标签、干净 Windows CI、哈希、SPDX SBOM、UI 回归矩阵与扫描日志公开 |
 
-当前版本没有受公共信任的 Authenticode 代码签名。首次运行可能出现“未知发布者”、SmartScreen 或
-第三方启发式信誉提示；这不等于文件一定有病毒，也不能反过来当作安全证明。请核对下载域名、Release
-标签和 SHA-256，让本机安全软件保持开启。若安全软件报出明确告警，应先隔离并核查报告、哈希和源码，
-不要盲目点击忽略，也不要为运行本工具关闭防护或设置永久白名单。
+## V1.1.4 更新
 
-## 安装和升级
+- 恢复 V1.0.10 的“目标窗口数”五段居中结构和“微信与企微共用”说明；
+- 修复 V1.1.3 中部空白过多、保存提示靠近卡片底部的问题；
+- 左右主卡片继续同顶同底，全部退出、实时计数、设置和一键更新等后续功能不回退；
+- 完成 901×513、1280×720、1920×1080、3440×1392，以及安装器、清理器共 14 张 UI 回归图；
+- 修复 Windows 安全软件短暂占用测试 EXE 时可能产生的云端测试清理误报。
 
-1. 下载并运行 `wechat_duokai-setup-v1.1.4.exe`。
-2. 使用“选择文件夹”选择或新建一个专用安装目录；路径不需要手动输入。
-3. 选择是否创建桌面快捷方式，然后点击“立即安装”。
-4. 如果同一安装目录的旧助手正在运行，按提示选择关闭或取消。安装器只处理该目录中的助手，
-   不会结束微信、企业微信或其他目录中的同名程序。
-5. 安装完成后应用仍保持未启动；只有点击“确认并启动”才会运行，也可选择“稍后启动”。
-6. 从 V1.0.9 或更早版本覆盖安装时，新版会创建“微窗助手”快捷方式并清理已知的旧名称快捷方式；
-   程序、设置和 `data` 内容不会因更名丢失。
-7. 如果任务栏上是用旧版历史快捷方式手工固定的独立项且仍显示旧图标，取消固定后从新的开始菜单快捷方式重新固定一次。
+完整变化见 [CHANGELOG.md](CHANGELOG.md)。
 
-![V1.1.4 日间主题安装器](docs/assets/v1.1.4-installer-light.png)
+<details>
+<summary><strong>查看夜间主题、设置页和大尺寸适配</strong></summary>
 
-## 绿色版
-
-1. 将 `wechat_duokai-portable-v1.1.4.zip` 解压到一个独立文件夹。
-2. 运行 `wechat_duokai.exe`。
-3. 不要只把主 EXE 移走；它需要同目录的 `WechatDuokai.Core.dll`，完整目录还包含许可证、安全说明和清理器。
-
-## 第一次使用
-
-1. 打开微窗助手，在右侧用 `−` / `+` 设置目标窗口数，或直接在数字框输入 `1–10`。这个数字由微信和
-   企业微信共用，修改后自动保存。
-2. 点击微信或企业微信卡片右侧的“启动 / 补开”。程序先统计当前真实窗口，再只启动不足的数量。
-3. 例如目标为 `3`，当前已有 `2` 个微信窗口，点击后只会补开 `1` 个；误关一个后再次点击，也只补回
-   缺少的 `1` 个，不需要先退出其余窗口。
-4. 要退出某一端的所有窗口，点击该客户端卡片内的“全部退出”并确认。它只关闭程序，不会注销账号；
-   尚未发送的内容可能丢失，因此默认确认按钮为“否”。
-5. 如果没有自动找到客户端，点击相应卡片中的 `…`，选择官方程序：微信为 `Weixin.exe` 或
-   `WeChat.exe`，企业微信通常为 `WXWork.exe`。
-6. 如需排查兼容问题，点击右下角“设置”，再在“本地诊断”中生成报告。报告只保存在当前程序目录的
-   `data\diagnostics` 文件夹。
-7. 页脚左侧会持续显示两类客户端的当前根窗口数量，并用绿/蓝粗体数字突出显示。想再次查看功能说明时，
-   进入“设置 → 软件介绍”。
-
-共用目标数量、自定义路径和更新偏好保存在程序目录的 `data\settings.ini`，主题保存在
-`data\theme.ini`。自定义路径使用 Base64 只是为了避免特殊字符破坏配置格式，不是加密；配置不包含
-账号、聊天内容或凭据。更新检查时间与退避状态另存于 `data\update-state.ini`。V1.1.4 延续 V1.0.7
-的迁移规则：把 V1.0.6 分开保存的两个数量合并为一个，
-优先沿用微信的旧值；
-V1.0.5 及更早版本的 AppData 设置只迁移一次，迁移后不再写回旧目录。
-
-### 企业微信三开说明
-
-企业微信当前的 `multi_instances` 注册表入口只可靠表达双开。在本机 `WXWork 5.0.11.6018` 上，把它
-直接设置为 `3` 仍只能得到两个根实例；自 V1.0.6 起不会把任意目标数量永久写入注册表。目标大于 2 时，
-程序只在本次启动循环内暂时避开这条双开提示，并在每次补开前处理已知独占锁。真机已验证三个窗口，
-但界面允许的 `4–10` 不是对每个企业微信版本的保证；客户端或组织策略变化时可能失败。
-
-修改注册表前会先将恢复事务强制写入 `data\recovery`。正常结束时恢复并删除；若程序异常退出，下次
-启动会核对事务所有者和当前注册表状态后再恢复。只有当前值仍等于本助手临时状态时才恢复旧快照；
-第三方程序写入了新设置时会保留第三方值并关闭旧事务。由于普通注册表值没有跨进程原子
-compare-and-swap，外部程序仍可能在最后一次比较与写入之间竞争；审计日志会保存在 `data\logs`。
-
-### 设置、软件介绍与一键更新
-
-设置页分为“常规”和“软件介绍”。常规页提供“跟随 Windows / 日间 / 夜间”三种主题偏好、本地诊断，
-以及“每天自动检查新版本”开关；软件介绍页集中保存从主界面移出的说明和三步用法。关闭自动检查后
-仍可手动检查。发现更新后会显示目标版本和“一键更新”按钮，也可继续使用浏览器打开发布页。
-
-版本检查优先访问本项目 GitHub Release 的 `latest/download/update-manifest.json` 静态清单，不消耗
-未登录 API 的每小时 60 次配额。只有发现新版本时才尝试把 API 附件摘要作为额外交叉核验；配额耗尽不会
-阻断检查或安装。自动检查成功后 24 小时内不重复请求，启动时按 30–300 秒错峰，失败按 1/6/24 小时
-退避；手动检查不受缓存或退避影响。点击一键更新后仍会显示确认框；只有确认后才下载
-`SHA256SUMS.txt` 和 setup，内容全部进入当前程序目录的 `data\updates`。静态清单、校验文件与下载
-文件必须一致；API 可用时其服务端摘要也必须一致。安装版会刷新登记，绿色版保持绿色身份；失败时回滚。
-若当前进程通过规范的 `HTTPS_PROXY` / `HTTP_PROXY` 环境变量联网，版本检查和下载会使用同一代理；
-代理地址或凭据不会写入程序目录，也不会上传。未配置环境代理时继续使用 Windows/.NET 默认代理行为。
+![V1.1.4 夜间主题](docs/assets/v1.1.4-main-dark-901x513.png)
 
 ![V1.1.4 设置页](docs/assets/v1.1.4-settings-light-901x513.png)
 
 ![V1.1.4 软件介绍页](docs/assets/v1.1.4-about-light-901x513.png)
-
-<details>
-<summary>查看夜间主题与大尺寸适配</summary>
-
-![V1.1.4 夜间主题最小界面](docs/assets/v1.1.4-main-dark-901x513.png)
 
 ![V1.1.4 1920×1080 夜间界面](docs/assets/v1.1.4-main-dark-1920x1080.png)
 
@@ -160,60 +112,81 @@ compare-and-swap，外部程序仍可能在最后一次比较与写入之间竞�
 
 </details>
 
-## 工作原理
+## 安装、绿色版与升级
 
-```text
-主界面 MainWindow
-├─ 比例缩放画布                   901×513 基准；统一缩放并按比例填满窗口
-├─ 主界面 / 设置 / 软件介绍       同窗切换；实时计数、主题、使用说明、更新与下载进度
-├─ ApplicationLocator             注册表、进程、常见目录与用户自选路径
-├─ ClientExecutableValidator      文件名 + 产品信息 + 腾讯签名验证
-├─ InstanceManager                共用目标数、真实根实例、增量启动与分端全部退出编排
-│  ├─ IProcessEnvironment         枚举、父子关系、启动、等待与精确进程退出的可测试边界
-│  ├─ IWeComLaunchPolicy          落盘事务、启动恢复、外部冲突检测与条件恢复
-│  └─ WindowsHandleUnlocker       仅处理已知单实例锁白名单
-├─ ApplicationStorage             约束所有持久数据位于程序目录的 data 中
-├─ DiagnosticReportService        仅写本地 data/diagnostics 报告
-├─ ReleaseUpdateChecker           静态清单优先的 Release 发现、严格 URL/大小与可选 GitHub digest
-├─ UpdateCheckSchedule            24 小时缓存、30–300 秒错峰、1/6/24 小时退避与 Retry-After
-├─ ApplicationUpdateService       静态清单/SHA256SUMS/文件校验、受限下载与独立安装器交接
-└─ UserPreferences                保存数量、更新检查开关与已验证客户端路径
+### 安装版
 
-发布程序
-├─ setup                           手动安装及安装版/绿色版事务更新、失败回滚
-├─ cleanup                         只负责卸载/完整清理及临时清理工作进程
-├─ build-release.ps1               重编译、测试、组包、清单与 SHA-256
-└─ GitHub Actions                  干净 Windows 重建、哈希复核与 SPDX SBOM
-```
+1. 运行 `wechat_duokai-setup-v1.1.4.exe`；
+2. 点击“选择文件夹”，选择或新建专用安装目录；
+3. 选择是否创建桌面快捷方式，然后点击“立即安装”；
+4. 如果旧版正在运行，安装器会询问是否关闭对应目录中的助手后覆盖；
+5. 安装完成后不会自行启动，只有点击“确认并启动”才会运行。
 
-微信 4.x 的一个窗口会产生多个同名子进程，所以不能直接把同名进程总数当作窗口数。本项目按父子
-关系归并为根实例，再用“目标数量 − 当前根实例数”计算缺口。微信 3.x/4.x 的可执行文件命名和两代
-锁策略都保留；企业微信将注册表提示限制在短期作用域，并以精确独占锁作为补开机制。
+![V1.1.4 安装器](docs/assets/v1.1.4-installer-light.png)
+
+### 绿色版
+
+完整解压 ZIP 后运行 `wechat_duokai.exe`。不要只移动主 EXE，它需要同目录的
+`WechatDuokai.Core.dll`、绿色版身份标记及随包文档。
+
+### 一键更新
+
+版本检查优先读取本项目 GitHub Release 的静态 `update-manifest.json`，不依赖未登录 API 的每小时
+60 次配额。自动检查成功后缓存 24 小时，启动时随机错峰 30–300 秒，失败按 1/6/24 小时退避；手动检查
+始终立即执行。
+
+只有用户确认后才会下载 `SHA256SUMS.txt` 和对应安装包。静态清单、校验文件与本机下载必须一致；GitHub
+API 可用时还会交叉核验服务端附件摘要。安装版刷新安装登记，绿色版保持绿色身份，替换失败会回滚。
+
+<details>
+<summary><strong>查看代理和更新存储细节</strong></summary>
+
+当前进程配置了规范 `HTTPS_PROXY` / `HTTP_PROXY` 环境变量时，版本检查和下载使用同一代理；代理地址和
+凭据不会写入设置、诊断或日志。未配置环境代理时使用 Windows/.NET 默认代理。
+
+下载内容只写入当前程序目录的 `data\updates`。更新程序只接受带本项目专用标记的安装版或绿色版目录，
+不会把任意文件夹识别为可覆盖目标。
+
+</details>
+
+## 设置与本地数据
+
+右下角“设置”包含：
+
+- 跟随 Windows、日间、夜间三种主题；
+- 每天自动检查新版本开关与手动检查；
+- 本地诊断报告；
+- 软件介绍与三步用法。
+
+所有持久运行文件都在当前安装目录或绿色版目录的 `data` 中：
+
+| 路径 | 内容 |
+| --- | --- |
+| `data\settings.ini` | 共用目标数量、已验证客户端路径和更新偏好 |
+| `data\theme.ini` | 主题偏好 |
+| `data\update-state.ini` | 更新检查缓存与退避状态 |
+| `data\diagnostics` | 用户主动生成的本地诊断报告 |
+| `data\recovery` | 企业微信临时注册表状态的崩溃/断电恢复事务 |
+| `data\logs` | 恢复过程与外部冲突保护日志 |
+
+自定义路径采用 Base64 只是为了避免特殊字符破坏配置格式，不是加密；这些配置不包含账号、聊天内容或凭据。
 
 ## 安全与隐私边界
 
-- 不注入 DLL，不创建远程线程，不写客户端内存。
-- 不修改、替换或破解微信、企业微信文件。
-- 不会后台结束微信或企业微信；只有用户点击对应“全部退出”并再次确认后，才关闭当前会话中路径完全匹配
-  的客户端进程。流程先请求正常关闭，超时才结束残留匹配进程，不处理其他会话或路径不明的同名进程。
-- 不读取聊天数据库、消息、联系人、账号、Cookie 或登录凭据。
-- 诊断报告仅写本地，不自动上传。
-- 用户启用每日检查时，自动网络请求优先向 `github.com` 读取本项目最新正式 Release 静态清单；仅在发现
-  新版本后尝试向 `api.github.com` 取得可选附件摘要，API 配额不可用不会阻断更新。自动请求有 24 小时
-  缓存、30–300 秒错峰和 1/6/24 小时失败退避，可关闭；手动检查始终立即执行。
-  只有用户确认一键更新后，才下载同一 Release 的 `SHA256SUMS.txt` 与精确版本 setup。程序不上传诊断、
-  路径、账号或日志；GitHub 会看到普通 HTTPS 请求所需的 IP 和 User-Agent。规范的环境变量代理仅用于
-  本机传输，代理地址和凭据不会持久化或进入诊断。
-- 自动覆盖只接受专用标记目录。静态清单、SHA256SUMS 与本机文件必须一致；能取得 GitHub digest 时
-  再要求服务端摘要一致。API 不可用时仍要求固定仓库/标签/附件路径、HTTPS 和大小限制。替换使用
-  暂存/备份事务，绿色版不会因为更新而新增快捷方式或卸载登记。
-- 只对已验证客户端路径、当前 Windows 会话及已知锁名/精确 `lock.ini` 路径执行兼容操作。
-- 企业微信注册表值在短期启动会话开始前写入落盘恢复事务；正常结束或下次启动时，仅在临时状态仍由
-  本助手持有时恢复，不会永久写成 3–10，也不会用旧快照覆盖第三方的新设置。
-- 所有持久运行文件都位于程序目录的 `data` 子目录；开始菜单、桌面快捷方式和 Windows 卸载登记属于
-  操作系统集成项，完整卸载时一并移除。清理器工作副本只短暂使用系统临时目录并安排自删除。
-- 自定义客户端必须有有效腾讯 Authenticode 签名；同名的未签名 EXE 会被拒绝。
-- 卸载目标必须同时通过专用标记、目录结构、精确路径和链接检查；删除源码还要额外勾选和确认。
+微窗助手的边界是“启动经过验证的官方客户端、处理已知单实例锁、统计窗口并执行用户确认的操作”。它：
+
+- 不注入 DLL，不创建远程线程，不写客户端内存；
+- 不修改、替换或破解微信、企业微信文件；
+- 不读取聊天数据库、消息、联系人、Cookie、账号或登录凭据；
+- 不上传设置、路径、诊断、恢复日志或使用数据；
+- 不会在后台主动结束客户端，只有点击“全部退出”并确认后才关闭当前会话、精确路径匹配的对应程序；
+- 只对腾讯签名验证通过的自定义客户端执行兼容操作；
+- 诊断报告只保存在本地，是否分享及分享前如何脱敏由用户决定；
+- 企业微信注册表临时状态具有落盘事务、异常恢复和外部冲突保护，不会用旧快照覆盖第三方的新值；
+- 完整卸载只处理同时通过专用标记、目录结构、路径和链接检查的目标，删除源码还需要额外确认。
+
+启用版本检查时，GitHub 会看到普通 HTTPS 请求所需的 IP 和 User-Agent；这是唯一默认可能发生的外部
+网络访问。可以在设置中关闭每日检查，手动检查仍由用户主动触发。
 
 安全资料：
 
@@ -221,26 +194,91 @@ compare-and-swap，外部程序仍可能在最后一次比较与写入之间竞�
 - [V1.1.4 一键更新安全验证报告](docs/V1.1.4-一键更新安全验证报告.md)
 - [V1.1.4 全项目自查报告](docs/V1.1.4-全项目自查报告.md)
 - [V1.1.4 UI 回归矩阵](docs/V1.1.4-UI回归矩阵.md)
-- [V1.0.1 源码与旧版二进制安全审计（历史）](SECURITY-AUDIT.md)
+- [源码与旧版二进制安全审计（历史）](SECURITY-AUDIT.md)
 - [旧版 EXE 硬编码路径说明](docs/旧版EXE硬编码路径说明与风险评估报告.txt)
 
-反病毒“未检出”是证据，不是绝对安全保证。源码、标签、构建脚本、哈希和原始扫描日志同时公开，
-用于让每个发布文件都可以独立复核。
+### 在 Windows 中核对 SHA-256
+
+```powershell
+Get-FileHash .\wechat_duokai-setup-v1.1.4.exe -Algorithm SHA256
+```
+
+将结果与同一 Release 中的 `SHA256SUMS.txt` 比较。文件名相同但哈希不同，不要运行。
+
+## 企业微信多开说明
+
+企业微信的 `multi_instances` 注册表入口只可靠表达双开。目标大于 2 时，本项目不会把 `3–10` 永久写入
+注册表，而是在本次启动循环中使用短期策略并处理已知独占锁。当前 `WXWork 5.0.11.6018` 已验证三个
+根窗口同时运行，但界面允许的 `4–10` 不代表所有企业微信版本、账号或组织策略都能实现。
+
+修改注册表前会先把恢复事务强制写入 `data\recovery`。正常结束时恢复并删除；异常退出或断电后，下次
+启动只在当前值仍等于本助手临时状态时恢复。第三方程序已经写入新值时会保留新值并记录冲突。
+
+## 常见问题
+
+<details>
+<summary><strong>为什么安全软件提示风险或“未知发布者”？</strong></summary>
+
+项目没有购买 Authenticode 证书，发布文件缺少公共信誉积累；多开工具还会启动多个客户端、访问进程锁和
+短期调整企业微信注册表，这些行为可能触发启发式规则。请先核对来源和 SHA-256，再查看 Release 扫描日志
+与源码。明确检测到具体恶意项时应先隔离，不要为了运行而关闭防护。
+
+</details>
+
+<details>
+<summary><strong>设置成 10 就一定能打开 10 个窗口吗？</strong></summary>
+
+不保证。`1–10` 是助手的目标范围，不是腾讯客户端的兼容性承诺。微信与企业微信可能在不同版本、账号、
+组织策略或风控环境下改变限制。程序失败时会停止，不会转向注入或修改客户端文件。
+
+</details>
+
+<details>
+<summary><strong>为什么一个微信窗口会看到多个微信进程？</strong></summary>
+
+微信 4.x 的一个窗口本来就会产生多个同名子进程。本项目按照父子关系归并根实例，而不是把任务管理器里
+所有同名进程都当成独立窗口。
+
+</details>
+
+<details>
+<summary><strong>无法自动找到微信或企业微信怎么办？</strong></summary>
+
+点击客户端卡片中的 `…` 选择官方 EXE。仍失败时进入“设置 → 本地诊断”生成报告，先自行检查其中的本地
+路径等信息，再到 [Issues](https://github.com/PascalePaF/wechat-wecom-duokai/issues) 描述 Windows 版本、
+客户端版本、复现步骤和实际提示。
+
+</details>
+
+<details>
+<summary><strong>卸载会删除聊天记录吗？</strong></summary>
+
+不会。清理器只删除带本项目专用标记且通过边界检查的助手目录、快捷方式、安装登记和发布包，不把微信或
+企业微信的程序目录、数据目录作为卸载目标。选择“删除源码”时仍要注意未提交的本项目源码修改不可恢复。
+
+</details>
 
 ## 完全卸载
 
-从开始菜单“完全卸载”、Windows“已安装的应用”，或运行独立清理工具进入：
+从开始菜单“完全卸载”、Windows“已安装的应用”，或运行独立清理器进入：
 
-1. **删除程序与全部发布包，保留源码**：删除已验证安装目录、快捷方式、安装包、绿色版和用户设置，
-   保留本地 Git 仓库。
-2. **全部删除，包括源码与全部发布包**：只有源码目录带正确标记且结构匹配时可选；还需要额外复选
-   和最后一次确认。未提交的源码修改不可恢复。
+1. **删除程序与全部发布包，保留源码**：删除已验证安装目录、快捷方式、安装包、绿色版和助手设置；
+2. **全部删除，包括源码与全部发布包**：只有源码目录带正确标记且结构匹配时可选，还需要额外复选和确认。
 
 ![V1.1.4 完整卸载器](docs/assets/v1.1.4-uninstaller-light.png)
 
+## 兼容性与限制
+
+- Windows 10/11 x64，.NET Framework 4.8；
+- 支持微信旧版 `WeChat.exe`、微信 4.x `Weixin.exe` 和企业微信 `WXWork.exe`；
+- 当前真机基线：微信 `4.1.15.6`、企业微信 `5.0.11.6018`、Windows 11 x64；
+- 支持 100%、125%、150%、175%、200% 缩放和 Per-Monitor V2 跨屏 DPI；
+- 不以客户端小版本号作为白名单，但腾讯调整锁机制、签名或组织策略后仍可能需要适配；
+- 项目使用 WPF / .NET Framework 4.8，不需要 WinUI 3、Tauri、Python 或浏览器运行时。
+
 ## 从源码构建
 
-环境：Visual Studio 2019 或更高版本、.NET Framework 4.8 Developer Pack、MSBuild、Windows 10/11 x64。
+需要 Visual Studio 2019 或更高版本、.NET Framework 4.8 Developer Pack、MSBuild，以及 Windows 10/11 x64。
 项目没有第三方运行时包或 NuGet UI 依赖。
 
 ```powershell
@@ -249,45 +287,50 @@ MSBuild .\duokai.sln /restore /t:Rebuild /p:Configuration=Release
 PowerShell -ExecutionPolicy Bypass -File .\build-release.ps1 -Version 1.1.4
 ```
 
-发布目录为 `artifacts\V1.1.4`。脚本分别复制真正的 setup 与 cleanup 输出，并生成绿色版、发布清单、
-静态更新清单和 SHA-256。界面回归样本可用 `scripts\capture-ui-matrix.ps1` 重新生成。GitHub 工作流还会
-在全新的 `windows-2022` 虚拟机中重复这一过程，逐项复核哈希与静态清单并生成、验证 SPDX 2.2 SBOM。
+产物位于 `artifacts\V1.1.4`。构建脚本会重新编译、执行测试、分别打包 setup/cleanup、生成绿色版、
+发布清单、静态更新清单和 SHA-256。GitHub Actions 会在全新的 Windows Server 2022 环境重复构建，
+复核哈希并生成、验证 SPDX 2.2 SBOM。
 
-## 兼容性与限制
+<details>
+<summary><strong>查看项目架构</strong></summary>
 
-- 自动识别与手动选择覆盖微信旧版 `WeChat.exe`、微信 4.x `Weixin.exe` 和企业微信 `WXWork.exe`；
-  不以小版本号作为白名单，因此官方维护版本升级不会仅因版本号变化被拒绝。
-- V1.1.4 沿用真机基线：微信 `4.1.15.6`、企业微信 `5.0.11.6018`、Windows 11 x64，二者腾讯签名有效；
-  企业微信已验证三个根实例同时运行并在测试后正常退出。
-- 支持 Windows 10/11 的 100%、125%、150%、175%、200% 缩放逻辑；Per-Monitor V2 允许跨显示器
-  重新缩放。每种显卡驱动、辅助技术和超长本地路径仍需社区反馈继续覆盖。
-- 腾讯没有公开承诺第三方多开机制长期稳定。客户端改变锁机制时，本工具会失败关闭，不会转向注入
-  或修改客户端；请先用测试账号验证，并遵守客户端许可、组织安全策略及账号风控规则。
-- V1.1.4 继续使用 WPF/.NET Framework 4.8；现有矢量框架和独立安装器可以实现主题动态资源与安全更新，无需迁移
-  WinUI 3、Tauri 或 Python。
+```text
+主界面 MainWindow
+├─ 比例缩放画布                   901×513 基准；统一缩放并按比例填满窗口
+├─ 主界面 / 设置 / 软件介绍       同窗切换；实时计数、主题、说明、更新与下载进度
+├─ ApplicationLocator             注册表、运行进程、官方常见目录与用户自选路径
+├─ ClientExecutableValidator      文件名、产品信息和腾讯签名验证
+├─ InstanceManager                根实例统计、增量启动和分端全部退出编排
+│  ├─ IProcessEnvironment         进程枚举、父子关系、启动、等待与精确退出边界
+│  ├─ IWeComLaunchPolicy          落盘事务、异常恢复、外部冲突检测和条件恢复
+│  └─ WindowsHandleUnlocker       只处理已知单实例锁白名单
+├─ ApplicationStorage             约束所有持久数据位于程序目录 data
+├─ DiagnosticReportService        只写本地诊断报告
+├─ ReleaseUpdateChecker           静态清单优先、严格 URL/大小和可选 GitHub digest
+├─ UpdateCheckSchedule            缓存、错峰、退避和 Retry-After
+└─ ApplicationUpdateService       多重校验、受限下载、事务更新和安装器交接
 
-## 版本来源
+发布程序
+├─ setup                           安装、覆盖、安装版/绿色版事务更新和失败回滚
+├─ cleanup                         卸载、完整清理和临时工作进程自删除
+├─ build-release.ps1               重编译、测试、组包、清单和哈希
+└─ GitHub Actions                  干净 Windows 重建、哈希复核和 SPDX SBOM
+```
 
-- 上游：[CN-Root/wechat-wecom-duokai](https://github.com/CN-Root/wechat-wecom-duokai)
-- 本项目：[PascalePaF/wechat-wecom-duokai](https://github.com/PascalePaF/wechat-wecom-duokai)
-- V1.0.0：数量缓存、增量补开、安装/绿色版和完整清理
-- V1.0.1：自选安装地址、可移动窗口、双主题和扩展安全审计
-- V1.0.2：WPF 矢量界面、安装后确认启动、Core 分层和同类项目研究
-- V1.0.3：运行中安全覆盖、腾讯签名路径验证、本地诊断、浏览器更新和独立清理器
-- V1.0.4：无滚动条比例界面、901×513 最小基准、超宽屏填充及企业微信三开兼容模式
-- V1.0.5：实时双客户端计数、设置中心、注册表外部冲突保护及 Windows CI/SHA-256/SPDX SBOM
-- V1.0.6：断电/崩溃注册表恢复日志、微信与企业微信独立目标数量、程序目录内统一数据存储
-- V1.0.7：程序内检查与确认式一键更新、三方 SHA-256、安装版/绿色版回滚，并恢复单一共用目标数
-- V1.0.8：低亮度舒适夜间主题、主题化客户端图标背景，以及诊断/发布入口归入设置页
-- V1.0.9：“开开助手”名称与正式 Logo、极简主界面、设置内软件介绍和旧快捷方式迁移
-- V1.0.10：“微窗助手”名称、绿蓝双窗口 Logo、微信绿 / 企微蓝主题和三代快捷方式迁移
-- V1.0.11：任务栏/标题栏图标同步、稳定 Shell 身份、图标缓存刷新、中央版本与全项目自查
-- V1.1.0：微信/企微独立全部退出、精确进程边界、左右主卡片对齐、实时数量强调和极简标题区
-- V1.1.1：更新检查不再受 GitHub 未登录 API 配额阻断，并补充安全降级校验与具体错误提示
-- V1.1.2：静态更新清单、24 小时缓存与错峰、1/6/24 小时退避、可选 API 摘要及不可变 Release
-- V1.1.3：环境变量代理兼容、TLS 1.2、静态清单 HEAD 跳转和真实 .NET Framework 端到端校验
-- V1.1.4：恢复 V1.0.10 目标数量卡片的五段居中结构、说明层级和保存提示
+</details>
 
-## 许可证
+## 反馈与贡献
 
-项目继承上游的 [Apache License 2.0](LICENSE)。原作者与历次贡献者的版权声明予以保留。
+- 功能建议、兼容性问题和缺陷请提交到 [Issues](https://github.com/PascalePaF/wechat-wecom-duokai/issues)；
+- 报告问题时建议提供 Windows 版本、微信/企业微信版本、复现步骤和实际提示；
+- 诊断报告分享前请自行检查并遮盖不希望公开的本地路径；
+- 欢迎提交 Pull Request。涉及进程、注册表、更新或删除边界的修改，应同时补充自动化测试和安全说明。
+
+## 项目来源与许可证
+
+- 上游项目：[CN-Root/wechat-wecom-duokai](https://github.com/CN-Root/wechat-wecom-duokai)
+- 当前项目：[PascalePaF/wechat-wecom-duokai](https://github.com/PascalePaF/wechat-wecom-duokai)
+- 完整版本历史：[CHANGELOG.md](CHANGELOG.md)
+- 许可证：[Apache License 2.0](LICENSE)
+
+项目继承上游许可证与版权声明。原作者及历次贡献者的署名予以保留。
