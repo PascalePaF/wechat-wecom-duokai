@@ -257,10 +257,8 @@
                                     <RowDefinition Height="Auto" />
                                     <RowDefinition Height="*" />
                                 </Grid.RowDefinitions>
-                                <TextBlock Text="界面主题" FontSize="14" FontWeight="SemiBold" />
-                                <TextBlock Grid.Row="1" Text="可跟随 Windows，也可固定为日间或夜间"
-                                           Margin="0,6,0,0" Style="{StaticResource CaptionStyle}" />
-                                <StackPanel Grid.Row="2" Margin="0,10,0,0" Orientation="Horizontal">
+                                <TextBlock Text="界面与启动" FontSize="14" FontWeight="SemiBold" />
+                                <StackPanel Grid.Row="1" Margin="0,11,0,0" Orientation="Horizontal">
                                     <RadioButton x:Name="SystemThemeRadio" GroupName="ThemePreference"
                                                  Content="跟随 Windows 系统" Tag="System"
                                                  Style="{StaticResource PremiumRadioStyle}"
@@ -271,8 +269,21 @@
                                                  Checked="ThemePreference_Checked" />
                                     <RadioButton x:Name="DarkThemeRadio" GroupName="ThemePreference"
                                                  Content="夜间主题" Tag="Dark" Margin="16,0,0,0"
-                                                 Style="{StaticResource PremiumRadioStyle}"
-                                                 Checked="ThemePreference_Checked" />
+                                                  Style="{StaticResource PremiumRadioStyle}"
+                                                  Checked="ThemePreference_Checked" />
+                                </StackPanel>
+                                <StackPanel Grid.Row="2" Margin="0,12,0,0">
+                                    <CheckBox x:Name="RunAtStartupCheckBox"
+                                              Content="开机后自动启动微窗助手"
+                                              Style="{StaticResource PremiumCheckBoxStyle}"
+                                              ToolTip="仅启动助手，不会自动打开微信或企业微信"
+                                              Checked="RunAtStartupCheckBox_Changed"
+                                              Unchecked="RunAtStartupCheckBox_Changed" />
+                                    <CheckBox x:Name="StartMinimizedCheckBox" Margin="28,7,0,0"
+                                              Content="自动启动时最小化窗口"
+                                              Style="{StaticResource PremiumCheckBoxStyle}"
+                                              Checked="StartMinimizedCheckBox_Changed"
+                                              Unchecked="StartMinimizedCheckBox_Changed" />
                                 </StackPanel>
                                 <Grid Grid.Row="3" Margin="0,10,0,0" VerticalAlignment="Bottom">
                                     <Grid.RowDefinitions>
@@ -311,17 +322,23 @@
                                     <RowDefinition Height="Auto" />
                                 </Grid.RowDefinitions>
                                 <TextBlock Text="版本与更新" FontSize="14" FontWeight="SemiBold" />
-                                <CheckBox x:Name="AutoUpdateCheckBox" Grid.Row="1" Margin="0,15,0,0"
-                                          Content="每天自动检查新版本"
-                                          Style="{StaticResource PremiumCheckBoxStyle}"
-                                          Checked="AutoUpdateCheckBox_Changed"
-                                          Unchecked="AutoUpdateCheckBox_Changed" />
-                                <TextBlock Grid.Row="2" Margin="28,9,0,0"
-                                           Text="发现新版本后由你确认；仅下载本项目 GitHub Release，并完成多重 SHA-256 校验后更新。"
-                                           TextWrapping="Wrap" LineHeight="17" Style="{StaticResource CaptionStyle}" />
-                                <StackPanel Grid.Row="3" Margin="0,10,0,8" VerticalAlignment="Center">
-                                    <TextBlock x:Name="UpdateStatusText" Text="可手动检查；不会在未确认时下载或安装"
+                                <CheckBox x:Name="AutoUpdateCheckBox" Grid.Row="1" Margin="0,12,0,0"
+                                           Content="每天自动检查新版本"
+                                           Style="{StaticResource PremiumCheckBoxStyle}"
+                                           Checked="AutoUpdateCheckBox_Changed"
+                                           Unchecked="AutoUpdateCheckBox_Changed" />
+                                <CheckBox x:Name="AutoDownloadUpdatesCheckBox" Grid.Row="2" Margin="0,7,0,0"
+                                           Content="发现后自动下载并校验（安装前确认）"
+                                           Style="{StaticResource PremiumCheckBoxStyle}"
+                                           ToolTip="只从本项目 GitHub Release 下载；不会静默执行安装程序"
+                                           Checked="AutoDownloadUpdatesCheckBox_Changed"
+                                           Unchecked="AutoDownloadUpdatesCheckBox_Changed" />
+                                <StackPanel Grid.Row="3" Margin="0,7,0,7" VerticalAlignment="Center">
+                                    <TextBlock x:Name="UpdateStatusText" Text="可手动检查；安装前始终需要确认"
                                                TextWrapping="Wrap" LineHeight="16" Style="{StaticResource CaptionStyle}" />
+                                    <TextBlock x:Name="UpdateScheduleText" Text="尚未完成版本检查"
+                                               Margin="0,4,0,0" TextTrimming="CharacterEllipsis"
+                                               Style="{StaticResource CaptionStyle}" />
                                     <ProgressBar x:Name="UpdateProgressBar" Height="4" Margin="0,8,0,0"
                                                  Minimum="0" Maximum="100" Value="0" Visibility="Collapsed"
                                                  Foreground="{DynamicResource AccentBrush}" />

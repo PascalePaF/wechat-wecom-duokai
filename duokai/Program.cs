@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Windows;
+using WechatDuokai.Core;
 using WechatDuokai.Presentation;
 
 namespace WechatDuokai.App
@@ -12,13 +13,18 @@ namespace WechatDuokai.App
         [STAThread]
         private static int Main(string[] args)
         {
+            var autoStartLaunch = HasArgument(args, WindowsStartupIntegration.AutoStartArgument);
             WindowsShellIntegration.TrySetCurrentProcessAppUserModelId(ProductIdentity.MainAppUserModelId);
             var mutexCreated = false;
             using (var mutex = new Mutex(true, "Local\\WechatDuokai.ControlCenter", out mutexCreated))
             {
                 if (!mutexCreated)
                 {
-                    MessageBox.Show("微窗助手已经在运行。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                    if (!autoStartLaunch)
+                    {
+                        MessageBox.Show("微窗助手已经在运行。", "提示", MessageBoxButton.OK,
+                            MessageBoxImage.Information);
+                    }
                     return 0;
                 }
 
@@ -32,15 +38,22 @@ namespace WechatDuokai.App
                 });
                 try
                 {
-                    WechatDuokai.Core.ApplicationStorage.EnsureReady();
+                    ApplicationStorage.EnsureReady();
                     var executablePath = Process.GetCurrentProcess().MainModule?.FileName;
                     WindowsShellIntegration.NotifyIconChanged(executablePath);
+                    var runAtStartup = UserPreferences.LoadRunAtWindowsStartup();
+                    if (!runAtStartup ||
+                        new ApplicationUpdateService().DetectCurrentMode() !=
+                        ApplicationInstallMode.Unknown)
+                    {
+                        WindowsStartupIntegration.Synchronize(runAtStartup, executablePath);
+                    }
                 }
                 catch (Exception ex)
                 {
                     MessageBox.Show("无法在程序安装目录创建 data 文件夹。\r\n\r\n" +
                                     "请确认当前用户对程序目录具有写入权限：\r\n" +
-                                    WechatDuokai.Core.ApplicationStorage.ApplicationDirectory + "\r\n\r\n" +
+                                    ApplicationStorage.ApplicationDirectory + "\r\n\r\n" +
                                     ex.Message,
                         "程序目录不可写", MessageBoxButton.OK, MessageBoxImage.Error);
                     return 1;
@@ -54,7 +67,13 @@ namespace WechatDuokai.App
                     application.Shutdown(1);
                 };
 
-                return application.Run(new MainWindow());
+                var mainWindow = new MainWindow();
+                if (autoStartLaunch && UserPreferences.LoadRunAtWindowsStartup() &&
+                    UserPreferences.LoadStartMinimizedOnAutoStart())
+                {
+                    mainWindow.WindowState = WindowState.Minimized;
+                }
+                return application.Run(mainWindow);
             }
         }
 
@@ -69,6 +88,13 @@ namespace WechatDuokai.App
             return themeArgument.EndsWith("dark", StringComparison.OrdinalIgnoreCase)
                 ? AppTheme.Dark
                 : AppTheme.Light;
+        }
+
+        internal static bool HasArgument(string[] args, string expected)
+        {
+            return args != null && !string.IsNullOrWhiteSpace(expected) &&
+                   args.Any(value => string.Equals(value, expected,
+                       StringComparison.OrdinalIgnoreCase));
         }
     }
 }

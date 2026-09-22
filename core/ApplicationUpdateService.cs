@@ -84,6 +84,16 @@ namespace WechatDuokai.Core
 
             var updatesDirectory = ApplicationStorage.EnsureSubdirectory(UpdatesFolderName);
             CleanupStaleDownloads(updatesDirectory, TimeSpan.FromDays(2));
+            var checksumEvidencePath = Path.Combine(updatesDirectory,
+                "SHA256SUMS-v" + release.LatestVersion + ".txt");
+            var packagePath = Path.Combine(updatesDirectory, release.SetupAsset.Name);
+            PreparedUpdatePackage cachedPackage;
+            if (TryUseCachedPackage(release, mode, checksumEvidencePath, packagePath,
+                    progress, out cachedPackage))
+            {
+                return cachedPackage;
+            }
+
             var checksumBytes = await DownloadSmallAssetAsync(release.ChecksumAsset,
                 progress, cancellationToken);
             var checksumHash = ComputeSha256(checksumBytes);
@@ -103,11 +113,8 @@ namespace WechatDuokai.Core
                     "安装包的 Release 摘要与 SHA256SUMS.txt 不一致，已停止更新。");
             }
 
-            var checksumEvidencePath = Path.Combine(updatesDirectory,
-                "SHA256SUMS-v" + release.LatestVersion + ".txt");
             WriteBytesDurable(checksumEvidencePath, checksumBytes);
 
-            var packagePath = Path.Combine(updatesDirectory, release.SetupAsset.Name);
             var temporaryPath = packagePath + ".part";
             try
             {
@@ -288,6 +295,84 @@ namespace WechatDuokai.Core
                     "SHA256SUMS.txt 中必须且只能包含一条正式安装包校验记录。");
             }
             return matches[0];
+        }
+
+        internal static bool TryUseCachedPackage(ReleaseUpdateResult release,
+            ApplicationInstallMode mode, string checksumEvidencePath, string packagePath,
+            IProgress<UpdateProgressInfo> progress, out PreparedUpdatePackage package)
+        {
+            package = null;
+            if (!release.HasGitHubAssetDigests && !release.HasReleaseManifestHashes)
+            {
+                return false;
+            }
+
+            try
+            {
+                if (!File.Exists(checksumEvidencePath) || !File.Exists(packagePath))
+                {
+                    return false;
+                }
+
+                var checksumInfo = new FileInfo(checksumEvidencePath);
+                if (checksumInfo.Length != release.ChecksumAsset.Size ||
+                    checksumInfo.Length <= 0 ||
+                    checksumInfo.Length > ReleaseUpdateChecker.MaximumChecksumBytes)
+                {
+                    throw new InvalidDataException("本地更新校验文件大小不匹配。");
+                }
+
+                var checksumBytes = File.ReadAllBytes(checksumEvidencePath);
+                var checksumHash = ComputeSha256(checksumBytes);
+                if (!FixedTimeEquals(checksumHash, release.ChecksumAsset.Sha256))
+                {
+                    throw new InvalidDataException("本地更新校验文件摘要不匹配。");
+                }
+
+                var manifestHash = ParseChecksum(Encoding.UTF8.GetString(checksumBytes),
+                    release.SetupAsset.Name);
+                if (!FixedTimeEquals(manifestHash, release.SetupAsset.Sha256))
+                {
+                    throw new InvalidDataException("本地安装包清单与 Release 摘要不匹配。");
+                }
+
+                var packageInfo = new FileInfo(packagePath);
+                if (packageInfo.Length != release.SetupAsset.Size || packageInfo.Length <= 0 ||
+                    packageInfo.Length > ReleaseUpdateChecker.MaximumSetupBytes)
+                {
+                    throw new InvalidDataException("本地安装包大小不匹配。");
+                }
+
+                var packageHash = UpdatePlan.ComputeSha256(packagePath);
+                if (!FixedTimeEquals(packageHash, manifestHash))
+                {
+                    throw new InvalidDataException("本地安装包 SHA-256 校验失败。");
+                }
+
+                progress?.Report(new UpdateProgressInfo
+                {
+                    Message = "已复用本地完成多重校验的更新包",
+                    BytesReceived = packageInfo.Length,
+                    TotalBytes = packageInfo.Length
+                });
+                package = new PreparedUpdatePackage
+                {
+                    Version = release.LatestVersion,
+                    PackagePath = packagePath,
+                    Sha256 = packageHash,
+                    Size = packageInfo.Length,
+                    Mode = mode
+                };
+                return true;
+            }
+            catch (Exception)
+            {
+                // Only these two version-specific cache files are discarded. A fresh trusted
+                // copy is downloaded below, while unrelated files remain untouched.
+                TryDeleteFile(checksumEvidencePath);
+                TryDeleteFile(packagePath);
+                return false;
+            }
         }
 
         private static async Task<byte[]> DownloadSmallAssetAsync(ReleaseAssetInfo asset,

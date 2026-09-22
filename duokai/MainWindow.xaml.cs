@@ -32,10 +32,12 @@ namespace WechatDuokai.App
         private bool _busy;
         private bool _updatingCount;
         private bool _checkingUpdates;
+        private bool _preparingUpdate;
         private bool _installingUpdate;
         private bool _showingSettings;
         private bool _initializingSettings = true;
         private ReleaseUpdateResult _availableUpdate;
+        private PreparedUpdatePackage _preparedUpdate;
 
         public MainWindow()
             : this(new InstanceManager(), new ReleaseUpdateChecker())
@@ -425,11 +427,14 @@ namespace WechatDuokai.App
             TargetCountBox.IsEnabled = !busy;
             DiagnosticsButton.IsEnabled = !busy;
             AutoUpdateCheckBox.IsEnabled = !busy;
+            AutoDownloadUpdatesCheckBox.IsEnabled = !busy && !_preparingUpdate;
+            RunAtStartupCheckBox.IsEnabled = !busy;
+            StartMinimizedCheckBox.IsEnabled = !busy && RunAtStartupCheckBox.IsChecked == true;
             SystemThemeRadio.IsEnabled = !busy;
             LightThemeRadio.IsEnabled = !busy;
             DarkThemeRadio.IsEnabled = !busy;
-            CheckUpdateButton.IsEnabled = !busy && !_checkingUpdates;
-            UpdateNowButton.IsEnabled = !busy && !_installingUpdate &&
+            CheckUpdateButton.IsEnabled = !busy && !_checkingUpdates && !_preparingUpdate;
+            UpdateNowButton.IsEnabled = !busy && !_installingUpdate && !_preparingUpdate &&
                                         _availableUpdate != null && _availableUpdate.CanInstallUpdate;
             SettingsReleaseButton.IsEnabled = !busy;
         }
@@ -498,6 +503,11 @@ namespace WechatDuokai.App
             var wasInitializing = _initializingSettings;
             _initializingSettings = true;
             AutoUpdateCheckBox.IsChecked = UserPreferences.LoadAutoCheckForUpdates();
+            AutoDownloadUpdatesCheckBox.IsChecked = UserPreferences.LoadAutoDownloadUpdates();
+            RunAtStartupCheckBox.IsChecked = UserPreferences.LoadRunAtWindowsStartup();
+            StartMinimizedCheckBox.IsChecked = UserPreferences.LoadStartMinimizedOnAutoStart();
+            StartMinimizedCheckBox.IsEnabled = !_busy && RunAtStartupCheckBox.IsChecked == true;
+            RefreshUpdateScheduleText();
             SynchronizeThemePreferenceControls();
             _initializingSettings = wasInitializing;
         }
@@ -542,9 +552,100 @@ namespace WechatDuokai.App
 
             var enabled = AutoUpdateCheckBox.IsChecked == true;
             UserPreferences.SaveAutoCheckForUpdates(enabled);
+            RefreshUpdateScheduleText();
             SetStatus(enabled
                 ? "已开启每日版本检查"
                 : "已关闭每日版本检查 · 仍可手动检查", "SuccessBrush");
+        }
+
+        private async void AutoDownloadUpdatesCheckBox_Changed(object sender,
+            RoutedEventArgs e)
+        {
+            if (_initializingSettings)
+            {
+                return;
+            }
+
+            var enabled = AutoDownloadUpdatesCheckBox.IsChecked == true;
+            UserPreferences.SaveAutoDownloadUpdates(enabled);
+            SetStatus(enabled
+                ? "发现新版本后会自动下载并校验 · 安装前仍需确认"
+                : "已关闭更新包自动下载", "SuccessBrush");
+
+            if (enabled && _availableUpdate != null && _availableUpdate.CanInstallUpdate &&
+                _applicationUpdater.DetectCurrentMode() != ApplicationInstallMode.Unknown)
+            {
+                await TryPrepareUpdateAutomaticallyAsync();
+            }
+        }
+
+        private void RunAtStartupCheckBox_Changed(object sender, RoutedEventArgs e)
+        {
+            if (_initializingSettings)
+            {
+                return;
+            }
+
+            var enabled = RunAtStartupCheckBox.IsChecked == true;
+            if (enabled &&
+                _applicationUpdater.DetectCurrentMode() == ApplicationInstallMode.Unknown)
+            {
+                SetRunAtStartupCheckBox(UserPreferences.LoadRunAtWindowsStartup());
+                SetStatus("开发目录不创建开机启动项 · 请使用安装版或正式绿色版", "WarningBrush");
+                MessageBox.Show("当前目录不是带正式标记的安装版或绿色版。\r\n\r\n" +
+                                "为避免把源码构建目录写入 Windows 启动项，本次没有启用。",
+                    "无法启用开机启动", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            var executablePath = Process.GetCurrentProcess().MainModule?.FileName;
+            var result = WindowsStartupIntegration.Synchronize(enabled, executablePath);
+            if (!result.Succeeded)
+            {
+                SetRunAtStartupCheckBox(UserPreferences.LoadRunAtWindowsStartup());
+                SetStatus(result.Message, "WarningBrush");
+                MessageBox.Show(result.Message, "开机启动设置", MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+                return;
+            }
+
+            UserPreferences.SaveRunAtWindowsStartup(enabled);
+            StartMinimizedCheckBox.IsEnabled = !_busy && enabled;
+            SetStatus(result.Message, result.Conflict ? "InfoBrush" : "SuccessBrush");
+        }
+
+        private void StartMinimizedCheckBox_Changed(object sender, RoutedEventArgs e)
+        {
+            if (_initializingSettings)
+            {
+                return;
+            }
+
+            var enabled = StartMinimizedCheckBox.IsChecked == true;
+            UserPreferences.SaveStartMinimizedOnAutoStart(enabled);
+            SetStatus(enabled
+                ? "开机自动启动时将最小化显示"
+                : "开机自动启动时将正常显示窗口", "SuccessBrush");
+        }
+
+        private void SetRunAtStartupCheckBox(bool enabled)
+        {
+            var wasInitializing = _initializingSettings;
+            _initializingSettings = true;
+            RunAtStartupCheckBox.IsChecked = enabled;
+            StartMinimizedCheckBox.IsEnabled = !_busy && enabled;
+            _initializingSettings = wasInitializing;
+        }
+
+        private void RefreshUpdateScheduleText()
+        {
+            if (UpdateScheduleText == null)
+            {
+                return;
+            }
+            UpdateScheduleText.Text = UserPreferences.LoadAutoCheckForUpdates()
+                ? UpdateCheckSchedule.GetDisplaySummary()
+                : "自动检查已关闭 · 仍可随时手动检查";
         }
 
         private void SettingsButton_Click(object sender, RoutedEventArgs e)
@@ -629,7 +730,7 @@ namespace WechatDuokai.App
             finally
             {
                 _checkingUpdates = false;
-                CheckUpdateButton.IsEnabled = !_busy;
+                CheckUpdateButton.IsEnabled = !_busy && !_preparingUpdate;
             }
 
             if (result.CheckSucceeded)
@@ -640,6 +741,7 @@ namespace WechatDuokai.App
             {
                 UpdateCheckSchedule.RecordFailure(result.RetryAfterUtc);
             }
+            RefreshUpdateScheduleText();
 
             if (!result.CheckSucceeded)
             {
@@ -657,6 +759,11 @@ namespace WechatDuokai.App
 
             if (result.IsUpdateAvailable)
             {
+                if (_preparedUpdate != null && !string.Equals(_preparedUpdate.Version,
+                        result.LatestVersion, StringComparison.Ordinal))
+                {
+                    _preparedUpdate = null;
+                }
                 _availableUpdate = result;
                 SettingsReleaseButton.Content = "发现 V" + result.LatestVersion + " ↗";
                 SettingsReleaseButton.SetResourceReference(ForegroundProperty, "SuccessBrush");
@@ -664,15 +771,24 @@ namespace WechatDuokai.App
                 var mode = _applicationUpdater.DetectCurrentMode();
                 if (result.CanInstallUpdate && mode != ApplicationInstallMode.Unknown)
                 {
-                    UpdateNowButton.Content = "一键更新 V" + result.LatestVersion;
+                    UpdateNowButton.Content = HasPreparedUpdate(result.LatestVersion)
+                        ? "安装 V" + result.LatestVersion
+                        : "一键更新 V" + result.LatestVersion;
                     UpdateNowButton.Visibility = Visibility.Visible;
-                    UpdateNowButton.IsEnabled = !_busy && !_installingUpdate;
-                    UpdateStatusText.Text = result.HasGitHubAssetDigests
-                        ? "静态清单与 GitHub 摘要已核对 · 点击后执行多重 SHA-256 校验"
-                        : result.HasReleaseManifestHashes
-                            ? "已读取免 API 静态更新清单 · 点击后执行多重 SHA-256 校验"
-                            : "已确认固定 Release 附件 · 点击后按 SHA256SUMS.txt 校验再覆盖";
+                    UpdateNowButton.IsEnabled = !_busy && !_installingUpdate && !_preparingUpdate;
+                    UpdateStatusText.Text = HasPreparedUpdate(result.LatestVersion)
+                        ? "更新包已下载并完成多重 SHA-256 校验 · 等待确认安装"
+                        : result.HasGitHubAssetDigests
+                            ? "静态清单与 GitHub 摘要已核对 · 点击后执行多重 SHA-256 校验"
+                            : result.HasReleaseManifestHashes
+                                ? "已读取免 API 静态更新清单 · 点击后执行多重 SHA-256 校验"
+                                : "已确认固定 Release 附件 · 点击后按 SHA256SUMS.txt 校验再覆盖";
                     SetStatus("发现新版本 V" + result.LatestVersion + " · 可一键更新", "InfoBrush");
+                    if (UserPreferences.LoadAutoDownloadUpdates() &&
+                        !HasPreparedUpdate(result.LatestVersion))
+                    {
+                        await TryPrepareUpdateAutomaticallyAsync();
+                    }
                 }
                 else
                 {
@@ -686,6 +802,7 @@ namespace WechatDuokai.App
             else
             {
                 _availableUpdate = null;
+                _preparedUpdate = null;
                 UpdateNowButton.Visibility = Visibility.Collapsed;
                 UpdateProgressBar.Visibility = Visibility.Collapsed;
                 SettingsReleaseButton.Content = "发布版本 ↗";
@@ -699,9 +816,94 @@ namespace WechatDuokai.App
             }
         }
 
+        private bool HasPreparedUpdate(string version)
+        {
+            return _preparedUpdate != null &&
+                   string.Equals(_preparedUpdate.Version, version, StringComparison.Ordinal) &&
+                   !string.IsNullOrWhiteSpace(_preparedUpdate.PackagePath) &&
+                   File.Exists(_preparedUpdate.PackagePath);
+        }
+
+        private async Task TryPrepareUpdateAutomaticallyAsync()
+        {
+            try
+            {
+                await PrepareUpdatePackageAsync();
+                SetStatus("V" + _availableUpdate.LatestVersion +
+                          " 已下载并完成校验 · 请确认安装", "SuccessBrush");
+            }
+            catch (OperationCanceledException) when (_lifetime.IsCancellationRequested)
+            {
+            }
+            catch (Exception ex)
+            {
+                UpdateProgressBar.Visibility = Visibility.Collapsed;
+                UpdateStatusText.Text = "已发现新版本，但自动下载未完成：" + ex.Message;
+                SetStatus("发现新版本 · 自动下载暂未完成，可手动重试", "WarningBrush");
+            }
+        }
+
+        private async Task<PreparedUpdatePackage> PrepareUpdatePackageAsync()
+        {
+            if (_availableUpdate == null || !_availableUpdate.CanInstallUpdate)
+            {
+                throw new InvalidOperationException("当前没有可安全下载的一键更新版本。");
+            }
+            if (HasPreparedUpdate(_availableUpdate.LatestVersion))
+            {
+                return _preparedUpdate;
+            }
+            if (_preparingUpdate)
+            {
+                throw new InvalidOperationException("更新包正在下载和校验，请稍候。");
+            }
+
+            var release = _availableUpdate;
+            _preparingUpdate = true;
+            CheckUpdateButton.IsEnabled = false;
+            UpdateNowButton.IsEnabled = false;
+            AutoDownloadUpdatesCheckBox.IsEnabled = false;
+            UpdateProgressBar.Value = 0;
+            UpdateProgressBar.Visibility = Visibility.Visible;
+            UpdateStatusText.Text = "正在建立安全下载…";
+            try
+            {
+                var progress = new Progress<UpdateProgressInfo>(info =>
+                {
+                    UpdateStatusText.Text = info.Message +
+                                            (info.TotalBytes > 0
+                                                ? " · " + info.Percentage + "%"
+                                                : string.Empty);
+                    UpdateProgressBar.Value = info.Percentage;
+                });
+                var package = await _applicationUpdater.DownloadAndVerifyAsync(
+                    release, progress, _lifetime.Token);
+                if (_availableUpdate == null || !string.Equals(release.LatestVersion,
+                        _availableUpdate.LatestVersion, StringComparison.Ordinal))
+                {
+                    throw new InvalidOperationException("版本信息已变化，请重新检查更新。");
+                }
+
+                _preparedUpdate = package;
+                UpdateProgressBar.Value = 100;
+                UpdateStatusText.Text = "更新包已下载并完成多重 SHA-256 校验 · 安装前仍需确认";
+                UpdateNowButton.Content = "安装 V" + release.LatestVersion;
+                return package;
+            }
+            finally
+            {
+                _preparingUpdate = false;
+                CheckUpdateButton.IsEnabled = !_busy && !_checkingUpdates;
+                AutoDownloadUpdatesCheckBox.IsEnabled = !_busy;
+                UpdateNowButton.IsEnabled = !_busy && !_installingUpdate &&
+                                            _availableUpdate != null &&
+                                            _availableUpdate.CanInstallUpdate;
+            }
+        }
+
         private async void UpdateNowButton_Click(object sender, RoutedEventArgs e)
         {
-            if (_busy || _installingUpdate || _availableUpdate == null ||
+            if (_busy || _installingUpdate || _preparingUpdate || _availableUpdate == null ||
                 !_availableUpdate.CanInstallUpdate)
             {
                 return;
@@ -722,10 +924,14 @@ namespace WechatDuokai.App
                 : _availableUpdate.HasReleaseManifestHashes
                     ? "静态更新清单 + SHA256SUMS.txt + 下载文件必须一致"
                     : "固定 GitHub Release 地址 + SHA256SUMS.txt + 下载文件必须一致";
+            var alreadyPrepared = HasPreparedUpdate(_availableUpdate.LatestVersion);
             var choice = MessageBox.Show(
                 "将把当前" + description + "从 V" + CurrentVersion + " 更新到 V" +
                 _availableUpdate.LatestVersion + "。\r\n\r\n" +
                 "下载来源：本项目 GitHub Release\r\n" +
+                (alreadyPrepared
+                    ? "更新包状态：已下载并完成多重 SHA-256 校验\r\n"
+                    : string.Empty) +
                 "安装包大小：" + FormatBytes(_availableUpdate.SetupAsset.Size) + "\r\n" +
                 "安全校验：" + verification + "\r\n" +
                 "本地数据：data 中的设置、主题、诊断和恢复日志全部保留\r\n\r\n" +
@@ -734,28 +940,20 @@ namespace WechatDuokai.App
                 MessageBoxResult.Yes);
             if (choice != MessageBoxResult.Yes)
             {
-                SetStatus("已取消更新 · 未下载或执行任何文件", "InfoBrush");
+                SetStatus(alreadyPrepared
+                    ? "已取消安装 · 经过校验的更新包仍保留在本机"
+                    : "已取消更新 · 未下载或执行任何文件", "InfoBrush");
                 return;
             }
 
             _installingUpdate = true;
             SetBusy(true);
-            UpdateProgressBar.Value = 0;
-            UpdateProgressBar.Visibility = Visibility.Visible;
-            UpdateStatusText.Text = "正在建立安全下载…";
-            SetStatus("正在下载 V" + _availableUpdate.LatestVersion + " 正式安装包…", "InfoBrush");
+            SetStatus(alreadyPrepared
+                ? "正在启动经过校验的 V" + _availableUpdate.LatestVersion + " 更新包…"
+                : "正在下载 V" + _availableUpdate.LatestVersion + " 正式安装包…", "InfoBrush");
             try
             {
-                var progress = new Progress<UpdateProgressInfo>(info =>
-                {
-                    UpdateStatusText.Text = info.Message +
-                                            (info.TotalBytes > 0
-                                                ? " · " + info.Percentage + "%"
-                                                : string.Empty);
-                    UpdateProgressBar.Value = info.Percentage;
-                });
-                var package = await _applicationUpdater.DownloadAndVerifyAsync(
-                    _availableUpdate, progress, _lifetime.Token);
+                var package = await PrepareUpdatePackageAsync();
                 UpdateProgressBar.Value = 100;
                 UpdateStatusText.Text = _availableUpdate.HasGitHubAssetDigests
                     ? "多重 SHA-256 校验通过 · 正在交给独立更新程序"

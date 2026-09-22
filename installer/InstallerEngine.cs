@@ -1393,6 +1393,18 @@ namespace WechatDuokai.Installer
                 WaitForParent(plan.ParentProcessId);
 
                 StopOwnedProcesses(plan);
+                var startupExecutables = new List<string>();
+                if (InstallerEngine.ValidateInstallDirectory(plan.InstallDirectory))
+                {
+                    startupExecutables.Add(Path.Combine(plan.InstallDirectory,
+                        "wechat_duokai.exe"));
+                }
+                if (InstallerEngine.ValidatePortableRoot(plan.PackageRoot))
+                {
+                    startupExecutables.Add(Path.Combine(plan.PackageRoot,
+                        "wechat_duokai.exe"));
+                }
+                WindowsStartupIntegration.RemoveIfOwnedByExactExecutables(startupExecutables);
                 InstallerEngine.RemoveUninstallRegistration();
                 DeleteFileIfExact(plan.DesktopShortcut, InstallerEngine.DesktopShortcut);
                 DeleteDirectoryIfExact(plan.StartMenuDirectory, InstallerEngine.StartMenuDirectory);

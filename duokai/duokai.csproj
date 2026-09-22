@@ -33,6 +33,7 @@
   <ItemGroup>
     <Compile Include="..\shared\WpfPresentation.cs" Link="Presentation\WpfPresentation.cs" />
     <Compile Include="..\shared\WindowsShellIntegration.cs" Link="Presentation\WindowsShellIntegration.cs" />
+    <Compile Include="..\shared\WindowsStartupIntegration.cs" Link="Presentation\WindowsStartupIntegration.cs" />
     <Page Include="..\shared\ThemeResources.xaml" Link="Themes\ThemeResources.xaml" />
   </ItemGroup>
   <ItemGroup>

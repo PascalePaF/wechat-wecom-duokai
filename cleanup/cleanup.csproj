@@ -27,6 +27,7 @@
     <Compile Include="..\shared\UpdateProtocol.cs" Link="Update\UpdateProtocol.cs" />
     <Compile Include="..\shared\WpfPresentation.cs" Link="Presentation\WpfPresentation.cs" />
     <Compile Include="..\shared\WindowsShellIntegration.cs" Link="Presentation\WindowsShellIntegration.cs" />
+    <Compile Include="..\shared\WindowsStartupIntegration.cs" Link="Presentation\WindowsStartupIntegration.cs" />
     <Page Include="..\installer\UninstallWindow.xaml" Link="UninstallWindow.xaml" />
     <Page Include="..\shared\ThemeResources.xaml" Link="Themes\ThemeResources.xaml" />
     <Resource Include="..\duokai\Resources\WeichuangLogo.png" Link="Resources\WeichuangLogo.png" />

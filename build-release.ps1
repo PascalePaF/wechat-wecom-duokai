@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [string]$Version = '1.1.4'
+    [string]$Version = '1.1.5'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -243,9 +243,9 @@ $manifest = @(
     'LaunchPolicy=Explicit confirmation after install',
     'ExitAllPolicy=Per-client confirmation; current session and exact verified executable path only; graceful close before force',
     'UpgradePolicy=Prompt before closing exact-path running helper',
-    'UpdatePolicy=Explicitly confirmed in-app update from this repository GitHub Release; manual browser download remains available',
+    'UpdatePolicy=Optional automatic download and verification from this repository GitHub Release; installation always requires explicit confirmation; manual browser download remains available',
     'UpdateVerification=Static Release update manifest is primary and quota-free; GitHub API digest is optional enrichment; SHA256SUMS and downloaded setup must match',
-    'UpdateSchedule=Automatic checks are cached for 24 hours, staggered by 30-300 seconds and backed off for 1/6/24 hours; manual checks remain immediate',
+    'UpdateSchedule=Automatic checks are cached for 24 hours, staggered by 30-300 seconds and backed off for 1/6/24 hours; verified packages are reused without duplicate downloads; manual checks remain immediate',
     'UpdateNetwork=Valid HTTPS_PROXY or HTTP_PROXY environment URI is honored without persistence; GitHub requests require TLS 1.2; latest static manifest redirect uses HEAD',
     'UpdateRollback=Same-volume staging and per-file backups preserve the previous executable set on failure',
     'InstallerIdentity=Setup and cleanup are separate assemblies',
@@ -253,6 +253,7 @@ $manifest = @(
     'RegistryCrashRecovery=Durable pre-write journal under data/recovery; startup restore remains conditional on temporary-state ownership',
     'TargetCounts=One shared persisted 1-10 target for WeChat and WeCom; V1.0.6 split values migrate deterministically',
     'RuntimeStorage=Configuration, theme, diagnostics, recovery and update evidence stay below the application data directory',
+    'StartupPolicy=Optional per-user Windows Run entry points only to the exact marked app executable; portable moves repair the owned path; external conflicts are preserved',
     'CI=Fresh GitHub-hosted Windows build, tests, SHA-256 verification and SPDX 2.2 SBOM',
     ("Installer=installer/wechat_duokai-setup-" + $versionSuffix + '.exe'),
     ("Cleanup=installer/wechat_duokai-cleanup-" + $versionSuffix + '.exe'),

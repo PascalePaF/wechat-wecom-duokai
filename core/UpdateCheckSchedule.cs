@@ -34,6 +34,20 @@ namespace WechatDuokai.Core
             return CalculateStartupDelay(ApplicationStorage.ApplicationDirectory);
         }
 
+        public static string GetDisplaySummary()
+        {
+            try
+            {
+                ApplicationStorage.EnsureReady();
+                return GetDisplaySummary(ApplicationStorage.DataDirectory,
+                    DateTimeOffset.UtcNow);
+            }
+            catch (Exception)
+            {
+                return "检查记录暂不可用";
+            }
+        }
+
         public static void RecordSuccess(string latestVersion)
         {
             try
@@ -147,6 +161,36 @@ namespace WechatDuokai.Core
             if (consecutiveFailures <= 1) return TimeSpan.FromHours(1);
             if (consecutiveFailures == 2) return TimeSpan.FromHours(6);
             return MaximumBackoff;
+        }
+
+        internal static string GetDisplaySummary(string dataDirectory, DateTimeOffset now)
+        {
+            var state = Load(dataDirectory);
+            var last = state.LastSuccessUtc.HasValue &&
+                       state.LastSuccessUtc.Value <= now.AddMinutes(5)
+                ? state.LastSuccessUtc.Value.ToLocalTime().ToString("MM-dd HH:mm",
+                    CultureInfo.InvariantCulture)
+                : null;
+            var next = state.NextAutomaticCheckUtc.HasValue &&
+                       state.NextAutomaticCheckUtc.Value <= now.Add(MaximumBackoff)
+                           .AddMinutes(5)
+                ? state.NextAutomaticCheckUtc.Value.ToLocalTime().ToString("MM-dd HH:mm",
+                    CultureInfo.InvariantCulture)
+                : null;
+
+            if (last == null && next == null)
+            {
+                return "尚未完成版本检查";
+            }
+            if (state.ConsecutiveFailures > 0 && next != null)
+            {
+                return "最近检查未成功 · 下次重试 " + next;
+            }
+            if (last != null && next != null)
+            {
+                return "上次成功 " + last + " · 下次检查 " + next;
+            }
+            return last != null ? "上次成功 " + last : "下次检查 " + next;
         }
 
         internal static UpdateCheckState Load(string dataDirectory)

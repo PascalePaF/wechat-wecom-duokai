@@ -20,7 +20,8 @@ namespace WechatDuokai.Core
             }
 
             var root = Path.GetFullPath(applicationDirectory);
-            var folder = Path.Combine(root, ApplicationStorage.DataFolderName, FolderName);
+            var dataDirectory = Path.Combine(root, ApplicationStorage.DataFolderName);
+            var folder = Path.Combine(dataDirectory, FolderName);
             Directory.CreateDirectory(folder);
             var path = Path.Combine(folder, "diagnostic-" + DateTime.Now.ToString("yyyyMMdd-HHmmss") + ".txt");
             var lines = new List<string>
@@ -33,6 +34,10 @@ namespace WechatDuokai.Core
                 "进程位数=" + (Environment.Is64BitProcess ? "64-bit" : "32-bit"),
                 ".NET=" + Environment.Version,
                 "联网说明=本报告只写入本地；不会自动上传",
+                "开机自动启动设置=" + (UserPreferences.LoadRunAtWindowsStartup(dataDirectory) ? "开启" : "关闭"),
+                "自动启动时最小化=" + (UserPreferences.LoadStartMinimizedOnAutoStart(dataDirectory) ? "开启" : "关闭"),
+                "每日版本检查=" + (UserPreferences.LoadAutoCheckForUpdates(dataDirectory) ? "开启" : "关闭"),
+                "更新包自动下载=" + (UserPreferences.LoadAutoDownloadUpdates(dataDirectory) ? "开启；安装仍需确认" : "关闭"),
                 string.Empty
             };
 
