@@ -26,6 +26,8 @@ namespace WechatDuokai.App
         private readonly ReleaseUpdateChecker _updateChecker;
         private readonly ApplicationUpdateService _applicationUpdater = new ApplicationUpdateService();
         private readonly DispatcherTimer _refreshTimer;
+        private readonly DispatcherTimer _automaticUpdateTimer;
+        private readonly AutomaticUpdateCoordinator _automaticUpdateCoordinator;
         private readonly CancellationTokenSource _lifetime = new CancellationTokenSource();
         private AppDefinition _weChat;
         private AppDefinition _weCom;
@@ -38,6 +40,7 @@ namespace WechatDuokai.App
         private bool _initializingSettings = true;
         private ReleaseUpdateResult _availableUpdate;
         private PreparedUpdatePackage _preparedUpdate;
+        internal string StartupSynchronizationWarning { get; set; }
 
         public MainWindow()
             : this(new InstanceManager(), new ReleaseUpdateChecker())
@@ -68,6 +71,16 @@ namespace WechatDuokai.App
                 Interval = TimeSpan.FromSeconds(2)
             };
             _refreshTimer.Tick += (sender, args) => RefreshClientStatus();
+            _automaticUpdateCoordinator = new AutomaticUpdateCoordinator(
+                () => UserPreferences.LoadAutoCheckForUpdates(),
+                () => !_checkingUpdates && UpdateCheckSchedule.ShouldCheckAutomatically(),
+                () => CheckForUpdatesAsync(false));
+            _automaticUpdateTimer = new DispatcherTimer(DispatcherPriority.Background)
+            {
+                Interval = TimeSpan.FromMinutes(1)
+            };
+            _automaticUpdateTimer.Tick += async (sender, args) =>
+                await CheckScheduledUpdateSafelyAsync();
 
             Loaded += async (sender, args) =>
             {
@@ -78,6 +91,7 @@ namespace WechatDuokai.App
                 ApplyProportionalScale();
                 RefreshClientStatus();
                 _refreshTimer.Start();
+                _automaticUpdateTimer.Start();
                 await Task.Run(() => _applicationUpdater.CleanupStaleDownloads());
                 if (recovery.Outcome != WeComRegistryRecoveryOutcome.None &&
                     !string.IsNullOrWhiteSpace(recovery.Message))
@@ -89,22 +103,18 @@ namespace WechatDuokai.App
                             : "WarningBrush";
                     SetStatus(recovery.Message, brush);
                 }
-                if (UserPreferences.LoadAutoCheckForUpdates() &&
-                    UpdateCheckSchedule.ShouldCheckAutomatically())
+                if (!string.IsNullOrWhiteSpace(StartupSynchronizationWarning))
+                    SetStatus(StartupSynchronizationWarning, "WarningBrush");
+                try
                 {
-                    try
-                    {
-                        // A stable per-installation delay spreads simultaneous startup checks
-                        // without creating an identifier or sending any extra local information.
-                        await Task.Delay(UpdateCheckSchedule.GetStartupDelay(), _lifetime.Token);
-                        if (UpdateCheckSchedule.ShouldCheckAutomatically())
-                        {
-                            await CheckForUpdatesAsync(false);
-                        }
-                    }
-                    catch (OperationCanceledException) when (_lifetime.IsCancellationRequested)
-                    {
-                    }
+                    // Stagger the first check; the timer continues to honor the local schedule
+                    // for as long as this window remains open.
+                    await Task.Delay(UpdateCheckSchedule.GetStartupDelay(), _lifetime.Token);
+                    _automaticUpdateCoordinator.CompleteStartupDelay();
+                    await CheckScheduledUpdateSafelyAsync();
+                }
+                catch (OperationCanceledException) when (_lifetime.IsCancellationRequested)
+                {
                 }
             };
             Activated += (sender, args) =>
@@ -118,6 +128,7 @@ namespace WechatDuokai.App
             Closed += (sender, args) =>
             {
                 _refreshTimer.Stop();
+                _automaticUpdateTimer.Stop();
                 _lifetime.Cancel();
                 _lifetime.Dispose();
             };
@@ -504,7 +515,8 @@ namespace WechatDuokai.App
             _initializingSettings = true;
             AutoUpdateCheckBox.IsChecked = UserPreferences.LoadAutoCheckForUpdates();
             AutoDownloadUpdatesCheckBox.IsChecked = UserPreferences.LoadAutoDownloadUpdates();
-            RunAtStartupCheckBox.IsChecked = UserPreferences.LoadRunAtWindowsStartup();
+            RunAtStartupCheckBox.IsChecked = UserPreferences.LoadRunAtWindowsStartup() &&
+                                            string.IsNullOrWhiteSpace(StartupSynchronizationWarning);
             StartMinimizedCheckBox.IsChecked = UserPreferences.LoadStartMinimizedOnAutoStart();
             StartMinimizedCheckBox.IsEnabled = !_busy && RunAtStartupCheckBox.IsChecked == true;
             RefreshUpdateScheduleText();
@@ -543,7 +555,7 @@ namespace WechatDuokai.App
                 : "主题设置已保存", "SuccessBrush");
         }
 
-        private void AutoUpdateCheckBox_Changed(object sender, RoutedEventArgs e)
+        private async void AutoUpdateCheckBox_Changed(object sender, RoutedEventArgs e)
         {
             if (_initializingSettings)
             {
@@ -556,6 +568,26 @@ namespace WechatDuokai.App
             SetStatus(enabled
                 ? "已开启每日版本检查"
                 : "已关闭每日版本检查 · 仍可手动检查", "SuccessBrush");
+            if (enabled)
+                await CheckScheduledUpdateSafelyAsync();
+        }
+
+        private async Task CheckScheduledUpdateSafelyAsync()
+        {
+            try
+            {
+                await _automaticUpdateCoordinator.CheckIfDueAsync();
+            }
+            catch (OperationCanceledException) when (_lifetime.IsCancellationRequested)
+            {
+            }
+            catch (Exception ex)
+            {
+                UpdateCheckSchedule.RecordFailure(null);
+                RefreshUpdateScheduleText();
+                if (_showingSettings)
+                    SetStatus("自动检查暂未完成：" + ex.Message, "WarningBrush");
+            }
         }
 
         private async void AutoDownloadUpdatesCheckBox_Changed(object sender,
@@ -599,17 +631,36 @@ namespace WechatDuokai.App
             }
 
             var executablePath = Process.GetCurrentProcess().MainModule?.FileName;
-            var result = WindowsStartupIntegration.Synchronize(enabled, executablePath);
+            var result = WindowsStartupIntegration.Synchronize(enabled, executablePath,
+                UserPreferences.LoadStartupRegisteredPath());
+            if (enabled && result.Conflict &&
+                !string.IsNullOrWhiteSpace(result.ExistingOwnedCommand))
+            {
+                if (MessageBox.Show("另一份微窗助手已设置为开机启动。\r\n\r\n" +
+                                    "是否改为由当前这份程序启动？原程序文件不会被删除。",
+                        "切换开机启动程序", MessageBoxButton.YesNo,
+                        MessageBoxImage.Question) != MessageBoxResult.Yes)
+                {
+                    SetRunAtStartupCheckBox(false);
+                    SetStatus("已保留另一份程序的开机启动设置", "InfoBrush");
+                    return;
+                }
+                result = WindowsStartupIntegration.ReplaceOwnedStartupIfUnchanged(
+                    result.ExistingOwnedCommand, executablePath);
+            }
             if (!result.Succeeded)
             {
-                SetRunAtStartupCheckBox(UserPreferences.LoadRunAtWindowsStartup());
+                SetRunAtStartupCheckBox(result.Conflict
+                    ? false
+                    : UserPreferences.LoadRunAtWindowsStartup());
                 SetStatus(result.Message, "WarningBrush");
                 MessageBox.Show(result.Message, "开机启动设置", MessageBoxButton.OK,
                     MessageBoxImage.Warning);
                 return;
             }
 
-            UserPreferences.SaveRunAtWindowsStartup(enabled);
+            UserPreferences.SaveStartupRegistration(enabled, enabled ? executablePath : null);
+            StartupSynchronizationWarning = null;
             StartMinimizedCheckBox.IsEnabled = !_busy && enabled;
             SetStatus(result.Message, result.Conflict ? "InfoBrush" : "SuccessBrush");
         }

@@ -26,9 +26,9 @@
 
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/v1.1.5-main-dark-901x513.png">
-    <source media="(prefers-color-scheme: light)" srcset="docs/assets/v1.1.5-main-light-901x513.png">
-    <img src="docs/assets/v1.1.5-main-light-901x513.png" width="901" alt="微窗助手 V1.1.5 主界面">
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/v1.1.6-main-dark-901x513.png">
+    <source media="(prefers-color-scheme: light)" srcset="docs/assets/v1.1.6-main-light-901x513.png">
+    <img src="docs/assets/v1.1.6-main-light-901x513.png" width="901" alt="微窗助手 V1.1.6 主界面">
   </picture>
 </p>
 
@@ -42,21 +42,21 @@
 
 ## 下载
 
-当前正式版本：**V1.1.5**。请只从本仓库的
+当前正式版本：**V1.1.6**。请只从本仓库的
 [GitHub Releases](https://github.com/PascalePaF/wechat-wecom-duokai/releases/latest) 下载。
 
 | 版本 | 适合谁 | 下载 |
 | --- | --- | --- |
-| 安装版（推荐） | 希望自选安装目录、创建快捷方式并使用完整卸载功能 | [下载 `wechat_duokai-setup-v1.1.5.exe`](https://github.com/PascalePaF/wechat-wecom-duokai/releases/download/v1.1.5/wechat_duokai-setup-v1.1.5.exe) |
-| 绿色免安装版 | 希望解压即用，不写入安装登记 | [下载 `wechat_duokai-portable-v1.1.5.zip`](https://github.com/PascalePaF/wechat-wecom-duokai/releases/download/v1.1.5/wechat_duokai-portable-v1.1.5.zip) |
-| 独立清理器 | 需要完整卸载，或清理本项目安装包与带标记的源码目录 | [下载 `wechat_duokai-cleanup-v1.1.5.exe`](https://github.com/PascalePaF/wechat-wecom-duokai/releases/download/v1.1.5/wechat_duokai-cleanup-v1.1.5.exe) |
+| 安装版（推荐） | 希望自选安装目录、创建快捷方式并使用完整卸载功能 | [下载 `wechat_duokai-setup-v1.1.6.exe`](https://github.com/PascalePaF/wechat-wecom-duokai/releases/download/v1.1.6/wechat_duokai-setup-v1.1.6.exe) |
+| 绿色免安装版 | 希望解压即用，不写入安装登记 | [下载 `wechat_duokai-portable-v1.1.6.zip`](https://github.com/PascalePaF/wechat-wecom-duokai/releases/download/v1.1.6/wechat_duokai-portable-v1.1.6.zip) |
+| 独立清理器 | 需要完整卸载，或清理本项目安装包与带标记的源码目录 | [下载 `wechat_duokai-cleanup-v1.1.6.exe`](https://github.com/PascalePaF/wechat-wecom-duokai/releases/download/v1.1.6/wechat_duokai-cleanup-v1.1.6.exe) |
 
 发布核验资料：
 
-- [SHA256SUMS.txt](https://github.com/PascalePaF/wechat-wecom-duokai/releases/download/v1.1.5/SHA256SUMS.txt)：正式附件 SHA-256 清单；
-- [SPDX 2.2 SBOM](https://github.com/PascalePaF/wechat-wecom-duokai/releases/download/v1.1.5/manifest.spdx.json)：软件物料清单；
-- [Kaspersky 原始扫描日志](https://github.com/PascalePaF/wechat-wecom-duokai/releases/download/v1.1.5/kaspersky-scan-v1.1.5.txt)：对正式发布原件的扫描记录；
-- [V1.1.5 发布说明](https://github.com/PascalePaF/wechat-wecom-duokai/releases/tag/v1.1.5)：变化、限制和全部附件。
+- [SHA256SUMS.txt](https://github.com/PascalePaF/wechat-wecom-duokai/releases/download/v1.1.6/SHA256SUMS.txt)：正式附件 SHA-256 清单；
+- [SPDX 2.2 SBOM](https://github.com/PascalePaF/wechat-wecom-duokai/releases/download/v1.1.6/manifest.spdx.json)：软件物料清单；
+- [Kaspersky 原始扫描日志](https://github.com/PascalePaF/wechat-wecom-duokai/releases/download/v1.1.6/kaspersky-scan-v1.1.6.txt)：对正式发布原件的扫描记录；
+- [V1.1.6 发布说明](https://github.com/PascalePaF/wechat-wecom-duokai/releases/tag/v1.1.6)：变化、限制和全部附件。
 
 > [!CAUTION]
 > 当前版本没有受公共信任的 Authenticode 代码签名，首次运行可能出现“未知发布者”、SmartScreen 或
@@ -83,33 +83,33 @@
 | 官方客户端校验 | 自动定位或手动选择后，核对文件名、产品信息和腾讯数字签名 |
 | 本地数据 | 设置、主题、诊断、恢复证据和更新临时文件统一位于程序目录 `data` |
 | 日间与舒适夜间主题 | 支持跟随 Windows、固定日间或固定夜间；图标背景与状态色同步适配 |
-| 开机自动启动 | 可选当前用户登录 Windows 后启动助手；可同时选择最小化，不会自动打开微信或企业微信 |
+| 开机自动启动 | 可选登录 Windows 后启动助手并最小化；重复点击快捷方式会唤回窗口，不会自动打开客户端 |
 | 比例界面 | 901×513 起自由缩放到最大化，支持 Per-Monitor V2 DPI，不使用外层滚动条 |
 | 确认式一键更新 | 可选发现版本后自动下载并校验；安装仍需确认，支持验证缓存复用、独立安装进程与失败回滚 |
 | 可核验发布 | 源码标签、干净 Windows CI、哈希、SPDX SBOM、UI 回归矩阵与扫描日志公开 |
 
-## V1.1.5 更新
+## V1.1.6 更新
 
-- 设置新增当前用户“开机后自动启动”，可选自动启动时最小化；只启动助手，不会自动打开客户端；
-- 绿色版移动后会修复由本程序拥有的启动路径；遇到第三方同名值会保留外部设置，卸载也只删除精确归属项；
-- 更新检查在设置中显示上次成功与下次计划；可选发现新版后自动下载并完成多重 SHA-256 校验；
-- 已验证更新包可安全复用，减少重复下载；安装前和执行前仍分别确认、重算哈希，不做静默覆盖；
-- 设置页在 901×513 最小尺寸重新压缩信息层级，日间/夜间均无裁切，并补齐启动项、缓存篡改与清理边界测试。
+- 自动检查更新在助手持续运行期间也会按计划继续执行；关闭开关后不启动待执行的检查；
+- 安装版和绿色版的开机启动项不再互相覆盖或删除；切换到另一份程序时需明确确认；
+- 开机最小化后再次点击快捷方式会唤回现有窗口；
+- 设置文件写入时保留备份，普通安装覆盖也增加暂存、失败回滚与断电后的原目录重试保护；
+- 主界面布局保持不变，新增长时间运行、双副本、备份恢复和安装故障注入测试。
 
 完整变化见 [CHANGELOG.md](CHANGELOG.md)。
 
 <details>
 <summary><strong>查看夜间主题、设置页和大尺寸适配</strong></summary>
 
-![V1.1.5 夜间主题](docs/assets/v1.1.5-main-dark-901x513.png)
+![V1.1.6 夜间主题](docs/assets/v1.1.6-main-dark-901x513.png)
 
-![V1.1.5 设置页](docs/assets/v1.1.5-settings-light-901x513.png)
+![V1.1.6 设置页](docs/assets/v1.1.6-settings-light-901x513.png)
 
-![V1.1.5 软件介绍页](docs/assets/v1.1.5-about-light-901x513.png)
+![V1.1.6 软件介绍页](docs/assets/v1.1.6-about-light-901x513.png)
 
-![V1.1.5 1920×1080 夜间界面](docs/assets/v1.1.5-main-dark-1920x1080.png)
+![V1.1.6 1920×1080 夜间界面](docs/assets/v1.1.6-main-dark-1920x1080.png)
 
-![V1.1.5 3440×1392 超宽屏界面](docs/assets/v1.1.5-main-ultrawide-light-3440x1392.png)
+![V1.1.6 3440×1392 超宽屏界面](docs/assets/v1.1.6-main-ultrawide-light-3440x1392.png)
 
 </details>
 
@@ -117,13 +117,15 @@
 
 ### 安装版
 
-1. 运行 `wechat_duokai-setup-v1.1.5.exe`；
+1. 运行 `wechat_duokai-setup-v1.1.6.exe`；
 2. 点击“选择文件夹”，选择或新建专用安装目录；
 3. 选择是否创建桌面快捷方式，然后点击“立即安装”；
 4. 如果旧版正在运行，安装器会询问是否关闭对应目录中的助手后覆盖；
 5. 安装完成后不会自行启动，只有点击“确认并启动”才会运行。
 
-![V1.1.5 安装器](docs/assets/v1.1.5-installer-light.png)
+![V1.1.6 安装器](docs/assets/v1.1.6-installer-light.png)
+
+如果安装过程中断电或被强制结束，助手会提示安装未完成，不会运行可能混合了新旧文件的程序。重新运行同版本或更新版本的正式安装包，并选择原安装目录即可完成安装。
 
 ### 绿色版
 
@@ -133,8 +135,8 @@
 ### 一键更新
 
 版本检查优先读取本项目 GitHub Release 的静态 `update-manifest.json`，不依赖未登录 API 的每小时
-60 次配额。自动检查成功后缓存 24 小时，启动时随机错峰 30–300 秒，失败按 1/6/24 小时退避；手动检查
-始终立即执行。
+60 次配额。自动检查成功后缓存 24 小时，启动时随机错峰 30–300 秒；助手持续运行时到期会继续检查，
+失败按 1/6/24 小时退避。关闭自动检查后不发起待执行的检查；手动检查始终立即执行。
 
 默认只有用户确认后才会下载 `SHA256SUMS.txt` 和对应安装包；也可以在设置中开启“发现后自动下载并校验”。
 自动下载只准备经过验证的更新包，不会静默执行。静态清单、校验文件与本机下载必须一致；GitHub API
@@ -166,7 +168,7 @@
 
 | 路径 | 内容 |
 | --- | --- |
-| `data\settings.ini` | 共用目标数量、已验证客户端路径、启动与更新偏好 |
+| `data\settings.ini` / `settings.ini.bak` | 共用目标数量、已验证客户端路径、启动与更新偏好及上次完整备份 |
 | `data\theme.ini` | 主题偏好 |
 | `data\update-state.ini` | 更新检查缓存与退避状态 |
 | `data\diagnostics` | 用户主动生成的本地诊断报告 |
@@ -195,17 +197,17 @@ Windows 用户的标准 `Run` 启动项；除这一项和安装版已有的卸�
 
 安全资料：
 
-- [V1.1.5 完整安全审计报告](docs/微窗助手_V1.1.5_完整安全审计报告.txt)
-- [V1.1.5 一键更新安全验证报告](docs/V1.1.5-一键更新安全验证报告.md)
-- [V1.1.5 全项目自查报告](docs/V1.1.5-全项目自查报告.md)
-- [V1.1.5 UI 回归矩阵](docs/V1.1.5-UI回归矩阵.md)
+- [V1.1.6 完整安全审计报告](docs/微窗助手_V1.1.6_完整安全审计报告.txt)
+- [V1.1.6 更新与安装安全验证报告](docs/V1.1.6-一键更新安全验证报告.md)
+- [V1.1.6 全项目自查报告](docs/V1.1.6-全项目自查报告.md)
+- [V1.1.6 UI 回归矩阵](docs/V1.1.6-UI回归矩阵.md)
 - [源码与旧版二进制安全审计（历史）](SECURITY-AUDIT.md)
 - [旧版 EXE 硬编码路径说明](docs/旧版EXE硬编码路径说明与风险评估报告.txt)
 
 ### 在 Windows 中核对 SHA-256
 
 ```powershell
-Get-FileHash .\wechat_duokai-setup-v1.1.5.exe -Algorithm SHA256
+Get-FileHash .\wechat_duokai-setup-v1.1.6.exe -Algorithm SHA256
 ```
 
 将结果与同一 Release 中的 `SHA256SUMS.txt` 比较。文件名相同但哈希不同，不要运行。
@@ -270,7 +272,7 @@ Get-FileHash .\wechat_duokai-setup-v1.1.5.exe -Algorithm SHA256
 1. **删除程序与全部发布包，保留源码**：删除已验证安装目录、快捷方式、安装包、绿色版和助手设置；
 2. **全部删除，包括源码与全部发布包**：只有源码目录带正确标记且结构匹配时可选，还需要额外复选和确认。
 
-![V1.1.5 完整卸载器](docs/assets/v1.1.5-uninstaller-light.png)
+![V1.1.6 完整卸载器](docs/assets/v1.1.6-uninstaller-light.png)
 
 ## 兼容性与限制
 
@@ -289,10 +291,10 @@ Get-FileHash .\wechat_duokai-setup-v1.1.5.exe -Algorithm SHA256
 ```powershell
 MSBuild .\duokai.sln /restore /t:Rebuild /p:Configuration=Release
 .\tests\bin\Release\net48\WechatDuokai.Tests.exe
-PowerShell -ExecutionPolicy Bypass -File .\build-release.ps1 -Version 1.1.5
+PowerShell -ExecutionPolicy Bypass -File .\build-release.ps1 -Version 1.1.6
 ```
 
-产物位于 `artifacts\V1.1.5`。构建脚本会重新编译、执行测试、分别打包 setup/cleanup、生成绿色版、
+产物位于 `artifacts\V1.1.6`。构建脚本会重新编译、执行测试、分别打包 setup/cleanup、生成绿色版、
 发布清单、静态更新清单和 SHA-256。GitHub Actions 会在全新的 Windows Server 2022 环境重复构建，
 复核哈希并生成、验证 SPDX 2.2 SBOM。
 
@@ -313,11 +315,12 @@ PowerShell -ExecutionPolicy Bypass -File .\build-release.ps1 -Version 1.1.5
 ├─ DiagnosticReportService        只写本地诊断报告
 ├─ ReleaseUpdateChecker           静态清单优先、严格 URL/大小和可选 GitHub digest
 ├─ UpdateCheckSchedule            缓存、错峰、退避和 Retry-After
+├─ AutomaticUpdateCoordinator     长时间运行的到期检查与开关/并发控制
 ├─ ApplicationUpdateService       自动准备、验证缓存复用、多重校验、事务更新和安装器交接
-└─ WindowsStartupIntegration      当前用户启动项、移动修复、外部冲突保护和精确清理
+└─ WindowsStartupIntegration      当前用户启动项、副本归属、确认式切换和精确清理
 
 发布程序
-├─ setup                           安装、覆盖、安装版/绿色版事务更新和失败回滚
+├─ setup                           安装、覆盖、断点重试、安装版/绿色版事务更新和失败回滚
 ├─ cleanup                         卸载、完整清理和临时工作进程自删除
 ├─ build-release.ps1               重编译、测试、组包、清单和哈希
 └─ GitHub Actions                  干净 Windows 重建、哈希复核和 SPDX SBOM
@@ -327,9 +330,9 @@ PowerShell -ExecutionPolicy Bypass -File .\build-release.ps1 -Version 1.1.5
 
 ## 反馈与贡献
 
-- 功能建议、兼容性问题和缺陷请提交到 [Issues](https://github.com/PascalePaF/wechat-wecom-duokai/issues)；
+- 功能建议、兼容性问题和缺陷请通过 [Issues 表单](https://github.com/PascalePaF/wechat-wecom-duokai/issues/new/choose) 提交；
 - 报告问题时建议提供 Windows 版本、微信/企业微信版本、复现步骤和实际提示；
-- 诊断报告分享前请自行检查并遮盖不希望公开的本地路径；
+- 诊断报告分享前请自行检查并遮盖本地路径、账号、聊天、联系人和组织资料；
 - 欢迎提交 Pull Request。涉及进程、注册表、更新或删除边界的修改，应同时补充自动化测试和安全说明。
 
 ## 项目来源与许可证

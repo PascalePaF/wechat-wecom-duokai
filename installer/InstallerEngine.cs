@@ -27,6 +27,9 @@ namespace WechatDuokai.Installer
         internal const string PortableMarkerValue = "wechat-duokai-portable:c4ad4e76-7449-4f7b-9ab7-5b9379dd3631";
         internal const string InstallMarkerName = ".wechat-duokai-install";
         internal const string InstallMarkerValue = "wechat-duokai-install:e14d0ef8-9e2f-4020-899c-68aa4d04fa2c";
+        internal const string PendingInstallMarkerName = ".wechat-duokai-install-pending";
+        internal const string PendingInstallMarkerValue =
+            "wechat-duokai-install-pending:2dbd593b-48a3-4ef1-aac7-743387420745";
         internal const string UserDataMarkerName = ".wechat-duokai-user-data";
         internal const string UserDataMarkerValue = "wechat-duokai-user-data:b492a149-7644-42ca-b815-a0c11b69d07b";
 
@@ -125,26 +128,11 @@ namespace WechatDuokai.Installer
                 throw new InvalidOperationException(validationError);
             }
 
-            Directory.CreateDirectory(installDirectory);
-            File.WriteAllText(Path.Combine(installDirectory, InstallMarkerName), InstallMarkerValue, Encoding.UTF8);
-            PrepareInstalledDataDirectory(installDirectory);
+            ApplyInstallPayloadTransaction(installDirectory, 0, true);
 
             var installedExecutable = GetInstalledExecutable(installDirectory);
             var installedUninstaller = GetInstalledUninstaller(installDirectory);
 
-            ExtractResource("Payload.wechat_duokai.exe", installedExecutable);
-            ExtractResource("Payload.wechat_duokai.exe.config", installedExecutable + ".config");
-            ExtractResource("Payload.WechatDuokai.Core.dll", Path.Combine(installDirectory, "WechatDuokai.Core.dll"));
-            ExtractResource("Payload.LICENSE.txt", Path.Combine(installDirectory, "LICENSE.txt"));
-            ExtractResource("Payload.README.md", Path.Combine(installDirectory, "README.md"));
-            ExtractResource("Payload.SECURITY-AUDIT.md", Path.Combine(installDirectory, "SECURITY-AUDIT.md"));
-            ExtractResource("Payload.release-notes.md", Path.Combine(installDirectory, "版本说明.md"));
-            ExtractResource("Payload.security-report.txt",
-                Path.Combine(installDirectory, "完整安全审计与卡巴斯基告警调查报告.txt"));
-            ExtractResource("Payload.update-validation.md", Path.Combine(installDirectory, "一键更新安全验证报告.md"));
-            ExtractResource("Payload.project-audit.md", Path.Combine(installDirectory, "全项目自查报告.md"));
-
-            ExtractResource("Payload.wechat_duokai-cleanup.exe", installedUninstaller);
             var legacyUninstaller = GetLegacyUninstaller(installDirectory);
             if (File.Exists(legacyUninstaller) && !PathsEqual(legacyUninstaller, InstallerExecutablePath))
             {
@@ -353,6 +341,64 @@ namespace WechatDuokai.Installer
                 failAfterReplacement);
         }
 
+        internal static void ApplyInstallPayloadTransactionForTests(string targetDirectory,
+            int failAfterReplacement)
+        {
+            ApplyInstallPayloadTransaction(targetDirectory, failAfterReplacement, false);
+        }
+
+        private static void ApplyInstallPayloadTransaction(string installDirectory,
+            int failAfterReplacement, bool migrateLegacy)
+        {
+            var wasInstalled = ValidateInstallDirectory(installDirectory);
+            var directoryAlreadyExisted = Directory.Exists(installDirectory);
+            Directory.CreateDirectory(installDirectory);
+            var pendingMarker = Path.Combine(installDirectory, PendingInstallMarkerName);
+            var payloadCommitted = false;
+            var pendingCreatedThisAttempt = false;
+            try
+            {
+                if (File.Exists(pendingMarker))
+                {
+                    if (!ValidateMarkedDirectory(installDirectory, PendingInstallMarkerName,
+                            PendingInstallMarkerValue))
+                        throw new InvalidDataException("安装中断标记不完整，未覆盖目标目录。");
+                }
+                else
+                {
+                    WriteDurableMarker(pendingMarker, PendingInstallMarkerValue, true);
+                    pendingCreatedThisAttempt = true;
+                }
+                PrepareInstalledDataDirectory(installDirectory);
+                ApplyPayloadTransaction(installDirectory, UpdateTargetMode.Installed,
+                    failAfterReplacement);
+                payloadCommitted = true;
+                WriteDurableMarker(Path.Combine(installDirectory, InstallMarkerName),
+                    InstallMarkerValue, false);
+                if (migrateLegacy)
+                    MigrateLegacyUserData(GetInstalledDataDirectory(installDirectory));
+                File.Delete(pendingMarker);
+            }
+            catch (Exception ex)
+            {
+                if (!payloadCommitted && pendingCreatedThisAttempt &&
+                    !(ex is PayloadRollbackIncompleteException))
+                {
+                    try
+                    {
+                        if (File.Exists(pendingMarker)) File.Delete(pendingMarker);
+                    }
+                    catch (IOException)
+                    {
+                        // Keep a blocked, recoverable target if the pending marker is locked.
+                    }
+                    if (!wasInstalled)
+                        CleanupAbortedFreshInstall(installDirectory, directoryAlreadyExisted);
+                }
+                throw;
+            }
+        }
+
         private static void ApplyPayloadTransaction(string targetDirectory,
             UpdateTargetMode mode, int failAfterReplacement)
         {
@@ -373,6 +419,7 @@ namespace WechatDuokai.Installer
 
             var payloads = GetUpdatePayloads(mode).ToArray();
             var replaced = new List<ReplacedPayload>();
+            var preserveRecoveryFiles = false;
             try
             {
                 foreach (var payload in payloads)
@@ -400,6 +447,9 @@ namespace WechatDuokai.Installer
                     var existed = File.Exists(targetPath);
                     if (existed)
                     {
+                        if ((File.GetAttributes(targetPath) & FileAttributes.ReparsePoint) != 0)
+                            throw new InvalidDataException("目标程序文件不能是符号链接或重解析点：" +
+                                                           payload.RelativePath);
                         File.Replace(stagedPath, targetPath, backupPath, true);
                     }
                     else
@@ -437,15 +487,19 @@ namespace WechatDuokai.Installer
                 }
                 if (rollbackError != null)
                 {
-                    throw new IOException("更新和自动回滚都未能完整完成。请从 GitHub Release 手动覆盖安装。",
+                    preserveRecoveryFiles = true;
+                    throw new PayloadRollbackIncompleteException("更新和自动回滚都未能完整完成。请从 GitHub Release 手动覆盖安装。",
                         new AggregateException(updateError, rollbackError));
                 }
                 throw;
             }
             finally
             {
-                DeleteOwnedWorkingDirectory(staging, updatesRoot);
-                DeleteOwnedWorkingDirectory(backup, updatesRoot);
+                if (!preserveRecoveryFiles)
+                {
+                    DeleteOwnedWorkingDirectory(staging, updatesRoot);
+                    DeleteOwnedWorkingDirectory(backup, updatesRoot);
+                }
             }
         }
 
@@ -812,6 +866,14 @@ namespace WechatDuokai.Installer
             internal bool Existed { get; set; }
         }
 
+        private sealed class PayloadRollbackIncompleteException : IOException
+        {
+            internal PayloadRollbackIncompleteException(string message, Exception inner)
+                : base(message, inner)
+            {
+            }
+        }
+
         private static void PrepareInstalledDataDirectory(string installDirectory)
         {
             var dataDirectory = GetInstalledDataDirectory(installDirectory);
@@ -824,7 +886,52 @@ namespace WechatDuokai.Installer
 
             File.WriteAllText(Path.Combine(dataDirectory, UserDataMarkerName),
                 UserDataMarkerValue, Encoding.UTF8);
-            MigrateLegacyUserData(dataDirectory);
+        }
+
+        private static void WriteDurableMarker(string path, string value, bool createNew)
+        {
+            var bytes = Encoding.UTF8.GetBytes(value);
+            using (var output = new FileStream(path,
+                       createNew ? FileMode.CreateNew : FileMode.Create, FileAccess.Write,
+                       FileShare.None, 4096, FileOptions.WriteThrough))
+            {
+                output.Write(bytes, 0, bytes.Length);
+                output.Flush(true);
+            }
+        }
+
+        private static void CleanupAbortedFreshInstall(string installDirectory,
+            bool directoryAlreadyExisted)
+        {
+            try
+            {
+                var dataDirectory = GetInstalledDataDirectory(installDirectory);
+                if (ValidateMarkedDirectory(dataDirectory, UserDataMarkerName,
+                        UserDataMarkerValue))
+                {
+                    var updatesDirectory = Path.Combine(dataDirectory, "updates");
+                    if (Directory.Exists(updatesDirectory) &&
+                        (new DirectoryInfo(updatesDirectory).Attributes & FileAttributes.ReparsePoint) == 0 &&
+                        !Directory.EnumerateFileSystemEntries(updatesDirectory).Any())
+                        Directory.Delete(updatesDirectory, false);
+                    if (Directory.EnumerateFileSystemEntries(dataDirectory).All(path =>
+                            string.Equals(Path.GetFileName(path), UserDataMarkerName,
+                                StringComparison.OrdinalIgnoreCase)))
+                    {
+                        File.Delete(Path.Combine(dataDirectory, UserDataMarkerName));
+                        Directory.Delete(dataDirectory, false);
+                    }
+                }
+
+                if (!directoryAlreadyExisted && Directory.Exists(installDirectory) &&
+                    (new DirectoryInfo(installDirectory).Attributes & FileAttributes.ReparsePoint) == 0 &&
+                    !Directory.EnumerateFileSystemEntries(installDirectory).Any())
+                    Directory.Delete(installDirectory, false);
+            }
+            catch (Exception)
+            {
+                // Preserve any unexpected user file or incomplete rollback for inspection.
+            }
         }
 
         private static void MigrateLegacyUserData(string destinationDirectory)
@@ -1295,7 +1402,9 @@ namespace WechatDuokai.Installer
 
                     var hasEntries = Directory.EnumerateFileSystemEntries(normalizedPath).Any();
                     var isExistingInstallation = ValidateInstallDirectory(normalizedPath);
-                    if (hasEntries && !isExistingInstallation)
+                    var isInterruptedInstall = ValidateMarkedDirectory(normalizedPath,
+                        PendingInstallMarkerName, PendingInstallMarkerValue);
+                    if (hasEntries && !isExistingInstallation && !isInterruptedInstall)
                     {
                         error = "所选文件夹不是空文件夹。请新建一个专用文件夹，避免覆盖或卸载其他文件。";
                         return false;
@@ -1331,31 +1440,6 @@ namespace WechatDuokai.Installer
             catch (Exception)
             {
                 return false;
-            }
-        }
-
-        private static void ExtractResource(string resourceName, string targetPath)
-        {
-            var assembly = Assembly.GetExecutingAssembly();
-            using (var input = assembly.GetManifestResourceStream(resourceName))
-            {
-                if (input == null)
-                {
-                    throw new InvalidOperationException("安装包缺少资源：" + resourceName);
-                }
-
-                var temporaryPath = targetPath + ".new";
-                using (var output = new FileStream(temporaryPath, FileMode.Create, FileAccess.Write, FileShare.None))
-                {
-                    input.CopyTo(output);
-                    output.Flush(true);
-                }
-
-                if (File.Exists(targetPath))
-                {
-                    File.Delete(targetPath);
-                }
-                File.Move(temporaryPath, targetPath);
             }
         }
 

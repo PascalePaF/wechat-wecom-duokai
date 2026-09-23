@@ -15,6 +15,9 @@ namespace WechatDuokai.Core
         public const string DataFolderName = "data";
         internal const string DataMarkerName = ".wechat-duokai-user-data";
         internal const string DataMarkerValue = "wechat-duokai-user-data:b492a149-7644-42ca-b815-a0c11b69d07b";
+        internal const string PendingInstallMarkerName = ".wechat-duokai-install-pending";
+        internal const string PendingInstallMarkerValue =
+            "wechat-duokai-install-pending:2dbd593b-48a3-4ef1-aac7-743387420745";
 
         private static readonly object SyncRoot = new object();
         private static bool _ready;
@@ -22,6 +25,35 @@ namespace WechatDuokai.Core
         public static string ApplicationDirectory => Path.GetFullPath(AppDomain.CurrentDomain.BaseDirectory);
 
         public static string DataDirectory => Path.Combine(ApplicationDirectory, DataFolderName);
+
+        public static bool IsInstallationPending()
+        {
+            return IsInstallationPending(ApplicationDirectory);
+        }
+
+        internal static bool IsInstallationPending(string applicationDirectory)
+        {
+            var marker = Path.Combine(applicationDirectory, PendingInstallMarkerName);
+            try
+            {
+                // Presence alone blocks launch; an interrupted write may leave partial content.
+                File.GetAttributes(marker);
+                return true;
+            }
+            catch (FileNotFoundException)
+            {
+                return false;
+            }
+            catch (DirectoryNotFoundException)
+            {
+                return false;
+            }
+            catch (Exception)
+            {
+                // A present but unreadable marker is safer to treat as interrupted installation.
+                return true;
+            }
+        }
 
         internal static string LegacyDataDirectory => Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "WechatDuokai");
@@ -36,7 +68,8 @@ namespace WechatDuokai.Core
                 }
 
                 EnsureLocalDirectory(DataDirectory);
-                File.WriteAllText(Path.Combine(DataDirectory, DataMarkerName), DataMarkerValue, Encoding.UTF8);
+                if (!HasValidMarker(DataDirectory))
+                    File.WriteAllText(Path.Combine(DataDirectory, DataMarkerName), DataMarkerValue, Encoding.UTF8);
                 MigrateLegacyFiles(LegacyDataDirectory, DataDirectory);
                 _ready = true;
             }

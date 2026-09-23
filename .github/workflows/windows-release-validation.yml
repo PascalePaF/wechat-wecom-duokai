@@ -23,7 +23,7 @@ jobs:
     runs-on: windows-2022
     timeout-minutes: 30
     env:
-      RELEASE_VERSION: 1.1.5
+      RELEASE_VERSION: 1.1.6
 
     steps:
       - name: Check out the exact source revision
@@ -42,6 +42,17 @@ jobs:
       - name: Build, run tests and create Windows packages
         shell: pwsh
         run: .\build-release.ps1 -Version $env:RELEASE_VERSION
+
+      - name: Exercise a fresh install, manual upgrade and complete uninstall
+        shell: pwsh
+        run: |
+          $runner = Join-Path $env:GITHUB_WORKSPACE 'tests\bin\Release\net48\WechatDuokai.Tests.exe'
+          & $runner --test-install
+          if ($LASTEXITCODE -ne 0) { throw "Fresh install test failed" }
+          & $runner --test-upgrade
+          if ($LASTEXITCODE -ne 0) { throw "Manual upgrade test failed" }
+          & $runner --cleanup-test-install
+          if ($LASTEXITCODE -ne 0) { throw "Cleanup after install test failed" }
 
       - name: Verify published SHA-256 checksums
         shell: pwsh
@@ -116,8 +127,8 @@ jobs:
       - name: Upload tested Windows packages, hashes and SBOM
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: wechat-duokai-v1.1.5-windows-validation
-          path: artifacts/V1.1.5/
+          name: wechat-duokai-v1.1.6-windows-validation
+          path: artifacts/V1.1.6/
           if-no-files-found: error
           include-hidden-files: true
           retention-days: 14

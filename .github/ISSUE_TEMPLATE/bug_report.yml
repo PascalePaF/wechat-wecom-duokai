@@ -1,0 +1,59 @@
+name: 故障与兼容性反馈
+description: 报告无法启动、补开、安装、更新或界面问题
+title: "[故障] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢反馈。请勿公开微信账号、聊天内容、联系人、登录二维码、代理凭据或未经遮盖的诊断报告。
+        遇到安全软件告警时，请保留原始检测名称和文件哈希，不要为了复现而关闭防护。
+  - type: input
+    id: helper_version
+    attributes:
+      label: 微窗助手版本
+      placeholder: 例如 V1.1.6
+    validations:
+      required: true
+  - type: input
+    id: windows_version
+    attributes:
+      label: Windows 版本与缩放比例
+      placeholder: 例如 Windows 11 x64，125%
+    validations:
+      required: true
+  - type: input
+    id: client_version
+    attributes:
+      label: 微信或企业微信版本
+      description: 不涉及客户端时可填写“不适用”。
+      placeholder: 例如微信 4.x / 企业微信 5.x
+    validations:
+      required: true
+  - type: dropdown
+    id: distribution
+    attributes:
+      label: 使用方式
+      options:
+        - 安装版
+        - 绿色免安装版
+        - 从源码运行
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: 复现步骤
+      description: 请写出操作顺序、目标窗口数以及是否已有客户端窗口。
+    validations:
+      required: true
+  - type: textarea
+    id: result
+    attributes:
+      label: 预期结果与实际结果
+    validations:
+      required: true
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: 已脱敏的提示或诊断摘录（可选）
+      description: 粘贴前请检查本机路径、组织信息和任何个人资料。

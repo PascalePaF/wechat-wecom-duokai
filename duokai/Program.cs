@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Windows;
+using System.Windows.Threading;
 using WechatDuokai.Core;
 using WechatDuokai.Presentation;
 
@@ -17,13 +18,14 @@ namespace WechatDuokai.App
             WindowsShellIntegration.TrySetCurrentProcessAppUserModelId(ProductIdentity.MainAppUserModelId);
             var mutexCreated = false;
             using (var mutex = new Mutex(true, "Local\\WechatDuokai.ControlCenter", out mutexCreated))
+            using (var activation = new EventWaitHandle(false, EventResetMode.AutoReset,
+                       SingleInstanceActivation.EventName))
             {
                 if (!mutexCreated)
                 {
                     if (!autoStartLaunch)
                     {
-                        MessageBox.Show("微窗助手已经在运行。", "提示", MessageBoxButton.OK,
-                            MessageBoxImage.Information);
+                        activation.Set();
                     }
                     return 0;
                 }
@@ -36,17 +38,35 @@ namespace WechatDuokai.App
                 {
                     Source = new Uri("Themes/ThemeResources.xaml", UriKind.Relative)
                 });
+                StartupIntegrationResult startupResult = null;
                 try
                 {
+                    if (ApplicationStorage.IsInstallationPending())
+                    {
+                        MessageBox.Show("上次安装尚未完成。请重新运行正式安装包以恢复完整程序文件。",
+                            "安装需要完成", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        return 1;
+                    }
                     ApplicationStorage.EnsureReady();
                     var executablePath = Process.GetCurrentProcess().MainModule?.FileName;
                     WindowsShellIntegration.NotifyIconChanged(executablePath);
                     var runAtStartup = UserPreferences.LoadRunAtWindowsStartup();
+                    var previouslyRegisteredPath = UserPreferences.LoadStartupRegisteredPath();
                     if (!runAtStartup ||
                         new ApplicationUpdateService().DetectCurrentMode() !=
                         ApplicationInstallMode.Unknown)
                     {
-                        WindowsStartupIntegration.Synchronize(runAtStartup, executablePath);
+                        startupResult = WindowsStartupIntegration.Synchronize(runAtStartup,
+                            executablePath, previouslyRegisteredPath);
+                        if (startupResult.Succeeded && !startupResult.Conflict &&
+                            (startupResult.Changed ||
+                             (runAtStartup && !string.Equals(previouslyRegisteredPath,
+                                 executablePath, StringComparison.OrdinalIgnoreCase)) ||
+                             (!runAtStartup && previouslyRegisteredPath != null)))
+                        {
+                            UserPreferences.SaveStartupRegistration(runAtStartup,
+                                runAtStartup ? executablePath : null);
+                        }
                     }
                 }
                 catch (Exception ex)
@@ -68,12 +88,23 @@ namespace WechatDuokai.App
                 };
 
                 var mainWindow = new MainWindow();
+                if (startupResult != null && (!startupResult.Succeeded || startupResult.Conflict))
+                    mainWindow.StartupSynchronizationWarning = startupResult.Message;
                 if (autoStartLaunch && UserPreferences.LoadRunAtWindowsStartup() &&
                     UserPreferences.LoadStartMinimizedOnAutoStart())
                 {
                     mainWindow.WindowState = WindowState.Minimized;
                 }
-                return application.Run(mainWindow);
+                var activationListener = SingleInstanceActivation.Register(activation,
+                    application.Dispatcher, mainWindow);
+                try
+                {
+                    return application.Run(mainWindow);
+                }
+                finally
+                {
+                    activationListener.Unregister(null);
+                }
             }
         }
 
@@ -95,6 +126,30 @@ namespace WechatDuokai.App
             return args != null && !string.IsNullOrWhiteSpace(expected) &&
                    args.Any(value => string.Equals(value, expected,
                        StringComparison.OrdinalIgnoreCase));
+        }
+    }
+
+    internal static class SingleInstanceActivation
+    {
+        internal const string EventName = "Local\\WechatDuokai.ControlCenter.Activate";
+
+        internal static RegisteredWaitHandle Register(EventWaitHandle signal,
+            Dispatcher dispatcher, Window window)
+        {
+            return ThreadPool.RegisterWaitForSingleObject(signal, (state, timedOut) =>
+            {
+                if (!timedOut && !dispatcher.HasShutdownStarted)
+                    dispatcher.BeginInvoke(new Action(() => Restore(window)));
+            }, null, Timeout.Infinite, false);
+        }
+
+        internal static void Restore(Window window)
+        {
+            if (window == null || !window.IsLoaded) return;
+            if (window.WindowState == WindowState.Minimized)
+                window.WindowState = WindowState.Normal;
+            window.Show();
+            window.Activate();
         }
     }
 }

@@ -167,6 +167,52 @@ namespace WechatDuokai.Core
             SaveBooleanPreference(dataDirectory, "RunAtWindowsStartup", enabled);
         }
 
+        public static string LoadStartupRegisteredPath()
+        {
+            return LoadStartupRegisteredPath(DataDirectory);
+        }
+
+        internal static string LoadStartupRegisteredPath(string dataDirectory)
+        {
+            try
+            {
+                var values = LoadValues(dataDirectory);
+                string encoded;
+                return values.TryGetValue("StartupExecutableBase64", out encoded) &&
+                       !string.IsNullOrWhiteSpace(encoded)
+                    ? Path.GetFullPath(Encoding.UTF8.GetString(Convert.FromBase64String(encoded)))
+                    : null;
+            }
+            catch (Exception)
+            {
+                return null;
+            }
+        }
+
+        public static void SaveStartupRegistration(bool enabled, string executablePath)
+        {
+            SaveStartupRegistration(DataDirectory, enabled, executablePath);
+        }
+
+        internal static void SaveStartupRegistration(string dataDirectory, bool enabled,
+            string executablePath)
+        {
+            var values = LoadValues(dataDirectory);
+            values["RunAtWindowsStartup"] = enabled.ToString();
+            if (enabled)
+            {
+                if (string.IsNullOrWhiteSpace(executablePath))
+                    throw new ArgumentException("开机启动程序路径不能为空。", nameof(executablePath));
+                values["StartupExecutableBase64"] = Convert.ToBase64String(
+                    Encoding.UTF8.GetBytes(Path.GetFullPath(executablePath)));
+            }
+            else
+            {
+                values.Remove("StartupExecutableBase64");
+            }
+            SaveValues(dataDirectory, values);
+        }
+
         public static bool LoadStartMinimizedOnAutoStart()
         {
             return LoadStartMinimizedOnAutoStart(DataDirectory);
@@ -226,8 +272,24 @@ namespace WechatDuokai.Core
         {
             var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             var settingsPath = Path.Combine(dataDirectory, "settings.ini");
-            if (!HasValidMarker(dataDirectory) || !File.Exists(settingsPath)) return result;
-            foreach (var line in File.ReadAllLines(settingsPath, Encoding.UTF8))
+            if (!HasValidMarker(dataDirectory)) return result;
+            var backupPath = settingsPath + ".bak";
+            if (!File.Exists(settingsPath) && !File.Exists(backupPath)) return result;
+            string[] lines;
+            try
+            {
+                lines = File.ReadAllLines(File.Exists(settingsPath) ? settingsPath : backupPath,
+                    Encoding.UTF8);
+            }
+            catch (IOException) when (File.Exists(backupPath))
+            {
+                lines = File.ReadAllLines(backupPath, Encoding.UTF8);
+            }
+            catch (UnauthorizedAccessException) when (File.Exists(backupPath))
+            {
+                lines = File.ReadAllLines(backupPath, Encoding.UTF8);
+            }
+            foreach (var line in lines)
             {
                 var separator = line.IndexOf('=');
                 if (separator <= 0) continue;
@@ -239,9 +301,11 @@ namespace WechatDuokai.Core
         private static void SaveValues(string dataDirectory, IDictionary<string, string> values)
         {
             Directory.CreateDirectory(dataDirectory);
-            File.WriteAllText(Path.Combine(dataDirectory, DataMarkerName), DataMarkerValue, Encoding.UTF8);
+            if (!HasValidMarker(dataDirectory))
+                File.WriteAllText(Path.Combine(dataDirectory, DataMarkerName), DataMarkerValue, Encoding.UTF8);
             var settingsPath = Path.Combine(dataDirectory, "settings.ini");
-            var temporaryPath = settingsPath + ".new";
+            var temporaryPath = settingsPath + "." + Guid.NewGuid().ToString("N") + ".new";
+            var backupPath = settingsPath + ".bak";
             var lines = new List<string>();
             string target;
             if (values.TryGetValue("TargetInstanceCount", out target)) lines.Add("TargetInstanceCount=" + target);
@@ -259,6 +323,9 @@ namespace WechatDuokai.Core
             string runAtStartup;
             if (values.TryGetValue("RunAtWindowsStartup", out runAtStartup))
                 lines.Add("RunAtWindowsStartup=" + runAtStartup);
+            string startupExecutable;
+            if (values.TryGetValue("StartupExecutableBase64", out startupExecutable))
+                lines.Add("StartupExecutableBase64=" + startupExecutable);
             string startMinimized;
             if (values.TryGetValue("StartMinimizedOnAutoStart", out startMinimized))
                 lines.Add("StartMinimizedOnAutoStart=" + startMinimized);
@@ -266,9 +333,37 @@ namespace WechatDuokai.Core
             if (values.TryGetValue("WeChatExecutableBase64", out weChat)) lines.Add("WeChatExecutableBase64=" + weChat);
             string weCom;
             if (values.TryGetValue("WeComExecutableBase64", out weCom)) lines.Add("WeComExecutableBase64=" + weCom);
-            File.WriteAllLines(temporaryPath, lines, Encoding.UTF8);
-            if (File.Exists(settingsPath)) File.Delete(settingsPath);
-            File.Move(temporaryPath, settingsPath);
+            try
+            {
+                using (var output = new FileStream(temporaryPath, FileMode.CreateNew,
+                           FileAccess.Write, FileShare.None, 4096, FileOptions.WriteThrough))
+                using (var writer = new StreamWriter(output, Encoding.UTF8, 1024, true))
+                {
+                    foreach (var line in lines) writer.WriteLine(line);
+                    writer.Flush();
+                    output.Flush(true);
+                }
+
+                if (File.Exists(settingsPath))
+                {
+                    File.Replace(temporaryPath, settingsPath, backupPath, true);
+                }
+                else
+                {
+                    File.Move(temporaryPath, settingsPath);
+                }
+            }
+            finally
+            {
+                try
+                {
+                    if (File.Exists(temporaryPath)) File.Delete(temporaryPath);
+                }
+                catch (IOException)
+                {
+                    // A failed save must not discard the previous settings file.
+                }
+            }
         }
 
         private static bool LoadBooleanPreference(string dataDirectory, string key,

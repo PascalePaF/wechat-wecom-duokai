@@ -16,6 +16,8 @@ namespace WechatDuokai.Presentation
         internal bool Conflict { get; set; }
 
         internal string Message { get; set; }
+
+        internal string ExistingOwnedCommand { get; set; }
     }
 
     internal static class WindowsStartupIntegration
@@ -24,14 +26,23 @@ namespace WechatDuokai.Presentation
         internal const string ValueName = "WechatDuokai";
         internal const string AutoStartArgument = "--autostart";
 
-        internal static StartupIntegrationResult Synchronize(bool enabled, string executablePath)
+        internal static StartupIntegrationResult Synchronize(bool enabled, string executablePath,
+            string previouslyRegisteredPath)
         {
-            return SynchronizeCore(RunKeyPath, ValueName, enabled, executablePath);
+            return SynchronizeCore(RunKeyPath, ValueName, enabled, executablePath,
+                previouslyRegisteredPath);
         }
 
         internal static bool RemoveIfOwnedByExactExecutables(IEnumerable<string> executablePaths)
         {
             return RemoveIfOwnedByExactExecutablesCore(RunKeyPath, ValueName, executablePaths);
+        }
+
+        internal static StartupIntegrationResult ReplaceOwnedStartupIfUnchanged(
+            string expectedExistingCommand, string executablePath)
+        {
+            return ReplaceOwnedStartupIfUnchangedCore(RunKeyPath, ValueName,
+                expectedExistingCommand, executablePath);
         }
 
         internal static bool TryParseOwnedCommand(string command, out string executablePath)
@@ -87,7 +98,8 @@ namespace WechatDuokai.Presentation
         }
 
         internal static StartupIntegrationResult SynchronizeCore(string registryPath,
-            string valueName, bool enabled, string executablePath)
+            string valueName, bool enabled, string executablePath,
+            string previouslyRegisteredPath)
         {
             try
             {
@@ -107,9 +119,12 @@ namespace WechatDuokai.Presentation
 
                     var current = key.GetValue(valueName, null,
                         RegistryValueOptions.DoNotExpandEnvironmentNames) as string;
-                    string ownedExecutable;
+                    string ownedExecutable = null;
                     var hasCurrent = !string.IsNullOrWhiteSpace(current);
                     var isOwned = hasCurrent && TryParseOwnedCommand(current, out ownedExecutable);
+                    var isCurrentCopy = isOwned && PathsEqual(ownedExecutable, executablePath);
+                    var isPreviousLocation = isOwned &&
+                                             PathsEqual(ownedExecutable, previouslyRegisteredPath);
                     if (hasCurrent && !isOwned)
                     {
                         return new StartupIntegrationResult
@@ -125,7 +140,7 @@ namespace WechatDuokai.Presentation
 
                     if (!enabled)
                     {
-                        if (isOwned)
+                        if (isCurrentCopy || isPreviousLocation)
                         {
                             key.DeleteValue(valueName, false);
                         }
@@ -133,8 +148,25 @@ namespace WechatDuokai.Presentation
                         {
                             Succeeded = true,
                             Enabled = false,
-                            Changed = isOwned,
-                            Message = isOwned ? "已关闭开机自动启动" : "开机自动启动已处于关闭状态"
+                            Changed = isCurrentCopy || isPreviousLocation,
+                            Conflict = isOwned && !isCurrentCopy && !isPreviousLocation,
+                            Message = isCurrentCopy || isPreviousLocation
+                                ? "已关闭开机自动启动"
+                                : isOwned
+                                    ? "另一份微窗助手占用开机启动项；已保留对方设置。"
+                                    : "开机自动启动已处于关闭状态"
+                        };
+                    }
+
+                    if (isOwned && !isCurrentCopy && !isPreviousLocation)
+                    {
+                        return new StartupIntegrationResult
+                        {
+                            Succeeded = false,
+                            Enabled = false,
+                            Conflict = true,
+                            ExistingOwnedCommand = current,
+                            Message = "另一份微窗助手已设置开机启动；未自动改写。可在设置中选择改由当前这份启动。"
                         };
                     }
 
@@ -176,6 +208,68 @@ namespace WechatDuokai.Presentation
                     Enabled = false,
                     Message = "无法修改开机启动设置：" + ex.Message
                 };
+            }
+        }
+
+        internal static StartupIntegrationResult ReplaceOwnedStartupIfUnchangedCore(
+            string registryPath, string valueName, string expectedExistingCommand,
+            string executablePath)
+        {
+            try
+            {
+                var replacement = BuildCommand(executablePath);
+                if (!File.Exists(Path.GetFullPath(executablePath)))
+                    throw new FileNotFoundException("找不到当前微窗助手主程序。", executablePath);
+                string previousExecutable;
+                if (!TryParseOwnedCommand(expectedExistingCommand, out previousExecutable))
+                    throw new InvalidOperationException("原启动项不属于微窗助手，不能替换。");
+
+                using (var key = Registry.CurrentUser.OpenSubKey(registryPath, true))
+                {
+                    var current = key?.GetValue(valueName, null,
+                        RegistryValueOptions.DoNotExpandEnvironmentNames) as string;
+                    if (!string.Equals(current, expectedExistingCommand, StringComparison.Ordinal))
+                    {
+                        return new StartupIntegrationResult
+                        {
+                            Succeeded = false,
+                            Conflict = true,
+                            Message = "确认期间开机启动项已变化；未覆盖新的设置，请重试。"
+                        };
+                    }
+
+                    key.SetValue(valueName, replacement, RegistryValueKind.String);
+                    return new StartupIntegrationResult
+                    {
+                        Succeeded = true,
+                        Enabled = true,
+                        Changed = true,
+                        Message = "已改为由当前这份微窗助手开机启动"
+                    };
+                }
+            }
+            catch (Exception ex)
+            {
+                return new StartupIntegrationResult
+                {
+                    Succeeded = false,
+                    Message = "无法切换开机启动项：" + ex.Message
+                };
+            }
+        }
+
+        private static bool PathsEqual(string left, string right)
+        {
+            if (string.IsNullOrWhiteSpace(left) || string.IsNullOrWhiteSpace(right))
+                return false;
+            try
+            {
+                return string.Equals(Path.GetFullPath(left), Path.GetFullPath(right),
+                    StringComparison.OrdinalIgnoreCase);
+            }
+            catch (Exception)
+            {
+                return false;
             }
         }
 

@@ -40,6 +40,7 @@ namespace WechatDuokai.Tests
                 return SaveUiSnapshot(args[1], args[2], args[3], args.Length >= 6 ? args[4] : null, args.Length >= 6 ? args[5] : null);
             if (args.Length == 1 && args[0] == "--idle") { Thread.Sleep(30000); return 0; }
             if (args.Length == 1 && args[0] == "--test-install") return TestInstall();
+            if (args.Length == 1 && args[0] == "--test-upgrade") return TestUpgrade();
             if (args.Length == 1 && args[0] == "--cleanup-test-install") return CleanupTestInstall();
 
             try
@@ -48,7 +49,9 @@ namespace WechatDuokai.Tests
                 Run("Null application has zero instances", () =>
                     Assert(new InstanceManager().GetInstanceCount(null) == 0, "Expected zero."));
                 Run("Shared target count migrates V1.0.6 preferences and survives a restart", TestPreferenceRoundTrip);
-                Run("Per-user startup registration repairs moves and preserves conflicts", TestWindowsStartupIntegration);
+                Run("Settings replace atomically and recover from a saved backup", TestPreferenceBackupRecovery);
+                Run("Per-user startup registration distinguishes moved and separate copies", TestWindowsStartupIntegration);
+                Run("A second launch restores the minimized control window", TestSingleInstanceActivation);
                 Run("Footer counts and settings navigation stay live and visible", TestFooterCountsAndSettings);
                 Run("Dark theme uses a restrained palette and theme-aware icon surfaces", TestDarkThemeComfortPalette);
                 Run("Renamed executables cannot impersonate an official client", TestClientExecutableValidation);
@@ -64,10 +67,12 @@ namespace WechatDuokai.Tests
                 Run("Static Release manifests provide quota-free verified update metadata", TestStaticUpdateManifest);
                 Run("Update checks survive an exhausted unauthenticated GitHub API quota", TestRateLimitedUpdateFallback);
                 Run("Automatic update checks cache, stagger and back off locally", TestUpdateCheckSchedule);
+                Run("Automatic checks continue after startup and honor setting changes", TestAutomaticUpdateCoordinator);
                 Run("Verified update downloads reuse only an untampered local cache", TestVerifiedUpdateCache);
                 Run("GitHub networking safely honors explicit HTTP proxy environments", TestNetworkProxyPolicy);
                 Run("Update mode detection accepts only marked install and portable roots", TestUpdateModeDetection);
                 Run("Transactional update preserves data and rolls back interrupted replacement", TestUpdateTransaction);
+                Run("Manual installation rolls back interrupted payload replacement", TestManualInstallTransaction);
                 Run("Cleanup refuses drive roots", () =>
                     Assert(!InstallerEngine.ValidateSourceRoot(Path.GetPathRoot(Environment.SystemDirectory)),
                         "A drive root must never be accepted as a source directory."));
@@ -291,6 +296,51 @@ namespace WechatDuokai.Tests
             }
         }
 
+        private static void TestPreferenceBackupRecovery()
+        {
+            var root = Path.Combine(Path.GetTempPath(),
+                "wechat-duokai-settings-recovery-" + Guid.NewGuid().ToString("N"));
+            try
+            {
+                Directory.CreateDirectory(root);
+                File.WriteAllText(Path.Combine(root, UserPreferences.DataMarkerName),
+                    UserPreferences.DataMarkerValue, Encoding.UTF8);
+                UserPreferences.SaveTargetCount(root, 4);
+                using (var markerReader = new FileStream(
+                           Path.Combine(root, UserPreferences.DataMarkerName), FileMode.Open,
+                           FileAccess.Read, FileShare.Read))
+                {
+                    UserPreferences.SaveAutoCheckForUpdates(root, false);
+                }
+                var settings = Path.Combine(root, "settings.ini");
+                var backup = settings + ".bak";
+                Assert(File.Exists(settings) && File.Exists(backup) &&
+                       File.ReadAllText(backup, Encoding.UTF8).Contains("TargetInstanceCount=4"),
+                    "Saving preferences did not retain the previous complete settings file.");
+
+                File.Delete(settings);
+                Assert(UserPreferences.LoadTargetCount(root) == 4,
+                    "A missing settings file did not recover from its saved backup.");
+                UserPreferences.SaveTargetCount(root, 6);
+                Assert(UserPreferences.LoadTargetCount(root) == 6 && File.Exists(settings),
+                    "Preferences could not be saved after backup recovery.");
+
+                var executable = Path.Combine(root, "wechat_duokai.exe");
+                UserPreferences.SaveStartupRegistration(root, true, executable);
+                Assert(UserPreferences.LoadRunAtWindowsStartup(root) &&
+                       UserPreferences.LoadStartupRegisteredPath(root) == executable,
+                    "The current copy's startup path was not persisted with its setting.");
+                UserPreferences.SaveStartupRegistration(root, false, null);
+                Assert(!UserPreferences.LoadRunAtWindowsStartup(root) &&
+                       UserPreferences.LoadStartupRegisteredPath(root) == null,
+                    "Disabling startup left an ownership path in preferences.");
+            }
+            finally
+            {
+                if (Directory.Exists(root)) Directory.Delete(root, true);
+            }
+        }
+
         private static void TestWindowsStartupIntegration()
         {
             Assert(WechatDuokai.App.Program.HasArgument(
@@ -318,21 +368,60 @@ namespace WechatDuokai.Tests
                     BindingFlags.Static | BindingFlags.NonPublic);
                 var remove = startupType.GetMethod("RemoveIfOwnedByExactExecutablesCore",
                     BindingFlags.Static | BindingFlags.NonPublic);
+                var replaceOwned = startupType.GetMethod("ReplaceOwnedStartupIfUnchangedCore",
+                    BindingFlags.Static | BindingFlags.NonPublic);
                 var build = startupType.GetMethod("BuildCommand",
                     BindingFlags.Static | BindingFlags.NonPublic);
-                Assert(synchronize != null && remove != null && build != null,
+                Assert(synchronize != null && remove != null && replaceOwned != null &&
+                       build != null,
                     "Startup integration test hooks are unavailable.");
 
                 var created = synchronize.Invoke(null,
-                    new object[] { registryPath, valueName, true, first });
+                    new object[] { registryPath, valueName, true, first, null });
                 Assert(GetInternalBoolean(created, "Succeeded") &&
                        GetInternalBoolean(created, "Enabled") &&
                        GetInternalBoolean(created, "Changed"),
                     "A valid current-user startup entry was not created.");
 
-                var repaired = synchronize.Invoke(null,
-                    new object[] { registryPath, valueName, true, second });
+                var separateCopy = synchronize.Invoke(null,
+                    new object[] { registryPath, valueName, true, second, null });
+                var separateCopyDisabled = synchronize.Invoke(null,
+                    new object[] { registryPath, valueName, false, second, null });
+                var expectedFirst = (string)build.Invoke(null, new object[] { first });
+                using (var key = Registry.CurrentUser.OpenSubKey(registryPath, false))
+                {
+                    Assert(!GetInternalBoolean(separateCopy, "Succeeded") &&
+                           GetInternalBoolean(separateCopy, "Conflict") &&
+                           GetInternalBoolean(separateCopyDisabled, "Conflict") &&
+                           string.Equals(key?.GetValue(valueName) as string, expectedFirst,
+                               StringComparison.Ordinal),
+                        "A second portable copy changed the first copy's startup registration.");
+                }
+
+                var observedCommand = separateCopy.GetType().GetProperty("ExistingOwnedCommand",
+                    BindingFlags.Instance | BindingFlags.NonPublic)?.GetValue(separateCopy) as string;
+                Assert(string.Equals(observedCommand, expectedFirst, StringComparison.Ordinal),
+                    "A same-product startup conflict did not retain the observed value for consent.");
+                var approvedSwitch = replaceOwned.Invoke(null,
+                    new object[] { registryPath, valueName, observedCommand, second });
                 var expectedSecond = (string)build.Invoke(null, new object[] { second });
+                using (var key = Registry.CurrentUser.OpenSubKey(registryPath, true))
+                {
+                    Assert(GetInternalBoolean(approvedSwitch, "Succeeded") &&
+                           string.Equals(key?.GetValue(valueName) as string, expectedSecond,
+                               StringComparison.Ordinal),
+                        "Explicitly approved startup switching did not target the current copy.");
+                    var staleSwitch = replaceOwned.Invoke(null,
+                        new object[] { registryPath, valueName, observedCommand, first });
+                    Assert(!GetInternalBoolean(staleSwitch, "Succeeded") &&
+                           string.Equals(key?.GetValue(valueName) as string, expectedSecond,
+                               StringComparison.Ordinal),
+                        "A changed startup value was overwritten after an outdated confirmation.");
+                    key?.SetValue(valueName, expectedFirst, RegistryValueKind.String);
+                }
+
+                var repaired = synchronize.Invoke(null,
+                    new object[] { registryPath, valueName, true, second, first });
                 using (var key = Registry.CurrentUser.OpenSubKey(registryPath, false))
                 {
                     Assert(GetInternalBoolean(repaired, "Succeeded") &&
@@ -348,12 +437,12 @@ namespace WechatDuokai.Tests
                         RegistryValueKind.String);
                 }
                 var conflict = synchronize.Invoke(null,
-                    new object[] { registryPath, valueName, true, second });
+                    new object[] { registryPath, valueName, true, second, first });
                 Assert(!GetInternalBoolean(conflict, "Succeeded") &&
                        GetInternalBoolean(conflict, "Conflict"),
                     "An unrelated same-name startup entry was overwritten.");
                 var disabledConflict = synchronize.Invoke(null,
-                    new object[] { registryPath, valueName, false, second });
+                    new object[] { registryPath, valueName, false, second, first });
                 using (var key = Registry.CurrentUser.OpenSubKey(registryPath, false))
                 {
                     Assert(GetInternalBoolean(disabledConflict, "Succeeded") &&
@@ -394,6 +483,56 @@ namespace WechatDuokai.Tests
             var property = target?.GetType().GetProperty(propertyName,
                 BindingFlags.Instance | BindingFlags.NonPublic);
             return property != null && (bool)property.GetValue(target);
+        }
+
+        private static void TestSingleInstanceActivation()
+        {
+            var window = new Window
+            {
+                Width = 300,
+                Height = 200,
+                Left = -10000,
+                Top = -10000,
+                ShowInTaskbar = false
+            };
+            try
+            {
+                window.Show();
+                window.WindowState = WindowState.Minimized;
+                var eventName = "Local\\WechatDuokai.Tests.Activate." +
+                                Guid.NewGuid().ToString("N");
+                using (var firstCopy = new EventWaitHandle(false,
+                           EventResetMode.AutoReset, eventName))
+                {
+                    var listener = WechatDuokai.App.SingleInstanceActivation.Register(
+                        firstCopy, window.Dispatcher, window);
+                    try
+                    {
+                        using (var secondCopy = EventWaitHandle.OpenExisting(eventName))
+                            secondCopy.Set();
+                        var deadline = DateTime.UtcNow.AddSeconds(3);
+                        while (window.WindowState == WindowState.Minimized &&
+                               DateTime.UtcNow < deadline)
+                        {
+                            var frame = new DispatcherFrame();
+                            window.Dispatcher.BeginInvoke(new Action(() =>
+                                frame.Continue = false), DispatcherPriority.ApplicationIdle);
+                            Dispatcher.PushFrame(frame);
+                            Thread.Sleep(10);
+                        }
+                        Assert(window.WindowState == WindowState.Normal && window.IsVisible,
+                            "A second launch signal did not restore the already-running window.");
+                    }
+                    finally
+                    {
+                        listener.Unregister(null);
+                    }
+                }
+            }
+            finally
+            {
+                window.Close();
+            }
         }
 
         private static void TestFooterCountsAndSettings()
@@ -1425,6 +1564,61 @@ namespace WechatDuokai.Tests
             }
         }
 
+        private static void TestAutomaticUpdateCoordinator()
+        {
+            var root = Path.Combine(Path.GetTempPath(),
+                "wechat-duokai-long-running-update-" + Guid.NewGuid().ToString("N"));
+            var now = new DateTimeOffset(2026, 9, 23, 0, 0, 0, TimeSpan.Zero);
+            var enabled = true;
+            var checks = 0;
+            try
+            {
+                Directory.CreateDirectory(root);
+                var coordinator = new AutomaticUpdateCoordinator(
+                    () => enabled,
+                    () => UpdateCheckSchedule.ShouldCheckAutomatically(root, now),
+                    () =>
+                    {
+                        checks++;
+                        UpdateCheckSchedule.RecordSuccess(root, now, CurrentVersion);
+                        return Task.CompletedTask;
+                    });
+
+                Assert(!coordinator.CheckIfDueAsync().GetAwaiter().GetResult() && checks == 0,
+                    "An update check ran before the startup stagger elapsed.");
+                coordinator.CompleteStartupDelay();
+                Assert(coordinator.CheckIfDueAsync().GetAwaiter().GetResult() && checks == 1,
+                    "The first due update check did not run.");
+                now = now.AddHours(23);
+                Assert(!coordinator.CheckIfDueAsync().GetAwaiter().GetResult(),
+                    "A long-running process ignored the 24-hour interval.");
+                now = now.AddHours(1);
+                enabled = false;
+                Assert(!coordinator.CheckIfDueAsync().GetAwaiter().GetResult() && checks == 1,
+                    "Disabling automatic updates did not cancel a due check.");
+                enabled = true;
+                Assert(coordinator.CheckIfDueAsync().GetAwaiter().GetResult() && checks == 2,
+                    "Re-enabling automatic updates did not start an overdue check.");
+                now = now.AddHours(24);
+                Assert(coordinator.CheckIfDueAsync().GetAwaiter().GetResult() && checks == 3,
+                    "A continuously running process did not check on the following day.");
+
+                var completion = new TaskCompletionSource<bool>();
+                var overlapping = new AutomaticUpdateCoordinator(() => true, () => true,
+                    async () => await completion.Task);
+                overlapping.CompleteStartupDelay();
+                var pending = overlapping.CheckIfDueAsync();
+                Assert(!overlapping.CheckIfDueAsync().GetAwaiter().GetResult(),
+                    "Overlapping automatic checks were not rejected.");
+                completion.SetResult(true);
+                pending.GetAwaiter().GetResult();
+            }
+            finally
+            {
+                DeleteTestDirectoryWithRetries(root);
+            }
+        }
+
         private static void TestVerifiedUpdateCache()
         {
             var root = Path.Combine(Path.GetTempPath(),
@@ -1720,6 +1914,75 @@ namespace WechatDuokai.Tests
             }
         }
 
+        private static void TestManualInstallTransaction()
+        {
+            var root = Path.Combine(Path.GetTempPath(),
+                "wechat-duokai-manual-install-" + Guid.NewGuid().ToString("N"));
+            try
+            {
+                var interruptedFreshInstall = false;
+                try
+                {
+                    InstallerEngine.ApplyInstallPayloadTransactionForTests(root, 1);
+                }
+                catch (IOException)
+                {
+                    interruptedFreshInstall = true;
+                }
+                Assert(interruptedFreshInstall &&
+                       !File.Exists(Path.Combine(root, InstallerEngine.InstallMarkerName)) &&
+                       !Directory.Exists(root),
+                    "A failed fresh install left a falsely marked or non-retryable directory.");
+
+                Assert(InstallerEngine.PendingInstallMarkerName ==
+                           ApplicationStorage.PendingInstallMarkerName &&
+                       InstallerEngine.PendingInstallMarkerValue ==
+                           ApplicationStorage.PendingInstallMarkerValue,
+                    "The installer and application disagree on the interrupted-install marker.");
+                Directory.CreateDirectory(root);
+                File.WriteAllText(Path.Combine(root, InstallerEngine.PendingInstallMarkerName),
+                    InstallerEngine.PendingInstallMarkerValue, Encoding.UTF8);
+                File.WriteAllText(Path.Combine(root, "wechat_duokai.exe"),
+                    "partially-installed", Encoding.UTF8);
+                Assert(ApplicationStorage.IsInstallationPending(root) &&
+                       InstallerEngine.ValidateInstallTarget(root, out _),
+                    "An interrupted fresh install cannot be safely retried.");
+                InstallerEngine.ApplyInstallPayloadTransactionForTests(root, 0);
+                Assert(InstallerEngine.ValidateInstallDirectory(root) &&
+                       !ApplicationStorage.IsInstallationPending(root),
+                    "The successful manual install did not become a valid installation.");
+                var executable = Path.Combine(root, "wechat_duokai.exe");
+                var core = Path.Combine(root, "WechatDuokai.Core.dll");
+                File.WriteAllText(executable, "old-application", Encoding.UTF8);
+                File.WriteAllText(core, "old-core", Encoding.UTF8);
+                var settings = Path.Combine(root, "data", "settings.ini");
+                File.WriteAllText(settings, "existing-settings", Encoding.UTF8);
+                foreach (var failAfter in new[] { 1, 2, 5 })
+                {
+                    var interruptedUpgrade = false;
+                    try
+                    {
+                        InstallerEngine.ApplyInstallPayloadTransactionForTests(root, failAfter);
+                    }
+                    catch (IOException)
+                    {
+                        interruptedUpgrade = true;
+                    }
+                    Assert(interruptedUpgrade &&
+                           File.ReadAllText(executable, Encoding.UTF8) == "old-application" &&
+                           File.ReadAllText(core, Encoding.UTF8) == "old-core" &&
+                           File.ReadAllText(settings, Encoding.UTF8) == "existing-settings" &&
+                           InstallerEngine.ValidateInstallDirectory(root),
+                        "Manual upgrade did not restore the old payload and settings after step " +
+                        failAfter + ".");
+                }
+            }
+            finally
+            {
+                DeleteTestDirectoryWithRetries(root);
+            }
+        }
+
         private static void TestExplicitLaunchPolicy()
         {
             Assert(InstallFlowPolicy.RequiresExplicitLaunchConfirmation, "Explicit confirmation policy must be enabled.");
@@ -1889,9 +2152,31 @@ namespace WechatDuokai.Tests
                 "Installed release documentation is missing.");
             var dataDirectory = InstallerEngine.GetInstalledDataDirectory(result.InstallDirectory);
             Assert(Directory.Exists(dataDirectory) &&
-                   File.Exists(Path.Combine(dataDirectory, InstallerEngine.UserDataMarkerName)),
+                   File.Exists(Path.Combine(dataDirectory, InstallerEngine.UserDataMarkerName)) &&
+                   !File.Exists(Path.Combine(result.InstallDirectory,
+                       InstallerEngine.PendingInstallMarkerName)),
                 "Installer did not create the marked in-directory data folder.");
             Console.WriteLine("PASS: Installer writes the complete application without launching it");
+            return 0;
+        }
+
+        private static int TestUpgrade()
+        {
+            var target = InstallerEngine.DefaultInstallDirectory;
+            Assert(InstallerEngine.ValidateInstallDirectory(target),
+                "Upgrade test requires the verified fresh test installation.");
+            var settings = Path.Combine(target, "data", "settings.ini");
+            File.WriteAllText(settings, "upgrade-preserved-settings", Encoding.UTF8);
+            var core = Path.Combine(target, "WechatDuokai.Core.dll");
+            File.WriteAllText(core, "old-core-payload", Encoding.UTF8);
+            var upgraded = InstallerEngine.Install(false);
+            Assert(InstallerEngine.ValidateInstallDirectory(upgraded.InstallDirectory) &&
+                   FileVersionInfo.GetVersionInfo(core).FileVersion.StartsWith(CurrentVersion,
+                       StringComparison.Ordinal) &&
+                   File.ReadAllText(settings, Encoding.UTF8) == "upgrade-preserved-settings" &&
+                   !File.Exists(Path.Combine(target, InstallerEngine.PendingInstallMarkerName)),
+                "Manual upgrade did not replace the payload and preserve settings.");
+            Console.WriteLine("PASS: Manual upgrade preserves settings and commits the full payload");
             return 0;
         }
 

@@ -1,0 +1,25 @@
+name: 功能与体验建议
+description: 提出界面、兼容性或工作流程的改进想法
+title: "[建议] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        欢迎提出建议。请勿公开账号、聊天、联系人或组织内部资料；项目不会通过补丁修改腾讯客户端文件。
+  - type: textarea
+    id: problem
+    attributes:
+      label: 你遇到的实际问题
+      description: 先描述现有使用场景和不便，便于判断改进是否适合所有用户。
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 希望怎样改进
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: 已尝试的替代办法（可选）
