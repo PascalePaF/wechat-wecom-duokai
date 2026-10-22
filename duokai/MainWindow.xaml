@@ -66,32 +66,74 @@
                     <Border Style="{StaticResource SurfaceCardStyle}" Padding="20">
                         <Grid x:Name="ApplicationsLayout">
                             <Grid.RowDefinitions>
-                                <RowDefinition Height="42*" />
-                                <RowDefinition Height="88*" />
-                                <RowDefinition Height="14*" />
-                                <RowDefinition Height="88*" />
+                                <RowDefinition Height="28*" />
+                                <RowDefinition Height="76*" />
+                                <RowDefinition Height="8*" />
+                                <RowDefinition Height="76*" />
+                                <RowDefinition Height="8*" />
+                                <RowDefinition Height="76*" />
                             </Grid.RowDefinitions>
                             <TextBlock x:Name="ApplicationSectionHeader" Text="应用" Style="{StaticResource SectionTitleStyle}"
                                        VerticalAlignment="Center" />
 
-                            <Border x:Name="WeChatClientCard" Grid.Row="1" Style="{StaticResource RaisedCardStyle}" Padding="14,12">
+                            <Border x:Name="QQClientCard" Grid.Row="1" Style="{StaticResource RaisedCardStyle}" Padding="12,7">
                                 <Grid>
                                     <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="56" />
+                                        <ColumnDefinition Width="48" />
                                         <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="40" />
-                                        <ColumnDefinition Width="198" />
+                                        <ColumnDefinition Width="32" />
+                                        <ColumnDefinition Width="190" />
                                     </Grid.ColumnDefinitions>
-                                    <Border x:Name="WeChatIconSurface" Width="46" Height="46" CornerRadius="13"
+                                    <Border x:Name="QQIconSurface" Width="40" Height="40" CornerRadius="12"
+                                            Background="{DynamicResource QqIconSurfaceBrush}">
+                                        <TextBlock Text="QQ" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource InfoBrush}"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                    </Border>
+                                    <StackPanel Grid.Column="1" Margin="10,0,6,0" VerticalAlignment="Center">
+                                        <TextBlock Text="QQ" FontSize="13" FontWeight="SemiBold" />
+                                        <TextBlock x:Name="QQStatus" Text="正在检测…" FontSize="10.5" Margin="0,2,0,0"
+                                                   Foreground="{DynamicResource TextSecondaryBrush}" />
+                                        <TextBlock x:Name="QQPath" Text="正在查找安装位置" FontSize="9.5" Margin="0,2,0,0"
+                                                   Foreground="{DynamicResource TextTertiaryBrush}"
+                                                   TextTrimming="CharacterEllipsis"
+                                                   ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}" />
+                                    </StackPanel>
+                                    <Button x:Name="QQSelectButton" Grid.Column="2" Content="…"
+                                            Style="{StaticResource TextButtonStyle}" FontSize="18"
+                                            ToolTip="手动选择腾讯官方 QQ 程序" AutomationProperties.Name="选择腾讯官方 QQ 程序"
+                                            Click="QQSelectButton_Click" />
+                                    <StackPanel Grid.Column="3" Orientation="Horizontal" HorizontalAlignment="Right"
+                                                VerticalAlignment="Center">
+                                        <Button x:Name="QQExitButton" Width="68" Height="34" Content="全部退出"
+                                                Style="{StaticResource ExitButtonStyle}" Margin="0,0,8,0"
+                                                ToolTip="退出当前会话中的全部 QQ 窗口（不会注销账号）"
+                                                AutomationProperties.Name="退出全部 QQ 窗口"
+                                                Click="QQExitButton_Click" />
+                                        <Button x:Name="QQButton" Width="108" Height="34"
+                                                Style="{StaticResource PrimaryButtonStyle}" Content="启动 / 补开"
+                                                AutomationProperties.Name="启动或补开 QQ" Click="QQButton_Click" />
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+
+                            <Border x:Name="WeChatClientCard" Grid.Row="3" Style="{StaticResource RaisedCardStyle}" Padding="12,7">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="48" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="32" />
+                                        <ColumnDefinition Width="190" />
+                                    </Grid.ColumnDefinitions>
+                                    <Border x:Name="WeChatIconSurface" Width="40" Height="40" CornerRadius="12"
                                             Background="{DynamicResource WeChatIconSurfaceBrush}">
-                                        <Image Source="Resources/WeChat.png" Width="36" Height="36" Stretch="Uniform"
+                                        <Image Source="Resources/WeChat.png" Width="32" Height="32" Stretch="Uniform"
                                                RenderOptions.BitmapScalingMode="HighQuality" />
                                     </Border>
-                                    <StackPanel Grid.Column="1" Margin="14,1,8,0">
-                                        <TextBlock Text="微信" FontSize="14" FontWeight="SemiBold" />
-                                        <TextBlock x:Name="WeChatStatus" Text="正在检测…" FontSize="11" Margin="0,5,0,0"
+                                    <StackPanel Grid.Column="1" Margin="10,0,6,0" VerticalAlignment="Center">
+                                        <TextBlock Text="微信" FontSize="13" FontWeight="SemiBold" />
+                                        <TextBlock x:Name="WeChatStatus" Text="正在检测…" FontSize="10.5" Margin="0,2,0,0"
                                                    Foreground="{DynamicResource TextSecondaryBrush}" />
-                                        <TextBlock x:Name="WeChatPath" Text="正在查找安装位置" FontSize="10" Margin="0,4,0,0"
+                                        <TextBlock x:Name="WeChatPath" Text="正在查找安装位置" FontSize="9.5" Margin="0,2,0,0"
                                                    Foreground="{DynamicResource TextTertiaryBrush}"
                                                    TextTrimming="CharacterEllipsis"
                                                    ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}" />
@@ -100,37 +142,37 @@
                                             Style="{StaticResource TextButtonStyle}" FontSize="18"
                                             ToolTip="手动选择官方微信程序" AutomationProperties.Name="选择官方微信程序"
                                             Click="WeChatSelectButton_Click" />
-                                    <StackPanel Grid.Column="3" Orientation="Horizontal" HorizontalAlignment="Right">
-                                        <Button x:Name="WeChatExitButton" Width="72" Content="全部退出"
+                                    <StackPanel Grid.Column="3" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                                        <Button x:Name="WeChatExitButton" Width="68" Height="34" Content="全部退出"
                                                 Style="{StaticResource ExitButtonStyle}" Margin="0,0,8,0"
                                                 ToolTip="退出当前会话中的全部微信窗口（不会注销账号）"
                                                 AutomationProperties.Name="退出全部微信窗口"
                                                 Click="WeChatExitButton_Click" />
-                                        <Button x:Name="WeChatButton" Width="118" Height="40"
+                                        <Button x:Name="WeChatButton" Width="108" Height="34"
                                                 Style="{StaticResource PrimaryButtonStyle}" Content="启动 / 补开"
                                                 AutomationProperties.Name="启动或补开微信" Click="WeChatButton_Click" />
                                     </StackPanel>
                                 </Grid>
                             </Border>
 
-                            <Border x:Name="WeComClientCard" Grid.Row="3" Style="{StaticResource RaisedCardStyle}" Padding="14,12">
+                            <Border x:Name="WeComClientCard" Grid.Row="5" Style="{StaticResource RaisedCardStyle}" Padding="12,7">
                                 <Grid>
                                     <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="56" />
+                                        <ColumnDefinition Width="48" />
                                         <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="40" />
-                                        <ColumnDefinition Width="198" />
+                                        <ColumnDefinition Width="32" />
+                                        <ColumnDefinition Width="190" />
                                     </Grid.ColumnDefinitions>
-                                    <Border x:Name="WeComIconSurface" Width="46" Height="46" CornerRadius="13"
+                                    <Border x:Name="WeComIconSurface" Width="40" Height="40" CornerRadius="12"
                                             Background="{DynamicResource WeComIconSurfaceBrush}">
-                                        <Image Source="Resources/WXWork.png" Width="36" Height="36" Stretch="Uniform"
+                                        <Image Source="Resources/WXWork.png" Width="32" Height="32" Stretch="Uniform"
                                                RenderOptions.BitmapScalingMode="HighQuality" />
                                     </Border>
-                                    <StackPanel Grid.Column="1" Margin="14,1,8,0">
-                                        <TextBlock Text="企业微信" FontSize="14" FontWeight="SemiBold" />
-                                        <TextBlock x:Name="WeComStatus" Text="正在检测…" FontSize="11" Margin="0,5,0,0"
+                                    <StackPanel Grid.Column="1" Margin="10,0,6,0" VerticalAlignment="Center">
+                                        <TextBlock Text="企业微信" FontSize="13" FontWeight="SemiBold" />
+                                        <TextBlock x:Name="WeComStatus" Text="正在检测…" FontSize="10.5" Margin="0,2,0,0"
                                                    Foreground="{DynamicResource TextSecondaryBrush}" />
-                                        <TextBlock x:Name="WeComPath" Text="正在查找安装位置" FontSize="10" Margin="0,4,0,0"
+                                        <TextBlock x:Name="WeComPath" Text="正在查找安装位置" FontSize="9.5" Margin="0,2,0,0"
                                                    Foreground="{DynamicResource TextTertiaryBrush}"
                                                    TextTrimming="CharacterEllipsis"
                                                    ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}" />
@@ -139,13 +181,13 @@
                                             Style="{StaticResource TextButtonStyle}" FontSize="18"
                                             ToolTip="手动选择官方企业微信程序" AutomationProperties.Name="选择官方企业微信程序"
                                             Click="WeComSelectButton_Click" />
-                                    <StackPanel Grid.Column="3" Orientation="Horizontal" HorizontalAlignment="Right">
-                                        <Button x:Name="WeComExitButton" Width="72" Content="全部退出"
+                                    <StackPanel Grid.Column="3" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                                        <Button x:Name="WeComExitButton" Width="68" Height="34" Content="全部退出"
                                                 Style="{StaticResource ExitButtonStyle}" Margin="0,0,8,0"
                                                 ToolTip="退出当前会话中的全部企业微信窗口（不会注销账号）"
                                                 AutomationProperties.Name="退出全部企业微信窗口"
                                                 Click="WeComExitButton_Click" />
-                                        <Button x:Name="WeComButton" Width="118" Height="40"
+                                        <Button x:Name="WeComButton" Width="108" Height="34"
                                                 Style="{StaticResource PrimaryButtonStyle}" Content="启动 / 补开"
                                                 AutomationProperties.Name="启动或补开企业微信" Click="WeComButton_Click" />
                                     </StackPanel>
@@ -171,7 +213,7 @@
                                 <TextBlock x:Name="CountSectionHeader" Text="目标窗口数"
                                            Style="{StaticResource SectionTitleStyle}"
                                            HorizontalAlignment="Center" />
-                                <TextBlock x:Name="CountScopeText" Text="微信与企微共用" Margin="0,6,0,0"
+                                <TextBlock x:Name="CountScopeText" Text="QQ、微信与企微共用" Margin="0,6,0,0"
                                            TextAlignment="Center" Style="{StaticResource CaptionStyle}" />
                             </StackPanel>
                             <Grid Grid.Row="2">
@@ -276,7 +318,7 @@
                                     <CheckBox x:Name="RunAtStartupCheckBox"
                                               Content="开机后自动启动微窗助手"
                                               Style="{StaticResource PremiumCheckBoxStyle}"
-                                              ToolTip="仅启动助手，不会自动打开微信或企业微信"
+                                              ToolTip="仅启动助手，不会自动打开 QQ、微信或企业微信"
                                               Checked="RunAtStartupCheckBox_Changed"
                                               Unchecked="RunAtStartupCheckBox_Changed" />
                                     <CheckBox x:Name="StartMinimizedCheckBox" Margin="28,7,0,0"
@@ -341,6 +383,7 @@
                                                Style="{StaticResource CaptionStyle}" />
                                     <ProgressBar x:Name="UpdateProgressBar" Height="4" Margin="0,8,0,0"
                                                  Minimum="0" Maximum="100" Value="0" Visibility="Collapsed"
+                                                 Style="{StaticResource PremiumProgressBarStyle}"
                                                  Foreground="{DynamicResource AccentBrush}" />
                                 </StackPanel>
                                 <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Right">
@@ -380,7 +423,7 @@
                                            RenderOptions.BitmapScalingMode="HighQuality" />
                                     <StackPanel Margin="14,3,0,0">
                                         <TextBlock Text="微窗助手" FontSize="17" FontWeight="SemiBold" />
-                                        <TextBlock Text="微信 · 企业微信多开与补开工具" Margin="0,6,0,0"
+                                        <TextBlock Text="QQ · 微信 · 企业微信多开与补开工具" Margin="0,6,0,0"
                                                    Style="{StaticResource CaptionStyle}" />
                                     </StackPanel>
                                 </StackPanel>
@@ -418,7 +461,7 @@
                                 <StackPanel Grid.Row="1" Margin="0,12,0,0">
                                     <TextBlock Text="01   设置右侧目标窗口数" FontWeight="SemiBold"
                                                Foreground="{DynamicResource AccentBrush}" />
-                                    <TextBlock Text="02   点击微信或企业微信的“启动 / 补开”" Margin="0,13,0,0"
+                                    <TextBlock Text="02   点击 QQ、微信或企业微信的“启动 / 补开”" Margin="0,13,0,0"
                                                FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}" />
                                     <TextBlock Text="03   误关可补回，需要时可“全部退出”" Margin="0,13,0,0"
                                                FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}" />
@@ -448,6 +491,14 @@
                          VerticalAlignment="Center" />
                 <StackPanel x:Name="FooterCountsPanel" Grid.Column="1" Margin="10,0,22,0" MinWidth="158" VerticalAlignment="Center"
                             HorizontalAlignment="Left">
+                    <StackPanel x:Name="FooterQQCountLine" Orientation="Horizontal" HorizontalAlignment="Left">
+                        <TextBlock Text="当前 QQ 窗口" FontSize="10.5"
+                                   Foreground="{DynamicResource TextSecondaryBrush}" />
+                        <TextBlock x:Name="FooterQQCount" Text="0" Margin="8,0" FontSize="12"
+                                   FontWeight="Bold" Foreground="{DynamicResource InfoBrush}" />
+                        <TextBlock Text="个" FontSize="10.5"
+                                   Foreground="{DynamicResource TextSecondaryBrush}" />
+                    </StackPanel>
                     <StackPanel x:Name="FooterWeChatCountLine" Orientation="Horizontal" HorizontalAlignment="Left">
                         <TextBlock Text="当前微信窗口" FontSize="10.5"
                                    Foreground="{DynamicResource TextSecondaryBrush}" />
@@ -456,7 +507,7 @@
                         <TextBlock Text="个" FontSize="10.5"
                                    Foreground="{DynamicResource TextSecondaryBrush}" />
                     </StackPanel>
-                    <StackPanel x:Name="FooterWeComCountLine" Orientation="Horizontal" Margin="0,3,0,0"
+                    <StackPanel x:Name="FooterWeComCountLine" Orientation="Horizontal"
                                 HorizontalAlignment="Left">
                         <TextBlock Text="当前企业微信窗口" FontSize="10.5"
                                    Foreground="{DynamicResource TextSecondaryBrush}" />

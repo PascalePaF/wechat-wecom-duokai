@@ -16,7 +16,7 @@
     <Version>$(WechatDuokaiVersion)</Version>
     <Company>wechat_duokai contributors</Company>
     <Product>微窗助手</Product>
-    <Description>轻量的微信与企业微信多开、按缺口补开与分端退出工具</Description>
+    <Description>轻量的 QQ、微信与企业微信多开、按缺口补开与分端退出工具</Description>
     <Copyright>Copyright © CN-Root and contributors 2022-2026</Copyright>
   </PropertyGroup>
   <ItemGroup>
@@ -32,6 +32,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="..\shared\WpfPresentation.cs" Link="Presentation\WpfPresentation.cs" />
+    <Compile Include="..\shared\ThemedDialogs.cs" Link="Presentation\ThemedDialogs.cs" />
     <Compile Include="..\shared\WindowsShellIntegration.cs" Link="Presentation\WindowsShellIntegration.cs" />
     <Compile Include="..\shared\WindowsStartupIntegration.cs" Link="Presentation\WindowsStartupIntegration.cs" />
     <Page Include="..\shared\ThemeResources.xaml" Link="Themes\ThemeResources.xaml" />

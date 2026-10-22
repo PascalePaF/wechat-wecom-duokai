@@ -55,6 +55,7 @@ namespace WechatDuokai.Presentation
             Selection = "#E8F7F0",
             WeChatIconSurface = "#E4F8EE",
             WeComIconSurface = "#E7F2FE",
+            QqIconSurface = "#E7F2FE",
             Shadow = "#24304B43"
         };
 
@@ -84,6 +85,7 @@ namespace WechatDuokai.Presentation
             Selection = "#1B3029",
             WeChatIconSurface = "#19332A",
             WeComIconSurface = "#1A2D3C",
+            QqIconSurface = "#1A2D3C",
             Shadow = "#7A000000"
         };
 
@@ -187,6 +189,7 @@ namespace WechatDuokai.Presentation
             SetBrush(application, "SelectionBrush", colors.Selection);
             SetBrush(application, "WeChatIconSurfaceBrush", colors.WeChatIconSurface);
             SetBrush(application, "WeComIconSurfaceBrush", colors.WeComIconSurface);
+            SetBrush(application, "QqIconSurfaceBrush", colors.QqIconSurface);
             application.Resources["ShadowColor"] = ParseColor(colors.Shadow);
         }
 
@@ -306,6 +309,7 @@ namespace WechatDuokai.Presentation
             internal string Selection { get; set; }
             internal string WeChatIconSurface { get; set; }
             internal string WeComIconSurface { get; set; }
+            internal string QqIconSurface { get; set; }
             internal string Shadow { get; set; }
         }
     }

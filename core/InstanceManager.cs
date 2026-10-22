@@ -110,7 +110,7 @@ namespace WechatDuokai.Core
                     reportStatus?.Invoke($"正在准备第 {currentCount + 1} 个{application.DisplayName}实例…");
 
                     var processIds = GetApplicationProcessIds(application);
-                    if (processIds.Count > 0)
+                    if (processIds.Count > 0 && application.Kind != AppKind.QQ)
                     {
                         var unlock = await Task.Run(
                             () => WindowsHandleUnlocker.ReleaseSingleInstanceLocks(application.Kind, processIds),

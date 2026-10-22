@@ -65,8 +65,8 @@ namespace WechatDuokai.Installer
             if (deleteSource &&
                 (!InstallerEngine.ValidateSourceRoot(_locations.SourceRoot) || ConfirmSourceDeletion.IsChecked != true))
             {
-                MessageBox.Show("源码目录未通过安全校验，未执行删除。", "安全保护",
-                    MessageBoxButton.OK, MessageBoxImage.Warning);
+                ThemedDialogService.Show(this, "安全保护",
+                    "源码目录未通过安全校验，未执行删除。", true);
                 return;
             }
 
@@ -76,8 +76,8 @@ namespace WechatDuokai.Installer
                 : "即将删除安装程序、绿色版和全部发布包。\r\n\r\n源码目录会保留：\r\n" +
                   (_locations.SourceRoot ?? "未关联");
 
-            if (MessageBox.Show(details + "\r\n\r\n确定继续吗？", "最后确认",
-                    MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) != MessageBoxResult.Yes)
+            if (!ThemedDialogService.Confirm(this, "最后确认",
+                    details + "\r\n\r\n确定继续吗？", "确认清理", true))
             {
                 return;
             }
@@ -89,8 +89,8 @@ namespace WechatDuokai.Installer
             }
             catch (Exception ex)
             {
-                MessageBox.Show("无法启动清理程序：\r\n" + ex.Message,
-                    "清理失败", MessageBoxButton.OK, MessageBoxImage.Error);
+                ThemedDialogService.Show(this, "清理失败",
+                    "无法启动清理程序：\r\n" + ex.Message, true);
             }
         }
 

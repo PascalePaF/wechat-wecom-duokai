@@ -29,8 +29,17 @@ $scenarios = @(
     @{ Window='installer'; Theme='Light'; Width=780; Height=570; File=($prefix + '-installer-light.png') },
     @{ Window='installer'; Theme='Dark'; Width=780; Height=570; File=($prefix + '-installer-dark.png') },
     @{ Window='installer-complete'; Theme='Light'; Width=780; Height=570; File=($prefix + '-installer-complete-light.png') },
+    @{ Window='installer-complete'; Theme='Dark'; Width=780; Height=570; File=($prefix + '-installer-complete-dark.png') },
     @{ Window='uninstaller'; Theme='Light'; Width=810; Height=680; File=($prefix + '-uninstaller-light.png') },
-    @{ Window='uninstaller'; Theme='Dark'; Width=810; Height=680; File=($prefix + '-uninstaller-dark.png') }
+    @{ Window='uninstaller'; Theme='Dark'; Width=810; Height=680; File=($prefix + '-uninstaller-dark.png') },
+    @{ Window='dialog'; Theme='Light'; Width=490; Height=260; File=($prefix + '-dialog-light.png') },
+    @{ Window='dialog'; Theme='Dark'; Width=490; Height=260; File=($prefix + '-dialog-dark.png') },
+    @{ Window='dialog-confirm'; Theme='Light'; Width=490; Height=260; File=($prefix + '-confirm-light.png') },
+    @{ Window='dialog-confirm'; Theme='Dark'; Width=490; Height=260; File=($prefix + '-confirm-dark.png') },
+    @{ Window='picker-file'; Theme='Light'; Width=660; Height=580; File=($prefix + '-picker-file-light.png') },
+    @{ Window='picker-file'; Theme='Dark'; Width=660; Height=580; File=($prefix + '-picker-file-dark.png') },
+    @{ Window='picker-folder'; Theme='Light'; Width=660; Height=580; File=($prefix + '-picker-folder-light.png') },
+    @{ Window='picker-folder'; Theme='Dark'; Width=660; Height=580; File=($prefix + '-picker-folder-dark.png') }
 )
 
 foreach ($scenario in $scenarios) {

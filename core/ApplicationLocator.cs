@@ -10,6 +10,25 @@ namespace WechatDuokai.Core
     {
         private static readonly string[] WeChatExecutableNames = { "Weixin.exe", "WeChat.exe" };
         private static readonly string[] WeComExecutableNames = { "WXWork.exe", "WeCom.exe", "企业微信.exe" };
+        private static readonly string[] QqExecutableNames = { "QQ.exe" };
+
+        public static AppDefinition FindQQ(string preferredPath = null)
+        {
+            var candidates = new List<string>();
+            AddPreferredCandidate(candidates, preferredPath, AppKind.QQ);
+            AddRegistryDirectory(candidates, RegistryHive.CurrentUser, @"SOFTWARE\Tencent\QQNT", "InstallPath", QqExecutableNames);
+            AddRegistryDirectory(candidates, RegistryHive.CurrentUser, @"SOFTWARE\Tencent\QQ", "InstallPath", QqExecutableNames);
+            AddRegistryValue(candidates, RegistryHive.CurrentUser, @"SOFTWARE\Tencent\QQNT", "Executable");
+            AddAppPath(candidates, "QQ.exe");
+            AddQqUninstallRegistration(candidates, RegistryHive.CurrentUser);
+            AddQqUninstallRegistration(candidates, RegistryHive.LocalMachine);
+            AddRunningProcesses(candidates, new[] { "QQ" });
+            AddProgramFilesCandidates(candidates, @"Tencent\QQNT\QQ.exe");
+            AddProgramFilesCandidates(candidates, @"Tencent\QQ\QQ.exe");
+            AddProgramFilesCandidates(candidates, @"QQ\QQ.exe");
+            AddProgramFilesCandidates(candidates, @"Programs\QQ\QQ.exe");
+            return new AppDefinition(AppKind.QQ, "QQ", FirstValid(candidates, AppKind.QQ));
+        }
 
         public static AppDefinition FindWeChat(string preferredPath = null)
         {
@@ -103,6 +122,25 @@ namespace WechatDuokai.Core
             {
                 candidates.Add(localMachine);
             }
+        }
+
+        private static void AddQqUninstallRegistration(List<string> candidates, RegistryHive hive)
+        {
+            const string keyPath = @"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\QQ";
+            var displayName = ReadRegistryString(hive, keyPath, "DisplayName");
+            if (!string.Equals(displayName, "QQ", StringComparison.OrdinalIgnoreCase)) return;
+
+            var installLocation = ReadRegistryString(hive, keyPath, "InstallLocation");
+            if (!string.IsNullOrWhiteSpace(installLocation))
+                candidates.Add(Path.Combine(installLocation, "QQ.exe"));
+
+            var displayIcon = ReadRegistryString(hive, keyPath, "DisplayIcon");
+            if (string.IsNullOrWhiteSpace(displayIcon)) return;
+            var separator = displayIcon.LastIndexOf(',');
+            int iconIndex;
+            if (separator > 0 && int.TryParse(displayIcon.Substring(separator + 1), out iconIndex))
+                displayIcon = displayIcon.Substring(0, separator);
+            candidates.Add(displayIcon.Trim(' ', '"'));
         }
 
         private static string ReadRegistryString(RegistryHive hive, string keyPath, string valueName)

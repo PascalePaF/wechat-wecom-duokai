@@ -12,6 +12,12 @@ namespace WechatDuokai.Cleanup
         {
             if (args.Length >= 2 && string.Equals(args[0], "/cleanup-worker", StringComparison.OrdinalIgnoreCase))
             {
+                var workerApplication = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
+                workerApplication.Resources.MergedDictionaries.Add(new ResourceDictionary
+                {
+                    Source = new Uri("Themes/ThemeResources.xaml", UriKind.Relative)
+                });
+                ThemeManager.Initialize(ParseForcedTheme(args));
                 WechatDuokai.Installer.CleanupWorker.Execute(args[1]);
                 return 0;
             }
@@ -26,8 +32,9 @@ namespace WechatDuokai.Cleanup
             WechatDuokai.Presentation.ThemeManager.Initialize(ParseForcedTheme(args));
             application.DispatcherUnhandledException += (sender, eventArgs) =>
             {
-                MessageBox.Show("清理程序遇到未预期问题，已停止继续操作。\r\n\r\n" + eventArgs.Exception.Message,
-                    "清理程序已停止", MessageBoxButton.OK, MessageBoxImage.Error);
+                ThemedDialogService.Show(application.MainWindow, "清理程序已停止",
+                    "清理程序遇到未预期问题，已停止继续操作。\r\n\r\n" +
+                    eventArgs.Exception.Message, true);
                 eventArgs.Handled = true;
                 application.Shutdown(1);
             };

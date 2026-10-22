@@ -53,6 +53,8 @@ namespace WechatDuokai.Tests
                 Run("Per-user startup registration distinguishes moved and separate copies", TestWindowsStartupIntegration);
                 Run("A second launch restores the minimized control window", TestSingleInstanceActivation);
                 Run("Footer counts and settings navigation stay live and visible", TestFooterCountsAndSettings);
+                Run("QQ launches through its official executable and counts independent roots", TestQQDirectLaunch);
+                Run("Shared dialogs and pickers use the active theme", TestSharedDialogTheme);
                 Run("Dark theme uses a restrained palette and theme-aware icon surfaces", TestDarkThemeComfortPalette);
                 Run("Renamed executables cannot impersonate an official client", TestClientExecutableValidation);
                 Run("Process environment groups roots and supports deterministic launch tests", TestProcessEnvironmentAbstraction);
@@ -179,6 +181,10 @@ namespace WechatDuokai.Tests
                     showInstallerCompletion = true;
                     break;
                 case "uninstaller": windowType = LoadCleanupWindowType(); break;
+                case "dialog":
+                case "dialog-confirm": windowType = FindPresentationType(typeof(MainWindow), "ThemedDialogWindow"); break;
+                case "picker-file":
+                case "picker-folder": windowType = FindPresentationType(typeof(MainWindow), "ThemedPathPicker"); break;
                 default: throw new ArgumentException("Unknown window: " + windowName);
             }
 
@@ -188,7 +194,28 @@ namespace WechatDuokai.Tests
                 previousAutoCheck = UserPreferences.LoadAutoCheckForUpdates();
                 UserPreferences.SaveAutoCheckForUpdates(false);
             }
-            var window = (Window)Activator.CreateInstance(windowType);
+            Window window;
+            switch (windowName.ToLowerInvariant())
+            {
+                case "dialog":
+                    window = CreateThemedDialog("安装完成", "微窗助手已安装完成。确认后可启动应用。", false, false);
+                    break;
+                case "dialog-confirm":
+                    window = CreateThemedDialog("关闭正在运行的程序？",
+                        "安装时检测到微窗助手正在运行。确认关闭后继续安装，新版本会保留已有设置。", true, true, "关闭并继续");
+                    break;
+                case "picker-file":
+                    window = CreateThemedPicker("File", "选择官方程序",
+                        FindProjectRoot(), new[] { "QQ.exe", "Weixin.exe", "WXWork.exe" });
+                    break;
+                case "picker-folder":
+                    window = CreateThemedPicker("Folder", "选择安装位置",
+                        FindProjectRoot(), null);
+                    break;
+                default:
+                    window = (Window)Activator.CreateInstance(windowType);
+                    break;
+            }
             try
             {
                 double width;
@@ -238,6 +265,32 @@ namespace WechatDuokai.Tests
             return 0;
         }
 
+        private static Type FindPresentationType(Type anchor, string name)
+        {
+            return anchor.Assembly.GetType("WechatDuokai.Presentation." + name, true);
+        }
+
+        private static Window CreateThemedDialog(string title, string message,
+            bool confirmation, bool warning, string confirmText = "确定", Type anchor = null)
+        {
+            return (Window)Activator.CreateInstance(
+                FindPresentationType(anchor ?? typeof(MainWindow), "ThemedDialogWindow"),
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
+                null, new object[] { title, message, confirmation, warning, confirmText }, null);
+        }
+
+        private static Window CreateThemedPicker(string modeName, string title,
+            string initialDirectory, string[] allowedFiles, Type anchor = null)
+        {
+            var typeAnchor = anchor ?? typeof(MainWindow);
+            var pickerMode = FindPresentationType(typeAnchor, "PickerMode");
+            return (Window)Activator.CreateInstance(
+                FindPresentationType(typeAnchor, "ThemedPathPicker"),
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
+                null, new object[] { Enum.Parse(pickerMode, modeName), title,
+                    initialDirectory, allowedFiles }, null);
+        }
+
         private static void TestPreferenceRoundTrip()
         {
             var testDirectory = Path.Combine(Path.GetTempPath(), "wechat-duokai-preferences-" + Guid.NewGuid().ToString("N"));
@@ -247,6 +300,8 @@ namespace WechatDuokai.Tests
                     "Missing WeChat target should default to 2.");
                 Assert(UserPreferences.LoadTargetCount(testDirectory, AppKind.WeCom) == 2,
                     "Missing WeCom target should default to 2.");
+                Assert(UserPreferences.LoadTargetCount(testDirectory, AppKind.QQ) == 2,
+                    "Missing QQ target should default to the shared value of 2.");
                 Assert(UserPreferences.LoadAutoCheckForUpdates(testDirectory),
                     "Missing update preference should preserve the safe historical default.");
                 Assert(!UserPreferences.LoadAutoDownloadUpdates(testDirectory) &&
@@ -266,8 +321,9 @@ namespace WechatDuokai.Tests
 
                 UserPreferences.SaveTargetCount(testDirectory, 5);
                 Assert(UserPreferences.LoadTargetCount(testDirectory, AppKind.WeChat) == 5 &&
-                       UserPreferences.LoadTargetCount(testDirectory, AppKind.WeCom) == 5,
-                    "The shared target count was not preserved for both clients.");
+                       UserPreferences.LoadTargetCount(testDirectory, AppKind.WeCom) == 5 &&
+                       UserPreferences.LoadTargetCount(testDirectory, AppKind.QQ) == 5,
+                    "The shared target count was not preserved for all three clients.");
                 UserPreferences.SaveAutoCheckForUpdates(testDirectory, false);
                 Assert(!UserPreferences.LoadAutoCheckForUpdates(testDirectory),
                     "Automatic version-check preference was not preserved.");
@@ -282,6 +338,10 @@ namespace WechatDuokai.Tests
                 UserPreferences.SaveCustomClientPath(testDirectory, AppKind.WeChat, custom);
                 Assert(UserPreferences.LoadCustomClientPath(testDirectory, AppKind.WeChat) == Path.GetFullPath(custom),
                     "Custom client path was not preserved.");
+                var qqCustom = Path.Combine(testDirectory, "QQ.exe");
+                UserPreferences.SaveCustomClientPath(testDirectory, AppKind.QQ, qqCustom);
+                Assert(UserPreferences.LoadCustomClientPath(testDirectory, AppKind.QQ) == Path.GetFullPath(qqCustom),
+                    "Custom QQ path was not preserved independently.");
                 Assert(UserPreferences.HasValidMarker(testDirectory), "User-data marker is invalid.");
 
                 var settings = File.ReadAllText(Path.Combine(testDirectory, "settings.ini"));
@@ -292,7 +352,7 @@ namespace WechatDuokai.Tests
             }
             finally
             {
-                if (Directory.Exists(testDirectory)) Directory.Delete(testDirectory, true);
+                DeleteTestDirectoryWithRetries(testDirectory);
             }
         }
 
@@ -337,7 +397,7 @@ namespace WechatDuokai.Tests
             }
             finally
             {
-                if (Directory.Exists(root)) Directory.Delete(root, true);
+                DeleteTestDirectoryWithRetries(root);
             }
         }
 
@@ -541,30 +601,38 @@ namespace WechatDuokai.Tests
             Directory.CreateDirectory(folder);
             var weChatPath = Path.Combine(folder, "Weixin.exe");
             var weComPath = Path.Combine(folder, "WXWork.exe");
+            var qqPath = Path.Combine(folder, "QQ.exe");
             File.WriteAllText(weChatPath, string.Empty);
             File.WriteAllText(weComPath, string.Empty);
-            var environment = new MultiClientFakeProcessEnvironment(weChatPath, 2, weComPath, 3);
+            File.WriteAllText(qqPath, string.Empty);
+            var environment = new MultiClientFakeProcessEnvironment(weChatPath, 2, weComPath, 3, qqPath, 1);
             var window = new MainWindow(new InstanceManager(environment), new ReleaseUpdateChecker());
             try
             {
                 SetPrivateField(window, "_weChat", new AppDefinition(AppKind.WeChat, "微信", weChatPath));
                 SetPrivateField(window, "_weCom", new AppDefinition(AppKind.WeCom, "企业微信", weComPath));
+                SetPrivateField(window, "_qq", new AppDefinition(AppKind.QQ, "QQ", qqPath));
                 InvokePrivate(window, "RefreshClientStatus");
 
+                var qqCount = (TextBlock)window.FindName("FooterQQCount");
                 var weChatCount = (TextBlock)window.FindName("FooterWeChatCount");
                 var weComCount = (TextBlock)window.FindName("FooterWeComCount");
                 var footerCountsPanel = (FrameworkElement)window.FindName("FooterCountsPanel");
                 var weChatCountLine = (FrameworkElement)window.FindName("FooterWeChatCountLine");
                 var weComCountLine = (FrameworkElement)window.FindName("FooterWeComCountLine");
+                var qqCountLine = (FrameworkElement)window.FindName("FooterQQCountLine");
+                Assert(qqCount.Text == "1" &&
+                       AutomationProperties.GetName(qqCountLine) == "当前 QQ 窗口 1 个",
+                    "QQ footer count is not live or accessible.");
                 Assert(weChatCount.Text == "2" &&
                        AutomationProperties.GetName(weChatCountLine) == "当前微信窗口 2 个",
                     "WeChat footer count is not live or accessible.");
                 Assert(weComCount.Text == "3" &&
                        AutomationProperties.GetName(weComCountLine) == "当前企业微信窗口 3 个",
                     "WeCom footer count is not live or accessible.");
-                Assert(weChatCount.FontWeight == FontWeights.Bold &&
+                Assert(qqCount.FontWeight == FontWeights.Bold && weChatCount.FontWeight == FontWeights.Bold &&
                        weComCount.FontWeight == FontWeights.Bold &&
-                       weChatCount.Margin.Left >= 8 && weComCount.Margin.Left >= 8,
+                       qqCount.Margin.Left >= 8 && weChatCount.Margin.Left >= 8 && weComCount.Margin.Left >= 8,
                     "Footer numbers must use bold colored emphasis with visible breathing room.");
                 Assert(((SolidColorBrush)weChatCount.Foreground).Color == GetThemeColor("SuccessBrush") &&
                        ((SolidColorBrush)weComCount.Foreground).Color == GetThemeColor("InfoBrush"),
@@ -579,7 +647,8 @@ namespace WechatDuokai.Tests
                     "The current product name and formal logo must be present on the main window.");
                 Assert(Grid.GetColumn(settingsButton) == 3,
                     "Settings must remain the right-most footer action.");
-                Assert(window.FindName("WeChatExitButton") is Button &&
+                Assert(window.FindName("QQExitButton") is Button &&
+                       window.FindName("WeChatExitButton") is Button &&
                        window.FindName("WeComExitButton") is Button,
                     "Each client card must expose its own compact exit-all action.");
                 var mainXaml = File.ReadAllText(Path.Combine(FindProjectRoot(), "duokai", "MainWindow.xaml"));
@@ -628,7 +697,7 @@ namespace WechatDuokai.Tests
             finally
             {
                 window.Close();
-                if (Directory.Exists(folder)) Directory.Delete(folder, true);
+                DeleteTestDirectoryWithRetries(folder);
             }
         }
 
@@ -840,7 +909,7 @@ namespace WechatDuokai.Tests
             }
             finally
             {
-                if (Directory.Exists(root)) Directory.Delete(root, true);
+                DeleteTestDirectoryWithRetries(root);
             }
         }
 
@@ -864,6 +933,7 @@ namespace WechatDuokai.Tests
                 var viewport = (FrameworkElement)window.FindName("ScaleViewport");
                 var scaledRoot = (FrameworkElement)window.FindName("ScaledRoot");
                 var workspace = (FrameworkElement)window.FindName("WorkspaceGrid");
+                var qqCard = (FrameworkElement)window.FindName("QQClientCard");
                 var weChatCard = (FrameworkElement)window.FindName("WeChatClientCard");
                 var weComCard = (FrameworkElement)window.FindName("WeComClientCard");
                 var transform = (ScaleTransform)window.FindName("InterfaceScaleTransform");
@@ -894,7 +964,8 @@ namespace WechatDuokai.Tests
                     Assert(applicationHeaderOrigin.Y >= 0 && countHeaderOrigin.Y >= 0 &&
                            countHeaderOrigin.Y < panel.ActualHeight,
                         "A main card title was placed outside its panel.");
-                    Assert(weChatCard.ActualHeight >= 80d && weComCard.ActualHeight >= 80d,
+                    Assert(qqCard.ActualHeight >= 64d && weChatCard.ActualHeight >= 64d &&
+                           weComCard.ActualHeight >= 64d,
                         "An application card was clipped at " + size.Width + "x" + size.Height + ".");
                     Assert(Math.Abs(transform.ScaleX - transform.ScaleY) < 0.001 && transform.ScaleX >= 1d,
                         "The interface must use one non-shrinking uniform scale.");
@@ -905,8 +976,10 @@ namespace WechatDuokai.Tests
 
                 Assert(Grid.GetRow(panel) == 0 && Grid.GetColumn(panel) == 2 && Grid.GetColumnSpan(panel) == 1,
                     "The count panel must stay on the right at every supported size.");
-                Assert(applicationsLayout.RowDefinitions.Count == 4,
-                    "The application card must preserve its four proportional layout tracks.");
+                Assert(applicationsLayout.RowDefinitions.Count == 6 &&
+                       Grid.GetRow(qqCard) == 1 && Grid.GetRow(weChatCard) == 3 &&
+                       Grid.GetRow(weComCard) == 5,
+                    "The application card must keep QQ, WeChat and WeCom in order.");
                 Assert(countLayout.RowDefinitions.Count == 5 &&
                        countLayout.VerticalAlignment == VerticalAlignment.Center &&
                        countLayout.RowDefinitions[0].Height.IsAuto &&
@@ -918,7 +991,7 @@ namespace WechatDuokai.Tests
                        Math.Abs(countLayout.RowDefinitions[3].Height.Value - 12d) < 0.01 &&
                        countLayout.RowDefinitions[4].Height.IsAuto,
                     "The count card must preserve the centered five-track V1.0.10 layout.");
-                Assert(countScope.Text == "微信与企微共用" &&
+                Assert(countScope.Text == "QQ、微信与企微共用" &&
                        countSaveHint.Text == "●  数量会自动保存" &&
                        Math.Abs(countSaveHint.FontSize - 11d) < 0.01,
                     "The V1.0.10 count-card labels were not restored exactly.");
@@ -942,6 +1015,71 @@ namespace WechatDuokai.Tests
             var app = new AppDefinition(AppKind.WeChat, "微信", path);
             Assert(manager.GetApplicationProcessIds(app).Count == 3, "Exact-path processes were not selected.");
             Assert(manager.GetInstanceCount(app) == 2, "Parent/child process roots were not grouped correctly.");
+        }
+
+        private static void TestQQDirectLaunch()
+        {
+            var folder = Path.Combine(Path.GetTempPath(), "wechat-duokai-qq-launch-" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(folder);
+            try
+            {
+                var qqPath = Path.Combine(folder, "QQ.exe");
+                File.WriteAllText(qqPath, string.Empty);
+                var environment = new MultiClientFakeProcessEnvironment(
+                    Path.Combine(folder, "Weixin.exe"), 0,
+                    Path.Combine(folder, "WXWork.exe"), 0, qqPath, 1);
+                var manager = new InstanceManager(environment);
+                var app = new AppDefinition(AppKind.QQ, "QQ", qqPath);
+                Assert(manager.GetInstanceCount(app) == 1, "The first QQ root was not counted.");
+                var result = manager.EnsureTargetCountAsync(app, 3, null, CancellationToken.None)
+                    .GetAwaiter().GetResult();
+                Assert(result.Success && result.BeforeCount == 1 && result.AfterCount == 3 &&
+                       result.StartedCount == 2 && result.ReleasedLockCount == 0,
+                    "QQ must reach the shared target without touching client locks or registry state.");
+                Assert(environment.StartedPaths.Count == 2 &&
+                       environment.StartedPaths.All(path => string.Equals(path, qqPath, StringComparison.OrdinalIgnoreCase)),
+                    "Only the selected official QQ executable may be launched.");
+            }
+            finally
+            {
+                DeleteTestDirectoryWithRetries(folder);
+            }
+        }
+
+        private static void TestSharedDialogTheme()
+        {
+            foreach (var anchor in new[] { typeof(MainWindow), typeof(InstallWindow), LoadCleanupWindowType() })
+            {
+                foreach (var theme in new[] { "Light", "Dark" })
+                {
+                    BootstrapWpf(anchor, theme);
+                    Assert(Application.Current.FindResource(typeof(ToolTip)) is Style &&
+                           Application.Current.FindResource("PremiumProgressBarStyle") is Style,
+                        "Secondary controls must share the active theme's tooltip and progress styles.");
+                    foreach (var window in new Window[]
+                    {
+                        CreateThemedDialog("检查", "确认后继续。", false, false, anchor: anchor),
+                        CreateThemedDialog("确认", "安装前关闭应用？", true, true, anchor: anchor),
+                        CreateThemedPicker("File", "选择程序", FindProjectRoot(), new[] { "QQ.exe" }, anchor),
+                        CreateThemedPicker("Folder", "选择文件夹", FindProjectRoot(), null, anchor)
+                    })
+                    {
+                        try
+                        {
+                            Assert(window.Background is SolidColorBrush &&
+                                   ((SolidColorBrush)window.Background).Color == GetThemeColor("WindowBackgroundBrush"),
+                                "A secondary window does not use the active window palette.");
+                            Assert(window.WindowStyle == WindowStyle.SingleBorderWindow && window.Content is Grid,
+                                "A secondary window lost its movable title bar or themed layout.");
+                        }
+                        finally
+                        {
+                            window.Close();
+                        }
+                    }
+                }
+            }
+            BootstrapWpf(typeof(MainWindow), "Light");
         }
 
         private static void TestSafeExitAll()
@@ -972,7 +1110,7 @@ namespace WechatDuokai.Tests
             }
             finally
             {
-                if (Directory.Exists(folder)) Directory.Delete(folder, true);
+                DeleteTestDirectoryWithRetries(folder);
             }
         }
 
@@ -1258,6 +1396,13 @@ namespace WechatDuokai.Tests
 
         private static void TestClientExecutableValidation()
         {
+            var qqProductCheck = typeof(ClientExecutableValidator).GetMethod("IsQQProduct",
+                BindingFlags.Static | BindingFlags.NonPublic);
+            Assert(qqProductCheck != null &&
+                   (bool)qqProductCheck.Invoke(null, new object[] { "QQ" }) &&
+                   !(bool)qqProductCheck.Invoke(null, new object[] { "QQMusic" }) &&
+                   !(bool)qqProductCheck.Invoke(null, new object[] { "QQ Browser" }),
+                "A different Tencent product could impersonate QQ after being renamed.");
             var folder = Path.Combine(Path.GetTempPath(), "wechat-duokai-client-validation-" + Guid.NewGuid().ToString("N"));
             try
             {
@@ -1266,10 +1411,14 @@ namespace WechatDuokai.Tests
                 File.Copy(Process.GetCurrentProcess().MainModule.FileName, renamed);
                 var validation = ClientExecutableValidator.Validate(renamed, AppKind.WeChat);
                 Assert(!validation.IsValid, "A renamed unsigned test executable was accepted as WeChat.");
+                var fakeQQ = Path.Combine(folder, "QQ.exe");
+                File.Copy(Process.GetCurrentProcess().MainModule.FileName, fakeQQ);
+                Assert(!ClientExecutableValidator.Validate(fakeQQ, AppKind.QQ).IsValid,
+                    "A renamed test executable was accepted as Tencent-signed QQ.");
             }
             finally
             {
-                if (Directory.Exists(folder)) Directory.Delete(folder, true);
+                DeleteTestDirectoryWithRetries(folder);
             }
         }
 
@@ -1285,12 +1434,12 @@ namespace WechatDuokai.Tests
                 Assert(Path.GetFullPath(report).StartsWith(expectedRoot, StringComparison.OrdinalIgnoreCase),
                     "Diagnostic report escaped the application directory.");
                 var text = File.ReadAllText(report);
-                Assert(text.Contains("不会自动上传") && !text.Contains("UserName="),
+                Assert(text.Contains("不会自动上传") && text.Contains("QQ") && !text.Contains("UserName="),
                     "Diagnostic privacy statement is missing or a user name field was added.");
             }
             finally
             {
-                if (Directory.Exists(folder)) Directory.Delete(folder, true);
+                DeleteTestDirectoryWithRetries(folder);
             }
         }
 
@@ -1355,7 +1504,7 @@ namespace WechatDuokai.Tests
             }
             finally
             {
-                if (Directory.Exists(root)) Directory.Delete(root, true);
+                DeleteTestDirectoryWithRetries(root);
             }
         }
 
@@ -1825,7 +1974,7 @@ namespace WechatDuokai.Tests
             }
             finally
             {
-                if (Directory.Exists(root)) Directory.Delete(root, true);
+                DeleteTestDirectoryWithRetries(root);
             }
         }
 
@@ -1909,7 +2058,7 @@ namespace WechatDuokai.Tests
             }
             finally
             {
-                if (Directory.Exists(root)) Directory.Delete(root, true);
+                DeleteTestDirectoryWithRetries(root);
                 if (Directory.Exists(portableRoot)) Directory.Delete(portableRoot, true);
             }
         }
@@ -2544,25 +2693,32 @@ namespace WechatDuokai.Tests
             private int _weChatCount;
             private readonly string _weComPath;
             private int _weComCount;
+            private readonly string _qqPath;
+            private int _qqCount;
+            internal List<string> StartedPaths { get; } = new List<string>();
 
             internal MultiClientFakeProcessEnvironment(string weChatPath, int weChatCount,
-                string weComPath, int weComCount)
+                string weComPath, int weComCount, string qqPath = null, int qqCount = 0)
             {
                 _weChatPath = weChatPath;
                 _weChatCount = weChatCount;
                 _weComPath = weComPath;
                 _weComCount = weComCount;
+                _qqPath = qqPath;
+                _qqCount = qqCount;
             }
 
             public int CurrentSessionId => 7;
 
             public IReadOnlyList<ProcessSnapshot> FindProcesses(IEnumerable<string> processNames)
             {
+                var isQQ = processNames.Any(name =>
+                    string.Equals(name, "QQ", StringComparison.OrdinalIgnoreCase));
                 var isWeCom = processNames.Any(name =>
                     string.Equals(name, "WXWork", StringComparison.OrdinalIgnoreCase));
-                var path = isWeCom ? _weComPath : _weChatPath;
-                var count = isWeCom ? _weComCount : _weChatCount;
-                var start = isWeCom ? 800000 : 700000;
+                var path = isQQ ? _qqPath : isWeCom ? _weComPath : _weChatPath;
+                var count = isQQ ? _qqCount : isWeCom ? _weComCount : _weChatCount;
+                var start = isQQ ? 900000 : isWeCom ? 800000 : 700000;
                 return Enumerable.Range(1, count).Select(index => new ProcessSnapshot
                 {
                     Id = start + index,
@@ -2578,6 +2734,8 @@ namespace WechatDuokai.Tests
 
             public void StartApplication(string executablePath)
             {
+                StartedPaths.Add(executablePath);
+                if (string.Equals(executablePath, _qqPath, StringComparison.OrdinalIgnoreCase)) _qqCount++;
             }
 
             public ProcessCloseSummary CloseProcesses(IReadOnlyCollection<int> processIds,
@@ -2585,7 +2743,11 @@ namespace WechatDuokai.Tests
                 CancellationToken cancellationToken)
             {
                 var eligible = processIds?.Count ?? 0;
-                if (string.Equals(expectedExecutablePath, _weComPath, StringComparison.OrdinalIgnoreCase))
+                if (_qqPath != null && string.Equals(expectedExecutablePath, _qqPath, StringComparison.OrdinalIgnoreCase))
+                {
+                    _qqCount = 0;
+                }
+                else if (string.Equals(expectedExecutablePath, _weComPath, StringComparison.OrdinalIgnoreCase))
                 {
                     _weComCount = 0;
                 }

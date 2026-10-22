@@ -243,7 +243,7 @@ namespace WechatDuokai.Core
             try
             {
                 var values = LoadValues(dataDirectory);
-                var key = kind == AppKind.WeChat ? "WeChatExecutableBase64" : "WeComExecutableBase64";
+                var key = ClientPathKey(kind);
                 string encoded;
                 if (!values.TryGetValue(key, out encoded) || string.IsNullOrWhiteSpace(encoded)) return null;
                 return Encoding.UTF8.GetString(Convert.FromBase64String(encoded));
@@ -262,10 +262,21 @@ namespace WechatDuokai.Core
         internal static void SaveCustomClientPath(string dataDirectory, AppKind kind, string path)
         {
             var values = LoadValues(dataDirectory);
-            var key = kind == AppKind.WeChat ? "WeChatExecutableBase64" : "WeComExecutableBase64";
+            var key = ClientPathKey(kind);
             if (string.IsNullOrWhiteSpace(path)) values.Remove(key);
             else values[key] = Convert.ToBase64String(Encoding.UTF8.GetBytes(Path.GetFullPath(path)));
             SaveValues(dataDirectory, values);
+        }
+
+        private static string ClientPathKey(AppKind kind)
+        {
+            switch (kind)
+            {
+                case AppKind.QQ: return "QQExecutableBase64";
+                case AppKind.WeChat: return "WeChatExecutableBase64";
+                case AppKind.WeCom: return "WeComExecutableBase64";
+                default: throw new ArgumentOutOfRangeException(nameof(kind));
+            }
         }
 
         private static Dictionary<string, string> LoadValues(string dataDirectory)
@@ -333,6 +344,8 @@ namespace WechatDuokai.Core
             if (values.TryGetValue("WeChatExecutableBase64", out weChat)) lines.Add("WeChatExecutableBase64=" + weChat);
             string weCom;
             if (values.TryGetValue("WeComExecutableBase64", out weCom)) lines.Add("WeComExecutableBase64=" + weCom);
+            string qq;
+            if (values.TryGetValue("QQExecutableBase64", out qq)) lines.Add("QQExecutableBase64=" + qq);
             try
             {
                 using (var output = new FileStream(temporaryPath, FileMode.CreateNew,

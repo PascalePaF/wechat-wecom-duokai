@@ -5,7 +5,7 @@
 <h1 align="center">微窗助手</h1>
 
 <p align="center">
-  一款轻量、透明、可核验的 Windows 微信与企业微信多开、补开工具
+  一款轻量、透明、可核验的 Windows QQ、微信与企业微信多开、补开工具
 </p>
 
 <p align="center">
@@ -26,37 +26,37 @@
 
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/v1.1.6-main-dark-901x513.png">
-    <source media="(prefers-color-scheme: light)" srcset="docs/assets/v1.1.6-main-light-901x513.png">
-    <img src="docs/assets/v1.1.6-main-light-901x513.png" width="901" alt="微窗助手 V1.1.6 主界面">
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/v1.1.7-main-dark-901x513.png">
+    <source media="(prefers-color-scheme: light)" srcset="docs/assets/v1.1.7-main-light-901x513.png">
+    <img src="docs/assets/v1.1.7-main-light-901x513.png" width="901" alt="微窗助手 V1.1.7 主界面">
   </picture>
 </p>
 
-微窗助手会统计当前 Windows 用户会话中、来自同一官方程序路径的真实微信或企业微信窗口，并且只启动
+微窗助手会统计当前 Windows 用户会话中、来自同一官方程序路径的 QQ、微信或企业微信根实例，并且只启动
 距离目标数量还缺少的实例。目标是 3、误关 1 个时，再点一次只补回 1 个，不需要先退出其余窗口。
 
 > [!IMPORTANT]
 > 本项目基于 [CN-Root/wechat-wecom-duokai](https://github.com/CN-Root/wechat-wecom-duokai)
-> 持续改进，不是腾讯官方产品。它不会修改、替换或破解微信与企业微信客户端文件。使用前请遵守客户端
+> 持续改进，不是腾讯官方产品。它不会修改、替换或破解 QQ、微信与企业微信客户端文件。使用前请遵守客户端
 > 许可、组织安全策略和账号风控规则。
 
 ## 下载
 
-当前正式版本：**V1.1.6**。请只从本仓库的
+当前正式版本：**V1.1.7**。请只从本仓库的
 [GitHub Releases](https://github.com/PascalePaF/wechat-wecom-duokai/releases/latest) 下载。
 
 | 版本 | 适合谁 | 下载 |
 | --- | --- | --- |
-| 安装版（推荐） | 希望自选安装目录、创建快捷方式并使用完整卸载功能 | [下载 `wechat_duokai-setup-v1.1.6.exe`](https://github.com/PascalePaF/wechat-wecom-duokai/releases/download/v1.1.6/wechat_duokai-setup-v1.1.6.exe) |
-| 绿色免安装版 | 希望解压即用，不写入安装登记 | [下载 `wechat_duokai-portable-v1.1.6.zip`](https://github.com/PascalePaF/wechat-wecom-duokai/releases/download/v1.1.6/wechat_duokai-portable-v1.1.6.zip) |
-| 独立清理器 | 需要完整卸载，或清理本项目安装包与带标记的源码目录 | [下载 `wechat_duokai-cleanup-v1.1.6.exe`](https://github.com/PascalePaF/wechat-wecom-duokai/releases/download/v1.1.6/wechat_duokai-cleanup-v1.1.6.exe) |
+| 安装版（推荐） | 希望自选安装目录、创建快捷方式并使用完整卸载功能 | [下载 `wechat_duokai-setup-v1.1.7.exe`](https://github.com/PascalePaF/wechat-wecom-duokai/releases/download/v1.1.7/wechat_duokai-setup-v1.1.7.exe) |
+| 绿色免安装版 | 希望解压即用，不写入安装登记 | [下载 `wechat_duokai-portable-v1.1.7.zip`](https://github.com/PascalePaF/wechat-wecom-duokai/releases/download/v1.1.7/wechat_duokai-portable-v1.1.7.zip) |
+| 独立清理器 | 需要完整卸载，或清理本项目安装包与带标记的源码目录 | [下载 `wechat_duokai-cleanup-v1.1.7.exe`](https://github.com/PascalePaF/wechat-wecom-duokai/releases/download/v1.1.7/wechat_duokai-cleanup-v1.1.7.exe) |
 
 发布核验资料：
 
-- [SHA256SUMS.txt](https://github.com/PascalePaF/wechat-wecom-duokai/releases/download/v1.1.6/SHA256SUMS.txt)：正式附件 SHA-256 清单；
-- [SPDX 2.2 SBOM](https://github.com/PascalePaF/wechat-wecom-duokai/releases/download/v1.1.6/manifest.spdx.json)：软件物料清单；
-- [Kaspersky 原始扫描日志](https://github.com/PascalePaF/wechat-wecom-duokai/releases/download/v1.1.6/kaspersky-scan-v1.1.6.txt)：对正式发布原件的扫描记录；
-- [V1.1.6 发布说明](https://github.com/PascalePaF/wechat-wecom-duokai/releases/tag/v1.1.6)：变化、限制和全部附件。
+- [SHA256SUMS.txt](https://github.com/PascalePaF/wechat-wecom-duokai/releases/download/v1.1.7/SHA256SUMS.txt)：正式附件 SHA-256 清单；
+- [SPDX 2.2 SBOM](https://github.com/PascalePaF/wechat-wecom-duokai/releases/download/v1.1.7/manifest.spdx.json)：软件物料清单；
+- [Kaspersky 原始扫描日志](https://github.com/PascalePaF/wechat-wecom-duokai/releases/download/v1.1.7/kaspersky-scan-v1.1.7.txt)：对正式发布原件的扫描记录；
+- [V1.1.7 发布说明](https://github.com/PascalePaF/wechat-wecom-duokai/releases/tag/v1.1.7)：变化、限制和全部附件。
 
 > [!CAUTION]
 > 当前版本没有受公共信任的 Authenticode 代码签名，首次运行可能出现“未知发布者”、SmartScreen 或
@@ -65,51 +65,55 @@
 
 ## 三步上手
 
-1. 打开微窗助手，在右侧用 `−` / `+` 设置目标窗口数；微信和企业微信共用这个 `1–10` 的目标值。
+1. 打开微窗助手，在右侧用 `−` / `+` 设置目标窗口数；QQ、微信和企业微信共用这个 `1–10` 的目标值。
 2. 点击对应客户端的“启动 / 补开”；程序会先统计现有窗口，只启动缺少的数量。
 3. 某个窗口被误关后，再点一次对应按钮即可补回；要退出某一端的全部窗口，点击“全部退出”并确认。
 
-没有自动识别客户端时，点击卡片中的 `…` 手动选择官方程序：微信为 `Weixin.exe` 或 `WeChat.exe`，
-企业微信通常为 `WXWork.exe`。自定义程序必须通过腾讯 Authenticode 数字签名验证。
+没有自动识别客户端时，点击卡片中的 `…` 手动选择官方程序：QQ 为 `QQ.exe`，微信为 `Weixin.exe`
+或 `WeChat.exe`，企业微信通常为 `WXWork.exe`。自定义程序必须通过腾讯 Authenticode 数字签名验证。
 
 ## 核心能力
 
 | 能力 | 实际行为 |
 | --- | --- |
 | 按需补开 | 按“目标数量 − 当前根窗口数”补足，误关一个只补一个 |
-| 微信与企微独立操作 | 两端分别启动、补开和全部退出，共用一个自动保存的目标数量 |
-| 精确窗口统计 | 识别微信 4.x 多子进程结构，不把所有同名子进程误算成窗口 |
+| QQ、微信与企微独立操作 | 三端分别启动、补开和全部退出，共用一个自动保存的目标数量 |
+| 精确根实例统计 | 识别 QQ 与微信 4.x 多子进程结构，不把所有同名子进程误算成窗口 |
+| QQ 官方直启 | 通过腾讯签名校验后直接启动官方 `QQ.exe`，不释放句柄、不改注册表、不注入 DLL；本机 QQ `9.9.35.52892` 已实测双实例 |
 | 企业微信扩展模式 | 当前官方 5.0.11.6018 已实测三开，并带注册表崩溃恢复与外部冲突保护 |
 | 官方客户端校验 | 自动定位或手动选择后，核对文件名、产品信息和腾讯数字签名 |
 | 本地数据 | 设置、主题、诊断、恢复证据和更新临时文件统一位于程序目录 `data` |
-| 日间与舒适夜间主题 | 支持跟随 Windows、固定日间或固定夜间；图标背景与状态色同步适配 |
+| 统一日夜主题 | 主程序、设置、介绍、安装器、清理器、确认提示及路径选择器使用同一套日间/夜间资源 |
 | 开机自动启动 | 可选登录 Windows 后启动助手并最小化；重复点击快捷方式会唤回窗口，不会自动打开客户端 |
 | 比例界面 | 901×513 起自由缩放到最大化，支持 Per-Monitor V2 DPI，不使用外层滚动条 |
 | 确认式一键更新 | 可选发现版本后自动下载并校验；安装仍需确认，支持验证缓存复用、独立安装进程与失败回滚 |
 | 可核验发布 | 源码标签、干净 Windows CI、哈希、SPDX SBOM、UI 回归矩阵与扫描日志公开 |
 
-## V1.1.6 更新
+## V1.1.7 更新
 
-- 自动检查更新在助手持续运行期间也会按计划继续执行；关闭开关后不启动待执行的检查；
-- 安装版和绿色版的开机启动项不再互相覆盖或删除；切换到另一份程序时需明确确认；
-- 开机最小化后再次点击快捷方式会唤回现有窗口；
-- 设置文件写入时保留备份，普通安装覆盖也增加暂存、失败回滚与断电后的原目录重试保护；
-- 主界面布局保持不变，新增长时间运行、双副本、备份恢复和安装故障注入测试。
+- QQ 卡片置于微信上方，企业微信在最下方；共用目标数量、独立补开和全部退出；
+- 官方 QQ 以直接启动实现多开，不沿用微信/企业微信的单实例锁处理；
+- 安装、清理、升级提示和客户端路径/安装目录选择器统一为现有主题样式；
+- 新增三卡片布局、QQ 官方签名与启动边界、弹窗/路径选择器的日夜回归验证。
 
 完整变化见 [CHANGELOG.md](CHANGELOG.md)。
 
 <details>
 <summary><strong>查看夜间主题、设置页和大尺寸适配</strong></summary>
 
-![V1.1.6 夜间主题](docs/assets/v1.1.6-main-dark-901x513.png)
+![V1.1.7 夜间主题](docs/assets/v1.1.7-main-dark-901x513.png)
 
-![V1.1.6 设置页](docs/assets/v1.1.6-settings-light-901x513.png)
+![V1.1.7 设置页](docs/assets/v1.1.7-settings-light-901x513.png)
 
-![V1.1.6 软件介绍页](docs/assets/v1.1.6-about-light-901x513.png)
+![V1.1.7 软件介绍页](docs/assets/v1.1.7-about-light-901x513.png)
 
-![V1.1.6 1920×1080 夜间界面](docs/assets/v1.1.6-main-dark-1920x1080.png)
+![V1.1.7 1920×1080 夜间界面](docs/assets/v1.1.7-main-dark-1920x1080.png)
 
-![V1.1.6 3440×1392 超宽屏界面](docs/assets/v1.1.6-main-ultrawide-light-3440x1392.png)
+![V1.1.7 3440×1392 超宽屏界面](docs/assets/v1.1.7-main-ultrawide-light-3440x1392.png)
+
+![V1.1.7 统一主题的确认弹窗](docs/assets/v1.1.7-confirm-dark.png)
+
+![V1.1.7 统一主题的路径选择器](docs/assets/v1.1.7-picker-folder-light.png)
 
 </details>
 
@@ -117,13 +121,13 @@
 
 ### 安装版
 
-1. 运行 `wechat_duokai-setup-v1.1.6.exe`；
+1. 运行 `wechat_duokai-setup-v1.1.7.exe`；
 2. 点击“选择文件夹”，选择或新建专用安装目录；
 3. 选择是否创建桌面快捷方式，然后点击“立即安装”；
 4. 如果旧版正在运行，安装器会询问是否关闭对应目录中的助手后覆盖；
 5. 安装完成后不会自行启动，只有点击“确认并启动”才会运行。
 
-![V1.1.6 安装器](docs/assets/v1.1.6-installer-light.png)
+![V1.1.7 安装器](docs/assets/v1.1.7-installer-light.png)
 
 如果安装过程中断电或被强制结束，助手会提示安装未完成，不会运行可能混合了新旧文件的程序。重新运行同版本或更新版本的正式安装包，并选择原安装目录即可完成安装。
 
@@ -179,10 +183,10 @@
 
 ## 安全与隐私边界
 
-微窗助手的边界是“启动经过验证的官方客户端、处理已知单实例锁、统计窗口并执行用户确认的操作”。它：
+微窗助手的边界是“启动经过验证的官方客户端、按客户端需要处理已知单实例锁、统计根实例并执行用户确认的操作”。它：
 
 - 不注入 DLL，不创建远程线程，不写客户端内存；
-- 不修改、替换或破解微信、企业微信文件；
+- 不修改、替换或破解 QQ、微信、企业微信文件；
 - 不读取聊天数据库、消息、联系人、Cookie、账号或登录凭据；
 - 不上传设置、路径、诊断、恢复日志或使用数据；
 - 不会在后台主动结束客户端，只有点击“全部退出”并确认后才关闭当前会话、精确路径匹配的对应程序；
@@ -197,17 +201,17 @@ Windows 用户的标准 `Run` 启动项；除这一项和安装版已有的卸�
 
 安全资料：
 
-- [V1.1.6 完整安全审计报告](docs/微窗助手_V1.1.6_完整安全审计报告.txt)
-- [V1.1.6 更新与安装安全验证报告](docs/V1.1.6-一键更新安全验证报告.md)
-- [V1.1.6 全项目自查报告](docs/V1.1.6-全项目自查报告.md)
-- [V1.1.6 UI 回归矩阵](docs/V1.1.6-UI回归矩阵.md)
+- [V1.1.7 完整安全审计报告](docs/微窗助手_V1.1.7_完整安全审计报告.txt)
+- [V1.1.7 更新与安装安全验证报告](docs/V1.1.7-一键更新安全验证报告.md)
+- [V1.1.7 全项目自查报告](docs/V1.1.7-全项目自查报告.md)
+- [V1.1.7 UI 回归矩阵](docs/V1.1.7-UI回归矩阵.md)
 - [源码与旧版二进制安全审计（历史）](SECURITY-AUDIT.md)
 - [旧版 EXE 硬编码路径说明](docs/旧版EXE硬编码路径说明与风险评估报告.txt)
 
 ### 在 Windows 中核对 SHA-256
 
 ```powershell
-Get-FileHash .\wechat_duokai-setup-v1.1.6.exe -Algorithm SHA256
+Get-FileHash .\wechat_duokai-setup-v1.1.7.exe -Algorithm SHA256
 ```
 
 将结果与同一 Release 中的 `SHA256SUMS.txt` 比较。文件名相同但哈希不同，不要运行。
@@ -235,7 +239,7 @@ Get-FileHash .\wechat_duokai-setup-v1.1.6.exe -Algorithm SHA256
 <details>
 <summary><strong>设置成 10 就一定能打开 10 个窗口吗？</strong></summary>
 
-不保证。`1–10` 是助手的目标范围，不是腾讯客户端的兼容性承诺。微信与企业微信可能在不同版本、账号、
+不保证。`1–10` 是助手的目标范围，不是腾讯客户端的兼容性承诺。QQ、微信与企业微信可能在不同版本、账号、
 组织策略或风控环境下改变限制。程序失败时会停止，不会转向注入或修改客户端文件。
 
 </details>
@@ -249,7 +253,7 @@ Get-FileHash .\wechat_duokai-setup-v1.1.6.exe -Algorithm SHA256
 </details>
 
 <details>
-<summary><strong>无法自动找到微信或企业微信怎么办？</strong></summary>
+<summary><strong>无法自动找到 QQ、微信或企业微信怎么办？</strong></summary>
 
 点击客户端卡片中的 `…` 选择官方 EXE。仍失败时进入“设置 → 本地诊断”生成报告，先自行检查其中的本地
 路径等信息，再到 [Issues](https://github.com/PascalePaF/wechat-wecom-duokai/issues) 描述 Windows 版本、
@@ -260,8 +264,8 @@ Get-FileHash .\wechat_duokai-setup-v1.1.6.exe -Algorithm SHA256
 <details>
 <summary><strong>卸载会删除聊天记录吗？</strong></summary>
 
-不会。清理器只删除带本项目专用标记且通过边界检查的助手目录、快捷方式、安装登记和发布包，不把微信或
-企业微信的程序目录、数据目录作为卸载目标。选择“删除源码”时仍要注意未提交的本项目源码修改不可恢复。
+不会。清理器只删除带本项目专用标记且通过边界检查的助手目录、快捷方式、安装登记和发布包，不把 QQ、
+微信或企业微信的程序目录、数据目录作为卸载目标。选择“删除源码”时仍要注意未提交的本项目源码修改不可恢复。
 
 </details>
 
@@ -272,13 +276,13 @@ Get-FileHash .\wechat_duokai-setup-v1.1.6.exe -Algorithm SHA256
 1. **删除程序与全部发布包，保留源码**：删除已验证安装目录、快捷方式、安装包、绿色版和助手设置；
 2. **全部删除，包括源码与全部发布包**：只有源码目录带正确标记且结构匹配时可选，还需要额外复选和确认。
 
-![V1.1.6 完整卸载器](docs/assets/v1.1.6-uninstaller-light.png)
+![V1.1.7 完整卸载器](docs/assets/v1.1.7-uninstaller-light.png)
 
 ## 兼容性与限制
 
 - Windows 10/11 x64，.NET Framework 4.8；
-- 支持微信旧版 `WeChat.exe`、微信 4.x `Weixin.exe` 和企业微信 `WXWork.exe`；
-- 当前真机基线：微信 `4.1.15.6`、企业微信 `5.0.11.6018`、Windows 11 x64；
+- 支持腾讯签名的 `QQ.exe`、微信旧版 `WeChat.exe`、微信 4.x `Weixin.exe` 和企业微信 `WXWork.exe`；
+- 当前真机基线：QQ `9.9.35.52892` 双实例启动、微信 `4.1.15.6`、企业微信 `5.0.11.6018`、Windows 11 x64；QQ 实测未使用账号登录，不等于所有版本、账号都可多开；
 - 支持 100%、125%、150%、175%、200% 缩放和 Per-Monitor V2 跨屏 DPI；
 - 不以客户端小版本号作为白名单，但腾讯调整锁机制、签名或组织策略后仍可能需要适配；
 - 项目使用 WPF / .NET Framework 4.8，不需要 WinUI 3、Tauri、Python 或浏览器运行时。
@@ -291,10 +295,10 @@ Get-FileHash .\wechat_duokai-setup-v1.1.6.exe -Algorithm SHA256
 ```powershell
 MSBuild .\duokai.sln /restore /t:Rebuild /p:Configuration=Release
 .\tests\bin\Release\net48\WechatDuokai.Tests.exe
-PowerShell -ExecutionPolicy Bypass -File .\build-release.ps1 -Version 1.1.6
+PowerShell -ExecutionPolicy Bypass -File .\build-release.ps1 -Version 1.1.7
 ```
 
-产物位于 `artifacts\V1.1.6`。构建脚本会重新编译、执行测试、分别打包 setup/cleanup、生成绿色版、
+产物位于 `artifacts\V1.1.7`。构建脚本会重新编译、执行测试、分别打包 setup/cleanup、生成绿色版、
 发布清单、静态更新清单和 SHA-256。GitHub Actions 会在全新的 Windows Server 2022 环境重复构建，
 复核哈希并生成、验证 SPDX 2.2 SBOM。
 
@@ -304,13 +308,14 @@ PowerShell -ExecutionPolicy Bypass -File .\build-release.ps1 -Version 1.1.6
 ```text
 主界面 MainWindow
 ├─ 比例缩放画布                   901×513 基准；统一缩放并按比例填满窗口
-├─ 主界面 / 设置 / 软件介绍       同窗切换；实时计数、主题、说明、更新与下载进度
+├─ 主界面 / 设置 / 软件介绍       同窗切换；QQ/微信/企微实时计数、主题、说明、更新与下载进度
+├─ 统一主题弹窗 / 路径选择器     安装、卸载、确认与自选官方程序共用日夜主题
 ├─ ApplicationLocator             注册表、运行进程、官方常见目录与用户自选路径
 ├─ ClientExecutableValidator      文件名、产品信息和腾讯签名验证
 ├─ InstanceManager                根实例统计、增量启动和分端全部退出编排
 │  ├─ IProcessEnvironment         进程枚举、父子关系、启动、等待与精确退出边界
 │  ├─ IWeComLaunchPolicy          落盘事务、异常恢复、外部冲突检测和条件恢复
-│  └─ WindowsHandleUnlocker       只处理已知单实例锁白名单
+│  └─ WindowsHandleUnlocker       只处理微信/企微已知单实例锁；QQ 直接启动
 ├─ ApplicationStorage             约束所有持久数据位于程序目录 data
 ├─ DiagnosticReportService        只写本地诊断报告
 ├─ ReleaseUpdateChecker           静态清单优先、严格 URL/大小和可选 GitHub digest
@@ -331,7 +336,7 @@ PowerShell -ExecutionPolicy Bypass -File .\build-release.ps1 -Version 1.1.6
 ## 反馈与贡献
 
 - 功能建议、兼容性问题和缺陷请通过 [Issues 表单](https://github.com/PascalePaF/wechat-wecom-duokai/issues/new/choose) 提交；
-- 报告问题时建议提供 Windows 版本、微信/企业微信版本、复现步骤和实际提示；
+- 报告问题时建议提供 Windows 版本、QQ/微信/企业微信版本、复现步骤和实际提示；
 - 诊断报告分享前请自行检查并遮盖本地路径、账号、聊天、联系人和组织资料；
 - 欢迎提交 Pull Request。涉及进程、注册表、更新或删除边界的修改，应同时补充自动化测试和安全说明。
 

@@ -11,7 +11,7 @@ body:
     id: helper_version
     attributes:
       label: 微窗助手版本
-      placeholder: 例如 V1.1.6
+      placeholder: 例如 V1.1.7
     validations:
       required: true
   - type: input

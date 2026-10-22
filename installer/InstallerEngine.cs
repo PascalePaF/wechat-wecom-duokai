@@ -8,7 +8,6 @@ using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.ComTypes;
 using System.Text;
 using System.Threading;
-using System.Windows.Forms;
 using Microsoft.Win32;
 using WechatDuokai.Presentation;
 using WechatDuokai.Update;
@@ -1151,7 +1150,8 @@ namespace WechatDuokai.Installer
             Process.Start(new ProcessStartInfo
             {
                 FileName = workerPath,
-                Arguments = "/cleanup-worker " + Quote(planPath),
+                Arguments = "/cleanup-worker " + Quote(planPath) +
+                            (ThemeManager.Current == AppTheme.Dark ? " --theme=dark" : " --theme=light"),
                 WorkingDirectory = tempDirectory,
                 UseShellExecute = true
             });
@@ -1464,12 +1464,13 @@ namespace WechatDuokai.Installer
         private static void ExecuteCore(string planPath, bool showMessages, bool scheduleSelfDeletion, bool verifyWorkerIdentity)
         {
             CleanupPlan plan = null;
+            var workerExecutable = Process.GetCurrentProcess().MainModule?.FileName;
             try
             {
                 plan = CleanupPlan.Read(planPath);
                 if (verifyWorkerIdentity &&
                     (!PathsEqual(plan.PlanPath, planPath) ||
-                     !PathsEqual(plan.WorkerPath, Application.ExecutablePath)))
+                     !PathsEqual(plan.WorkerPath, workerExecutable)))
                 {
                     throw new InvalidDataException("清理计划与工作进程不匹配。未删除任何文件。");
                 }
@@ -1528,10 +1529,9 @@ namespace WechatDuokai.Installer
 
                 if (showMessages)
                 {
-                    MessageBox.Show(plan.DeleteSource
-                            ? "已删除安装程序、发布包和已确认的源码目录。"
-                            : "已删除安装程序和发布包，源码已保留。",
-                        "清理完成", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    ThemedDialogService.Show(null, "清理完成", plan.DeleteSource
+                        ? "已删除安装程序、发布包和已确认的源码目录。"
+                        : "已删除安装程序和发布包，源码已保留。");
                 }
             }
             catch (Exception ex)
@@ -1541,8 +1541,8 @@ namespace WechatDuokai.Installer
                     throw;
                 }
 
-                MessageBox.Show("清理未能全部完成：\r\n" + ex.Message,
-                    "清理提示", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                ThemedDialogService.Show(null, "清理提示",
+                    "清理未能全部完成：\r\n" + ex.Message, true);
             }
             finally
             {
@@ -1558,10 +1558,10 @@ namespace WechatDuokai.Installer
                     // Best effort only.
                 }
 
-                if (scheduleSelfDeletion)
+                if (scheduleSelfDeletion && !string.IsNullOrWhiteSpace(workerExecutable))
                 {
-                    MoveFileEx(Application.ExecutablePath, null, 0x4);
-                    var workerDirectory = Path.GetDirectoryName(Application.ExecutablePath);
+                    MoveFileEx(workerExecutable, null, 0x4);
+                    var workerDirectory = Path.GetDirectoryName(workerExecutable);
                     if (!string.IsNullOrWhiteSpace(workerDirectory))
                     {
                         MoveFileEx(workerDirectory, null, 0x4);

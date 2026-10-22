@@ -9,7 +9,6 @@ using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Threading;
-using Microsoft.Win32;
 using WechatDuokai.Core;
 using WechatDuokai.Presentation;
 
@@ -29,6 +28,7 @@ namespace WechatDuokai.App
         private readonly DispatcherTimer _automaticUpdateTimer;
         private readonly AutomaticUpdateCoordinator _automaticUpdateCoordinator;
         private readonly CancellationTokenSource _lifetime = new CancellationTokenSource();
+        private AppDefinition _qq;
         private AppDefinition _weChat;
         private AppDefinition _weCom;
         private bool _busy;
@@ -187,8 +187,10 @@ namespace WechatDuokai.App
 
         private void LocateClients()
         {
+            _qq = ApplicationLocator.FindQQ(UserPreferences.LoadCustomClientPath(AppKind.QQ));
             _weChat = ApplicationLocator.FindWeChat(UserPreferences.LoadCustomClientPath(AppKind.WeChat));
             _weCom = ApplicationLocator.FindWeCom(UserPreferences.LoadCustomClientPath(AppKind.WeCom));
+            QQPath.Text = DescribePath(_qq);
             WeChatPath.Text = DescribePath(_weChat);
             WeComPath.Text = DescribePath(_weCom);
         }
@@ -200,20 +202,47 @@ namespace WechatDuokai.App
                 : "未找到客户端 · 点击 … 手动选择";
         }
 
+        private AppDefinition ClientFor(AppKind kind)
+        {
+            switch (kind)
+            {
+                case AppKind.QQ: return _qq;
+                case AppKind.WeChat: return _weChat;
+                case AppKind.WeCom: return _weCom;
+                default: throw new ArgumentOutOfRangeException(nameof(kind));
+            }
+        }
+
+        private static string DisplayName(AppKind kind)
+        {
+            switch (kind)
+            {
+                case AppKind.QQ: return "QQ";
+                case AppKind.WeChat: return "微信";
+                case AppKind.WeCom: return "企业微信";
+                default: throw new ArgumentOutOfRangeException(nameof(kind));
+            }
+        }
+
         private void RefreshClientStatus()
         {
+            var qqCount = GetCurrentCount(_qq);
             var weChatCount = GetCurrentCount(_weChat);
             var weComCount = GetCurrentCount(_weCom);
-            UpdateFooterCounts(weChatCount, weComCount);
+            UpdateFooterCounts(qqCount, weChatCount, weComCount);
             if (_busy) return;
+            UpdateClientStatus(_qq, QQStatus, QQButton, QQExitButton, qqCount);
             UpdateClientStatus(_weChat, WeChatStatus, WeChatButton, WeChatExitButton, weChatCount);
             UpdateClientStatus(_weCom, WeComStatus, WeComButton, WeComExitButton, weComCount);
         }
 
-        private void UpdateFooterCounts(int weChatCount, int weComCount)
+        private void UpdateFooterCounts(int qqCount, int weChatCount, int weComCount)
         {
+            FooterQQCount.Text = qqCount.ToString();
             FooterWeChatCount.Text = weChatCount.ToString();
             FooterWeComCount.Text = weComCount.ToString();
+            AutomationProperties.SetName(FooterQQCountLine,
+                $"当前 QQ 窗口 {qqCount} 个");
             AutomationProperties.SetName(FooterWeChatCountLine,
                 $"当前微信窗口 {weChatCount} 个");
             AutomationProperties.SetName(FooterWeComCountLine,
@@ -255,6 +284,11 @@ namespace WechatDuokai.App
             exitButton.IsEnabled = !_busy && count > 0;
         }
 
+        private async void QQButton_Click(object sender, RoutedEventArgs e)
+        {
+            await StartOrRestoreAsync(AppKind.QQ);
+        }
+
         private async void WeChatButton_Click(object sender, RoutedEventArgs e)
         {
             await StartOrRestoreAsync(AppKind.WeChat);
@@ -265,6 +299,11 @@ namespace WechatDuokai.App
             await StartOrRestoreAsync(AppKind.WeCom);
         }
 
+        private async void QQExitButton_Click(object sender, RoutedEventArgs e)
+        {
+            await ExitAllAsync(AppKind.QQ);
+        }
+
         private async void WeChatExitButton_Click(object sender, RoutedEventArgs e)
         {
             await ExitAllAsync(AppKind.WeChat);
@@ -273,6 +312,11 @@ namespace WechatDuokai.App
         private async void WeComExitButton_Click(object sender, RoutedEventArgs e)
         {
             await ExitAllAsync(AppKind.WeCom);
+        }
+
+        private void QQSelectButton_Click(object sender, RoutedEventArgs e)
+        {
+            SelectClient(AppKind.QQ);
         }
 
         private void WeChatSelectButton_Click(object sender, RoutedEventArgs e)
@@ -287,30 +331,23 @@ namespace WechatDuokai.App
 
         private void SelectClient(AppKind kind)
         {
-            var expectedName = kind == AppKind.WeChat ? "微信" : "企业微信";
-            var existing = kind == AppKind.WeChat ? _weChat : _weCom;
-            var dialog = new OpenFileDialog
-            {
-                Title = "选择官方" + expectedName + "程序",
-                CheckFileExists = true,
-                Multiselect = false,
-                Filter = kind == AppKind.WeChat
-                    ? "微信程序 (Weixin.exe;WeChat.exe)|Weixin.exe;WeChat.exe|程序文件 (*.exe)|*.exe"
-                    : "企业微信程序 (WXWork.exe)|WXWork.exe|程序文件 (*.exe)|*.exe"
-            };
-            if (existing != null && existing.IsAvailable)
-            {
-                dialog.InitialDirectory = Path.GetDirectoryName(existing.ExecutablePath);
-                dialog.FileName = Path.GetFileName(existing.ExecutablePath);
-            }
-
-            if (dialog.ShowDialog(this) != true) return;
-            var validation = ClientExecutableValidator.Validate(dialog.FileName, kind);
+            var expectedName = DisplayName(kind);
+            var existing = ClientFor(kind);
+            var initialDirectory = existing != null && existing.IsAvailable
+                ? Path.GetDirectoryName(existing.ExecutablePath)
+                : Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
+            var selectedPath = ThemedPathPicker.SelectFile(this,
+                "选择腾讯官方" + expectedName + "程序", initialDirectory,
+                kind == AppKind.WeChat
+                    ? new[] { "Weixin.exe", "WeChat.exe" }
+                    : kind == AppKind.QQ ? new[] { "QQ.exe" }
+                        : new[] { "WXWork.exe", "WeCom.exe", "企业微信.exe" });
+            if (selectedPath == null) return;
+            var validation = ClientExecutableValidator.Validate(selectedPath, kind);
             if (!validation.IsValid)
             {
                 SetStatus("所选文件未通过官方客户端验证", "WarningBrush");
-                MessageBox.Show(validation.ErrorMessage,
-                    "未通过验证", MessageBoxButton.OK, MessageBoxImage.Warning);
+                ThemedDialogService.Show(this, "未通过验证", validation.ErrorMessage, true);
                 return;
             }
 
@@ -323,20 +360,20 @@ namespace WechatDuokai.App
         private async Task StartOrRestoreAsync(AppKind kind)
         {
             if (_busy) return;
-            var application = kind == AppKind.WeChat ? _weChat : _weCom;
+            var application = ClientFor(kind);
             if (application == null || !application.IsAvailable)
             {
                 LocateClients();
-                application = kind == AppKind.WeChat ? _weChat : _weCom;
+                application = ClientFor(kind);
             }
 
             if (application == null || !application.IsAvailable)
             {
-                var name = kind == AppKind.WeChat ? "微信" : "企业微信";
+                var name = DisplayName(kind);
                 SetStatus("未找到" + name + "，可点击卡片内的 … 手动选择。", "WarningBrush");
-                MessageBox.Show("没有找到通过腾讯签名验证的官方客户端。\r\n\r\n" +
-                                "请先安装官方版本，或点击卡片中的 … 选择程序文件。",
-                    "未找到客户端", MessageBoxButton.OK, MessageBoxImage.Information);
+                ThemedDialogService.Show(this, "未找到客户端",
+                    "没有找到通过腾讯签名验证的官方客户端。\r\n\r\n" +
+                    "请先安装官方版本，或点击卡片中的 … 选择程序文件。");
                 return;
             }
 
@@ -351,7 +388,7 @@ namespace WechatDuokai.App
                     _lifetime.Token);
                 SetStatus(result.Message, result.Success ? "SuccessBrush" : "WarningBrush");
                 if (!result.Success)
-                    MessageBox.Show(result.Message, "补开结果", MessageBoxButton.OK, MessageBoxImage.Information);
+                    ThemedDialogService.Show(this, "补开结果", result.Message);
             }
             catch (OperationCanceledException) when (_lifetime.IsCancellationRequested)
             {
@@ -359,8 +396,8 @@ namespace WechatDuokai.App
             catch (Exception ex)
             {
                 SetStatus("启动未完成：" + ex.Message, "DangerBrush");
-                MessageBox.Show("启动未完成，但程序没有修改客户端文件。\r\n\r\n" + ex.Message,
-                    "启动提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+                ThemedDialogService.Show(this, "启动提示",
+                    "启动未完成，但程序没有修改客户端文件。\r\n\r\n" + ex.Message, true);
             }
             finally
             {
@@ -372,8 +409,8 @@ namespace WechatDuokai.App
         private async Task ExitAllAsync(AppKind kind)
         {
             if (_busy) return;
-            var application = kind == AppKind.WeChat ? _weChat : _weCom;
-            var name = kind == AppKind.WeChat ? "微信" : "企业微信";
+            var application = ClientFor(kind);
+            var name = DisplayName(kind);
             var count = GetCurrentCount(application);
             if (count == 0)
             {
@@ -382,14 +419,12 @@ namespace WechatDuokai.App
                 return;
             }
 
-            var confirmation = MessageBox.Show(
+            var confirmed = ThemedDialogService.Confirm(this,
+                "退出全部" + name + "窗口",
                 "将退出当前 Windows 会话中检测到的全部 " + count + " 个" + name + "窗口。\r\n\r\n" +
                 "这只会关闭客户端程序，不会注销账号；尚未发送的内容可能丢失。是否继续？",
-                "退出全部" + name + "窗口",
-                MessageBoxButton.YesNo,
-                MessageBoxImage.Warning,
-                MessageBoxResult.No);
-            if (confirmation != MessageBoxResult.Yes)
+                "确认退出", true);
+            if (!confirmed)
             {
                 return;
             }
@@ -404,8 +439,7 @@ namespace WechatDuokai.App
                 SetStatus(result.Message, result.Success ? "SuccessBrush" : "WarningBrush");
                 if (!result.Success)
                 {
-                    MessageBox.Show(result.Message,
-                        "退出结果", MessageBoxButton.OK, MessageBoxImage.Information);
+                    ThemedDialogService.Show(this, "退出结果", result.Message);
                 }
             }
             catch (OperationCanceledException) when (_lifetime.IsCancellationRequested)
@@ -414,8 +448,9 @@ namespace WechatDuokai.App
             catch (Exception ex)
             {
                 SetStatus("退出未完成：" + ex.Message, "DangerBrush");
-                MessageBox.Show("退出未完成；程序只尝试处理路径完全匹配的官方客户端进程。\r\n\r\n" + ex.Message,
-                    "退出提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+                ThemedDialogService.Show(this, "退出提示",
+                    "退出未完成；程序只尝试处理路径完全匹配的官方客户端进程。\r\n\r\n" + ex.Message,
+                    true);
             }
             finally
             {
@@ -427,10 +462,13 @@ namespace WechatDuokai.App
         private void SetBusy(bool busy)
         {
             _busy = busy;
+            QQButton.IsEnabled = !busy && _qq != null && _qq.IsAvailable;
             WeChatButton.IsEnabled = !busy && _weChat != null && _weChat.IsAvailable;
             WeComButton.IsEnabled = !busy && _weCom != null && _weCom.IsAvailable;
+            QQExitButton.IsEnabled = !busy && GetCurrentCount(_qq) > 0;
             WeChatExitButton.IsEnabled = !busy && GetCurrentCount(_weChat) > 0;
             WeComExitButton.IsEnabled = !busy && GetCurrentCount(_weCom) > 0;
+            QQSelectButton.IsEnabled = !busy;
             WeChatSelectButton.IsEnabled = !busy;
             WeComSelectButton.IsEnabled = !busy;
             DecreaseButton.IsEnabled = !busy;
@@ -624,9 +662,9 @@ namespace WechatDuokai.App
             {
                 SetRunAtStartupCheckBox(UserPreferences.LoadRunAtWindowsStartup());
                 SetStatus("开发目录不创建开机启动项 · 请使用安装版或正式绿色版", "WarningBrush");
-                MessageBox.Show("当前目录不是带正式标记的安装版或绿色版。\r\n\r\n" +
-                                "为避免把源码构建目录写入 Windows 启动项，本次没有启用。",
-                    "无法启用开机启动", MessageBoxButton.OK, MessageBoxImage.Warning);
+                ThemedDialogService.Show(this, "无法启用开机启动",
+                    "当前目录不是带正式标记的安装版或绿色版。\r\n\r\n" +
+                    "为避免把源码构建目录写入 Windows 启动项，本次没有启用。", true);
                 return;
             }
 
@@ -636,10 +674,9 @@ namespace WechatDuokai.App
             if (enabled && result.Conflict &&
                 !string.IsNullOrWhiteSpace(result.ExistingOwnedCommand))
             {
-                if (MessageBox.Show("另一份微窗助手已设置为开机启动。\r\n\r\n" +
-                                    "是否改为由当前这份程序启动？原程序文件不会被删除。",
-                        "切换开机启动程序", MessageBoxButton.YesNo,
-                        MessageBoxImage.Question) != MessageBoxResult.Yes)
+                if (!ThemedDialogService.Confirm(this, "切换开机启动程序",
+                        "另一份微窗助手已设置为开机启动。\r\n\r\n" +
+                        "是否改为由当前这份程序启动？原程序文件不会被删除。", "确认切换"))
                 {
                     SetRunAtStartupCheckBox(false);
                     SetStatus("已保留另一份程序的开机启动设置", "InfoBrush");
@@ -654,8 +691,7 @@ namespace WechatDuokai.App
                     ? false
                     : UserPreferences.LoadRunAtWindowsStartup());
                 SetStatus(result.Message, "WarningBrush");
-                MessageBox.Show(result.Message, "开机启动设置", MessageBoxButton.OK,
-                    MessageBoxImage.Warning);
+                ThemedDialogService.Show(this, "开机启动设置", result.Message, true);
                 return;
             }
 
@@ -963,9 +999,9 @@ namespace WechatDuokai.App
             var mode = _applicationUpdater.DetectCurrentMode();
             if (mode == ApplicationInstallMode.Unknown)
             {
-                MessageBox.Show("当前程序目录不是经过标记验证的安装版或绿色版。\r\n\r\n" +
-                                "为避免覆盖源码或其他文件，本次只能打开 GitHub Release 手动更新。",
-                    "不能自动覆盖当前目录", MessageBoxButton.OK, MessageBoxImage.Warning);
+                ThemedDialogService.Show(this, "不能自动覆盖当前目录",
+                    "当前程序目录不是经过标记验证的安装版或绿色版。\r\n\r\n" +
+                    "为避免覆盖源码或其他文件，本次只能打开 GitHub Release 手动更新。", true);
                 return;
             }
 
@@ -976,7 +1012,7 @@ namespace WechatDuokai.App
                     ? "静态更新清单 + SHA256SUMS.txt + 下载文件必须一致"
                     : "固定 GitHub Release 地址 + SHA256SUMS.txt + 下载文件必须一致";
             var alreadyPrepared = HasPreparedUpdate(_availableUpdate.LatestVersion);
-            var choice = MessageBox.Show(
+            var confirmed = ThemedDialogService.Confirm(this, "确认一键更新",
                 "将把当前" + description + "从 V" + CurrentVersion + " 更新到 V" +
                 _availableUpdate.LatestVersion + "。\r\n\r\n" +
                 "下载来源：本项目 GitHub Release\r\n" +
@@ -987,9 +1023,8 @@ namespace WechatDuokai.App
                 "安全校验：" + verification + "\r\n" +
                 "本地数据：data 中的设置、主题、诊断和恢复日志全部保留\r\n\r\n" +
                 "校验通过后助手会关闭，由独立安装程序覆盖并重新启动。现在继续吗？",
-                "确认一键更新", MessageBoxButton.YesNo, MessageBoxImage.Question,
-                MessageBoxResult.Yes);
-            if (choice != MessageBoxResult.Yes)
+                "确认更新");
+            if (!confirmed)
             {
                 SetStatus(alreadyPrepared
                     ? "已取消安装 · 经过校验的更新包仍保留在本机"
@@ -1026,9 +1061,9 @@ namespace WechatDuokai.App
                 UpdateProgressBar.Visibility = Visibility.Collapsed;
                 UpdateStatusText.Text = "更新已停止；未执行未通过校验的文件";
                 SetStatus("一键更新未完成 · 当前版本保持不变", "WarningBrush");
-                MessageBox.Show("没有执行更新安装包。\r\n\r\n" + ex.Message +
-                                "\r\n\r\n你仍可打开 GitHub 发布页手动下载并核对 SHA-256。",
-                    "更新提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+                ThemedDialogService.Show(this, "更新提示",
+                    "没有执行更新安装包。\r\n\r\n" + ex.Message +
+                    "\r\n\r\n你仍可打开 GitHub 发布页手动下载并核对 SHA-256。", true);
             }
         }
 
@@ -1037,12 +1072,12 @@ namespace WechatDuokai.App
             try
             {
                 var report = _diagnostics.CreateReport(AppDomain.CurrentDomain.BaseDirectory,
-                    _weChat, _weCom, _instanceManager);
+                    _qq, _weChat, _weCom, _instanceManager);
                 SetStatus("本地诊断报告已生成", "SuccessBrush");
-                if (MessageBox.Show("诊断报告已保存在程序目录：\r\n" + report +
-                                    "\r\n\r\n报告不会自动上传。现在打开所在文件夹吗？",
-                        "诊断完成", MessageBoxButton.YesNo, MessageBoxImage.Information,
-                        MessageBoxResult.Yes) == MessageBoxResult.Yes)
+                if (ThemedDialogService.Confirm(this, "诊断完成",
+                        "诊断报告已保存在程序目录：\r\n" + report +
+                        "\r\n\r\n报告不会自动上传。现在打开所在文件夹吗？",
+                        "打开文件夹"))
                 {
                     Process.Start(new ProcessStartInfo
                     {
@@ -1055,8 +1090,9 @@ namespace WechatDuokai.App
             catch (Exception ex)
             {
                 SetStatus("无法写入本地诊断报告", "WarningBrush");
-                MessageBox.Show("无法在程序目录的 data\\diagnostics 文件夹中创建报告：\r\n" + ex.Message,
-                    "诊断提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+                ThemedDialogService.Show(this, "诊断提示",
+                    "无法在程序目录的 data\\diagnostics 文件夹中创建报告：\r\n" + ex.Message,
+                    true);
             }
         }
 

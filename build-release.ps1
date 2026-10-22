@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [string]$Version = '1.1.6'
+    [string]$Version = '1.1.7'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -239,7 +239,7 @@ $manifest = @(
     'ShellIdentity=Explicit WPF window icon plus matching process/shortcut AppUserModelID and Explorer icon-cache notification',
     'Framework=.NET Framework 4.8',
     'Platform=Windows 10/11 x64',
-    'UI=Uniform proportional scaling from 901x513 through maximized layouts; no outer scrollbars',
+    'UI=Unified light/dark WPF dialogs and pickers; proportional three-client layout from 901x513 through maximized; no outer scrollbars',
     'LaunchPolicy=Explicit confirmation after install',
     'ExitAllPolicy=Per-client confirmation; current session and exact verified executable path only; graceful close before force',
     'UpgradePolicy=Prompt before closing exact-path running helper',
@@ -251,7 +251,8 @@ $manifest = @(
     'InstallerIdentity=Setup and cleanup are separate assemblies',
     'WeComExtendedMode=Temporary registry policy plus exact known mutex release; restore only if temporary state is still owned',
     'RegistryCrashRecovery=Durable pre-write journal under data/recovery; startup restore remains conditional on temporary-state ownership',
-    'TargetCounts=One shared persisted 1-10 target for WeChat and WeCom; V1.0.6 split values migrate deterministically',
+    'QQPolicy=Tencent-signed official QQ.exe only; direct launch without lock release or registry edits; exact-path root-instance counting',
+    'TargetCounts=One shared persisted 1-10 target for QQ, WeChat and WeCom; V1.0.6 split values migrate deterministically',
     'RuntimeStorage=Configuration, theme, diagnostics, recovery and update evidence stay below the application data directory',
     'StartupPolicy=Optional per-user Windows Run entry points only to the exact marked app executable; portable moves repair the owned path; external conflicts are preserved',
     'CI=Fresh GitHub-hosted Windows build, tests, SHA-256 verification and SPDX 2.2 SBOM',

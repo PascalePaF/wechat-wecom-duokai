@@ -35,6 +35,9 @@ namespace WechatDuokai.Core
         private static readonly HashSet<string> WeComExecutableNames = new HashSet<string>(
             new[] { "WXWork.exe", "WeCom.exe", "企业微信.exe" }, StringComparer.OrdinalIgnoreCase);
 
+        private static readonly HashSet<string> QqExecutableNames = new HashSet<string>(
+            new[] { "QQ.exe" }, StringComparer.OrdinalIgnoreCase);
+
         public static ClientValidationResult Validate(string path, AppKind expectedKind)
         {
             var result = new ClientValidationResult();
@@ -60,12 +63,16 @@ namespace WechatDuokai.Core
                 return result;
             }
 
-            var allowedNames = expectedKind == AppKind.WeChat ? WeChatExecutableNames : WeComExecutableNames;
+            var allowedNames = expectedKind == AppKind.WeChat
+                ? WeChatExecutableNames
+                : expectedKind == AppKind.WeCom ? WeComExecutableNames : QqExecutableNames;
             if (!allowedNames.Contains(Path.GetFileName(result.NormalizedPath)))
             {
                 result.ErrorMessage = expectedKind == AppKind.WeChat
                     ? "请选择官方微信的 Weixin.exe 或 WeChat.exe。"
-                    : "请选择官方企业微信的 WXWork.exe。";
+                    : expectedKind == AppKind.WeCom
+                        ? "请选择官方企业微信的 WXWork.exe。"
+                        : "请选择腾讯官方 QQ 的 QQ.exe。";
                 return result;
             }
 
@@ -84,7 +91,8 @@ namespace WechatDuokai.Core
                 });
 
                 if (identityText.IndexOf("Tencent", StringComparison.OrdinalIgnoreCase) < 0 ||
-                    !MatchesProductIdentity(identityText, expectedKind))
+                    !MatchesProductIdentity(identityText, expectedKind) ||
+                    (expectedKind == AppKind.QQ && !IsQQProduct(version.ProductName)))
                 {
                     result.ErrorMessage = "文件的产品信息与所选客户端不一致，已拒绝使用。";
                     return result;
@@ -99,7 +107,7 @@ namespace WechatDuokai.Core
             string publisher;
             if (!HasValidTencentSignature(result.NormalizedPath, out publisher))
             {
-                result.ErrorMessage = "没有验证到有效的腾讯数字签名。请从微信或企业微信官网下载客户端。";
+                result.ErrorMessage = "没有验证到有效的腾讯数字签名。请从对应客户端的腾讯官方网站下载程序。";
                 return result;
             }
 
@@ -110,6 +118,11 @@ namespace WechatDuokai.Core
 
         private static bool MatchesProductIdentity(string identityText, AppKind kind)
         {
+            if (kind == AppKind.QQ)
+            {
+                return identityText.IndexOf("QQ", StringComparison.OrdinalIgnoreCase) >= 0;
+            }
+
             if (kind == AppKind.WeChat)
             {
                 return identityText.IndexOf("Weixin", StringComparison.OrdinalIgnoreCase) >= 0 ||
@@ -120,6 +133,16 @@ namespace WechatDuokai.Core
             return identityText.IndexOf("WXWork", StringComparison.OrdinalIgnoreCase) >= 0 ||
                    identityText.IndexOf("WeCom", StringComparison.OrdinalIgnoreCase) >= 0 ||
                    identityText.IndexOf("企业微信", StringComparison.OrdinalIgnoreCase) >= 0;
+        }
+
+        private static bool IsQQProduct(string productName)
+        {
+            var normalized = (productName ?? string.Empty).Trim();
+            return string.Equals(normalized, "QQ", StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(normalized, "QQ NT", StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(normalized, "QQNT", StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(normalized, "Tencent QQ", StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(normalized, "腾讯QQ", StringComparison.OrdinalIgnoreCase);
         }
 
         private static bool HasValidTencentSignature(string path, out string publisher)

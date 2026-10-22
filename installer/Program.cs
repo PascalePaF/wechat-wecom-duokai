@@ -20,8 +20,9 @@ namespace WechatDuokai.Installer
             ThemeManager.Initialize(ParseForcedTheme(args));
             application.DispatcherUnhandledException += (sender, eventArgs) =>
             {
-                MessageBox.Show("安装程序遇到未预期问题，已停止继续操作。\r\n\r\n" + eventArgs.Exception.Message,
-                    "安装程序已停止", MessageBoxButton.OK, MessageBoxImage.Error);
+                ThemedDialogService.Show(application.MainWindow, "安装程序已停止",
+                    "安装程序遇到未预期问题，已停止继续操作。\r\n\r\n" +
+                    eventArgs.Exception.Message, true);
                 eventArgs.Handled = true;
                 application.Shutdown(1);
             };
@@ -35,8 +36,8 @@ namespace WechatDuokai.Installer
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show("更新计划未通过验证，未修改任何程序文件。\r\n\r\n" + ex.Message,
-                        "无法开始更新", MessageBoxButton.OK, MessageBoxImage.Error);
+                    ThemedDialogService.Show(null, "无法开始更新",
+                        "更新计划未通过验证，未修改任何程序文件。\r\n\r\n" + ex.Message, true);
                     return 2;
                 }
             }

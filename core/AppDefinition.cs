@@ -7,7 +7,8 @@ namespace WechatDuokai.Core
     public enum AppKind
     {
         WeChat,
-        WeCom
+        WeCom,
+        QQ
     }
 
     public sealed class AppDefinition
@@ -34,6 +35,11 @@ namespace WechatDuokai.Core
                 if (Kind == AppKind.WeChat)
                 {
                     return new[] { "WeChat", "Weixin" };
+                }
+
+                if (Kind == AppKind.QQ)
+                {
+                    return new[] { "QQ" };
                 }
 
                 return new[] { "WXWork", "WeCom", "企业微信" };

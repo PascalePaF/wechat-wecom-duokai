@@ -6,7 +6,6 @@ using System.Windows;
 using System.Windows.Input;
 using WechatDuokai.Presentation;
 using WechatDuokai.Update;
-using WinForms = System.Windows.Forms;
 
 namespace WechatDuokai.Installer
 {
@@ -54,31 +53,18 @@ namespace WechatDuokai.Installer
 
         private void BrowseButton_Click(object sender, RoutedEventArgs e)
         {
-            using (var dialog = new WinForms.FolderBrowserDialog
+            var selected = ThemedPathPicker.SelectFolder(this,
+                "选择微窗助手安装位置", FindNearestExistingDirectory(_selectedInstallDirectory));
+            if (string.IsNullOrWhiteSpace(selected)) return;
+            _selectedInstallDirectory = Path.GetFullPath(selected);
+            InstallPathText.Text = _selectedInstallDirectory;
+            if (InstallerEngine.ValidateInstallTarget(_selectedInstallDirectory, out var error))
             {
-                Description = "请选择或新建微窗助手的专用安装文件夹",
-                RootFolder = Environment.SpecialFolder.Desktop,
-                SelectedPath = FindNearestExistingDirectory(_selectedInstallDirectory),
-                ShowNewFolderButton = true
-            })
+                SetStatus("安装位置已选择", "SuccessBrush");
+            }
+            else
             {
-                var owner = new System.Windows.Interop.WindowInteropHelper(this).Handle;
-                if (dialog.ShowDialog(new NativeWindowOwner(owner)) != WinForms.DialogResult.OK ||
-                    string.IsNullOrWhiteSpace(dialog.SelectedPath))
-                {
-                    return;
-                }
-
-                _selectedInstallDirectory = Path.GetFullPath(dialog.SelectedPath);
-                InstallPathText.Text = _selectedInstallDirectory;
-                if (InstallerEngine.ValidateInstallTarget(_selectedInstallDirectory, out var error))
-                {
-                    SetStatus("安装位置已选择", "SuccessBrush");
-                }
-                else
-                {
-                    SetStatus(error, "WarningBrush");
-                }
+                SetStatus(error, "WarningBrush");
             }
         }
 
@@ -101,19 +87,19 @@ namespace WechatDuokai.Installer
             if (!InstallerEngine.ValidateInstallTarget(_selectedInstallDirectory, out var validationError))
             {
                 SetStatus(validationError, "WarningBrush");
-                MessageBox.Show(validationError, "请选择其他文件夹", MessageBoxButton.OK, MessageBoxImage.Warning);
+                ThemedDialogService.Show(this, "请选择其他文件夹", validationError, true);
                 return;
             }
 
             var running = InstallerEngine.FindRunningApplications(_selectedInstallDirectory);
             if (running.Count > 0)
             {
-                var closeChoice = MessageBox.Show(
+                var closeChoice = ThemedDialogService.Confirm(this,
+                    "需要关闭正在运行的助手",
                     "检测到这个安装位置的微窗助手正在运行。\r\n\r\n" +
-                    "是否先正常关闭助手，再继续覆盖安装？微信和企业微信不会被关闭。",
-                    "需要关闭正在运行的助手", MessageBoxButton.YesNo,
-                    MessageBoxImage.Question, MessageBoxResult.Yes);
-                if (closeChoice != MessageBoxResult.Yes)
+                    "是否先正常关闭助手，再继续覆盖安装？QQ、微信和企业微信不会被关闭。",
+                    "关闭并安装");
+                if (!closeChoice)
                 {
                     SetStatus("安装已暂停；正在运行的助手保持不变", "WarningBrush");
                     return;
@@ -123,12 +109,12 @@ namespace WechatDuokai.Installer
                     _selectedInstallDirectory, running, false);
                 if (remaining.Count > 0)
                 {
-                    var forceChoice = MessageBox.Show(
+                    var forceChoice = ThemedDialogService.Confirm(this,
+                        "助手仍在运行",
                         "助手未能在 5 秒内正常退出。\r\n\r\n" +
-                        "是否只强制关闭该安装目录中的助手进程，然后继续安装？微信和企业微信不会被关闭。",
-                        "助手仍在运行", MessageBoxButton.YesNo,
-                        MessageBoxImage.Warning, MessageBoxResult.No);
-                    if (forceChoice != MessageBoxResult.Yes)
+                        "是否只强制关闭该安装目录中的助手进程，然后继续安装？QQ、微信和企业微信不会被关闭。",
+                        "强制关闭助手", true);
+                    if (!forceChoice)
                     {
                         SetStatus("安装已暂停；请退出助手后重试", "WarningBrush");
                         return;
@@ -139,8 +125,8 @@ namespace WechatDuokai.Installer
                     if (remaining.Count > 0)
                     {
                         SetStatus("无法关闭正在运行的助手，未覆盖文件", "DangerBrush");
-                        MessageBox.Show("仍有助手进程占用安装文件。请手动退出后重试。",
-                            "无法继续安装", MessageBoxButton.OK, MessageBoxImage.Error);
+                        ThemedDialogService.Show(this, "无法继续安装",
+                            "仍有助手进程占用安装文件。请手动退出后重试。", true);
                         return;
                     }
                 }
@@ -159,7 +145,7 @@ namespace WechatDuokai.Installer
             catch (Exception ex)
             {
                 SetStatus("安装失败；原有客户端文件未被修改", "DangerBrush");
-                MessageBox.Show(ex.Message, "安装失败", MessageBoxButton.OK, MessageBoxImage.Error);
+                ThemedDialogService.Show(this, "安装失败", ex.Message, true);
                 SetInteractiveState(true);
             }
             finally
@@ -226,9 +212,9 @@ namespace WechatDuokai.Installer
             catch (Exception ex)
             {
                 SetStatus("更新未完成 · 已保留或恢复原版本", "DangerBrush");
-                MessageBox.Show("一键更新没有完成。程序已停止覆盖，并尽可能恢复原版本。\r\n\r\n" +
-                                ex.Message + "\r\n\r\n如仍有问题，可从 GitHub Release 手动下载安装。",
-                    "更新失败", MessageBoxButton.OK, MessageBoxImage.Error);
+                ThemedDialogService.Show(this, "更新失败",
+                    "一键更新没有完成。程序已停止覆盖，并尽可能恢复原版本。\r\n\r\n" +
+                    ex.Message + "\r\n\r\n如仍有问题，可从 GitHub Release 手动下载安装。", true);
                 SecondaryButton.Content = "关闭";
                 SecondaryButton.IsEnabled = true;
             }
@@ -259,9 +245,9 @@ namespace WechatDuokai.Installer
             catch (Exception ex)
             {
                 SetStatus("应用未能启动；已写入的程序仍然保留", "WarningBrush");
-                MessageBox.Show((_updatePlan == null ? "安装" : "更新") +
-                                "已经完成，但启动应用失败：\r\n" + ex.Message,
-                    "启动提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+                ThemedDialogService.Show(this, "启动提示",
+                    (_updatePlan == null ? "安装" : "更新") +
+                    "已经完成，但启动应用失败：\r\n" + ex.Message, true);
             }
         }
 
@@ -320,14 +306,5 @@ namespace WechatDuokai.Installer
             }
         }
 
-        private sealed class NativeWindowOwner : WinForms.IWin32Window
-        {
-            internal NativeWindowOwner(IntPtr handle)
-            {
-                Handle = handle;
-            }
-
-            public IntPtr Handle { get; }
-        }
     }
 }
