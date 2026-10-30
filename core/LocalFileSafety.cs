@@ -1,6 +1,6 @@
 using System;
 using System.IO;
-using System.Text;
+using WechatDuokai.IO;
 
 namespace WechatDuokai.Core
 {
@@ -8,25 +8,12 @@ namespace WechatDuokai.Core
     {
         internal static void RejectReparsePoints(string path)
         {
-            var current = Path.GetFullPath(path);
-            while (!string.IsNullOrEmpty(current))
-            {
-                try
-                {
-                    if ((File.GetAttributes(current) & FileAttributes.ReparsePoint) != 0)
-                        throw new IOException("本地数据路径包含符号链接或目录联接，已停止读写。");
-                }
-                catch (FileNotFoundException) { }
-                catch (DirectoryNotFoundException) { }
-                current = Path.GetDirectoryName(current);
-            }
+            SafeLocalFile.RejectReparsePoints(path);
         }
 
         internal static void EnsureDirectory(string path)
         {
-            RejectReparsePoints(path);
-            Directory.CreateDirectory(path);
-            RejectReparsePoints(path);
+            SafeLocalFile.EnsureDirectory(path);
         }
 
         internal static void EnsureDirectoryUnderRoot(string root, string directory)
@@ -44,31 +31,12 @@ namespace WechatDuokai.Core
 
         internal static void WriteBytesAtomic(string path, byte[] bytes)
         {
-            EnsureDirectory(Path.GetDirectoryName(Path.GetFullPath(path)));
-            RejectReparsePoints(path);
-            // Unique CreateNew files cannot overwrite pre-existing links or another writer's work.
-            var temporary = path + "." + Guid.NewGuid().ToString("N") + ".new";
-            try
-            {
-                using (var stream = new FileStream(temporary, FileMode.CreateNew, FileAccess.Write,
-                           FileShare.None, 4096, FileOptions.WriteThrough))
-                {
-                    stream.Write(bytes, 0, bytes.Length);
-                    stream.Flush(true);
-                }
-                RejectReparsePoints(path);
-                if (File.Exists(path)) File.Replace(temporary, path, null, true);
-                else File.Move(temporary, path);
-            }
-            finally
-            {
-                if (File.Exists(temporary)) File.Delete(temporary);
-            }
+            SafeLocalFile.WriteBytesAtomic(path, bytes);
         }
 
         internal static void WriteTextAtomic(string path, string contents)
         {
-            WriteBytesAtomic(path, new UTF8Encoding(false).GetBytes(contents));
+            SafeLocalFile.WriteTextAtomic(path, contents);
         }
     }
 }

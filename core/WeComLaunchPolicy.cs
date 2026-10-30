@@ -377,9 +377,10 @@ namespace WechatDuokai.Core
                     if (File.Exists(previous)) File.Delete(previous);
                     File.Move(AuditLogPath, previous);
                 }
-                File.AppendAllText(AuditLogPath,
+                var existing = File.Exists(AuditLogPath) ? File.ReadAllText(AuditLogPath, Encoding.UTF8) : string.Empty;
+                LocalFileSafety.WriteTextAtomic(AuditLogPath, existing +
                     DateTimeOffset.Now.ToString("yyyy-MM-dd HH:mm:ss.fff zzz", CultureInfo.InvariantCulture) +
-                    " " + message + Environment.NewLine, new UTF8Encoding(true));
+                    " " + message + Environment.NewLine);
             }
             catch (Exception) { }
         }

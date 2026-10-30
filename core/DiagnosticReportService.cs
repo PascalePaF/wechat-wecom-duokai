@@ -30,7 +30,7 @@ namespace WechatDuokai.Core
             var folder = Path.Combine(dataDirectory, FolderName);
             LocalFileSafety.EnsureDirectoryUnderRoot(root, folder);
             var path = Path.Combine(folder, "diagnostic-" + DateTime.Now.ToString("yyyyMMdd-HHmmss") +
-                "-" + Guid.NewGuid().ToString("N").Substring(0, 8) + ".txt");
+                "-" + Guid.NewGuid().ToString("N") + ".txt");
             var lines = new List<string>
             {
                 "微窗助手 本地诊断报告",
@@ -66,7 +66,9 @@ namespace WechatDuokai.Core
             AppendRecoveryState(lines, root);
             lines.Add("诊断目录=" + (includeSensitivePaths ? folder : "[安装目录]\\data\\diagnostics"));
 
-            File.WriteAllLines(path, lines, new UTF8Encoding(true));
+            using (var stream = new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+            using (var writer = new StreamWriter(stream, new UTF8Encoding(true)))
+                foreach (var line in lines) writer.WriteLine(line);
             return path;
         }
 

@@ -4,6 +4,7 @@ using System.IO;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
+using WechatDuokai.IO;
 
 namespace WechatDuokai.Update
 {
@@ -75,7 +76,6 @@ namespace WechatDuokai.Update
                 throw new DirectoryNotFoundException("更新计划目录不存在。");
             }
 
-            var temporaryPath = fullPath + ".new";
             var lines = new[]
             {
                 Header,
@@ -91,32 +91,13 @@ namespace WechatDuokai.Update
                 PackageSha256
             };
 
-            using (var stream = new FileStream(temporaryPath, FileMode.Create, FileAccess.Write,
-                       FileShare.None, 4096, FileOptions.WriteThrough))
-            using (var writer = new StreamWriter(stream, new UTF8Encoding(false)))
-            {
-                foreach (var line in lines)
-                {
-                    writer.WriteLine(line);
-                }
-
-                writer.Flush();
-                stream.Flush(true);
-            }
-
-            if (File.Exists(fullPath))
-            {
-                File.Replace(temporaryPath, fullPath, null, true);
-            }
-            else
-            {
-                File.Move(temporaryPath, fullPath);
-            }
+            SafeLocalFile.WriteTextAtomic(fullPath, string.Join(Environment.NewLine, lines) + Environment.NewLine);
         }
 
         public static UpdatePlan Read(string path)
         {
             var fullPath = Path.GetFullPath(path);
+            SafeLocalFile.RejectReparsePoints(fullPath);
             var planFile = new FileInfo(fullPath);
             if (!planFile.Exists || planFile.Length <= 0 || planFile.Length > 16 * 1024)
             {

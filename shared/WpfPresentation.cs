@@ -7,6 +7,7 @@ using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Media;
 using Microsoft.Win32;
+using WechatDuokai.IO;
 
 namespace WechatDuokai.Presentation
 {
@@ -210,10 +211,17 @@ namespace WechatDuokai.Presentation
 
         private static AppThemePreference LoadSavedPreference()
         {
+            return LoadPreferenceFromDirectory(DataDirectory);
+        }
+
+        internal static AppThemePreference LoadPreferenceFromDirectory(string dataDirectory)
+        {
             try
             {
-                var marker = Path.Combine(DataDirectory, MarkerName);
-                var themeFile = Path.Combine(DataDirectory, ThemeFileName);
+                var marker = Path.Combine(dataDirectory, MarkerName);
+                var themeFile = Path.Combine(dataDirectory, ThemeFileName);
+                SafeLocalFile.RejectReparsePoints(marker);
+                SafeLocalFile.RejectReparsePoints(themeFile);
                 if (!File.Exists(marker) || !File.Exists(themeFile) ||
                     !string.Equals(File.ReadAllText(marker, Encoding.UTF8).Trim(), MarkerValue, StringComparison.Ordinal))
                 {
@@ -236,17 +244,25 @@ namespace WechatDuokai.Presentation
         {
             try
             {
-                Directory.CreateDirectory(DataDirectory);
-                File.WriteAllText(Path.Combine(DataDirectory, MarkerName), MarkerValue, Encoding.UTF8);
-                var target = Path.Combine(DataDirectory, ThemeFileName);
-                var temporary = target + ".new";
-                File.WriteAllText(temporary, preference.ToString(), Encoding.UTF8);
-                if (File.Exists(target)) File.Delete(target);
-                File.Move(temporary, target);
+                SavePreferenceToDirectory(DataDirectory, preference);
             }
             catch (Exception)
             {
             }
+        }
+
+        internal static void SavePreferenceToDirectory(string dataDirectory, AppThemePreference preference)
+        {
+            if (!Enum.IsDefined(typeof(AppThemePreference), preference))
+                throw new ArgumentOutOfRangeException(nameof(preference));
+            SafeLocalFile.EnsureDirectory(dataDirectory);
+            var marker = Path.Combine(dataDirectory, MarkerName);
+            var target = Path.Combine(dataDirectory, ThemeFileName);
+            // Validate both before committing either, so a redirected preference cannot alter the marker.
+            SafeLocalFile.RejectReparsePoints(marker);
+            SafeLocalFile.RejectReparsePoints(target);
+            SafeLocalFile.WriteTextAtomic(marker, MarkerValue);
+            SafeLocalFile.WriteTextAtomic(target, preference.ToString());
         }
 
         private static AppTheme ResolveTheme(AppThemePreference preference)

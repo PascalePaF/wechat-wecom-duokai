@@ -63,6 +63,7 @@ namespace WechatDuokai.Tests
                 Run("Update response bodies honor deadlines and caller cancellation", SecurityRegressionTests.StreamingTimeouts);
                 Run("GitHub API metadata cannot exceed the bounded response limit", SecurityRegressionTests.ApiResponseLimit);
                 Run("Local storage refuses directory and file redirection", SecurityRegressionTests.LocalStorageBoundary);
+                Run("Shared themes and update plans refuse redirected persistence", SecurityRegressionTests.SharedPersistenceBoundary);
                 Run("Process environment groups roots and supports deterministic launch tests", TestProcessEnvironmentAbstraction);
                 Run("Exit-all closes only exact-path processes in the current Windows session", TestSafeExitAll);
                 Run("Windows exit layer revalidates and closes the exact requested process", TestWindowsProcessExitBoundary);
