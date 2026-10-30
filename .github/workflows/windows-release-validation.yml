@@ -23,11 +23,28 @@ jobs:
     runs-on: windows-2022
     timeout-minutes: 30
     env:
-      RELEASE_VERSION: 1.1.7
+      RELEASE_VERSION: 1.1.8
 
     steps:
       - name: Check out the exact source revision
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Scan Git history with a checksum-pinned Gitleaks
+        shell: pwsh
+        run: |
+          $scannerRoot = Join-Path $env:RUNNER_TEMP 'wechat-duokai-gitleaks'
+          New-Item -ItemType Directory -Path $scannerRoot -Force | Out-Null
+          $archive = Join-Path $scannerRoot 'gitleaks.zip'
+          Invoke-WebRequest -Uri 'https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_windows_x64.zip' -OutFile $archive
+          $expected = 'd29144deff3a68aa93ced33dddf84b7fdc26070add4aa0f4513094c8332afc4e'
+          if ((Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant() -ne $expected) {
+            throw 'Gitleaks checksum verification failed'
+          }
+          Expand-Archive -LiteralPath $archive -DestinationPath $scannerRoot
+          & (Join-Path $scannerRoot 'gitleaks.exe') git $env:GITHUB_WORKSPACE --log-opts=--all --redact=100 --no-banner
+          if ($LASTEXITCODE -ne 0) { throw 'Git history secret scan failed' }
 
       - name: Select .NET 8 for the Microsoft SBOM tool
         uses: actions/setup-dotnet@d4c94342e560b34958eacfc5d055d21461ed1c5d # v5.0.0
@@ -42,6 +59,18 @@ jobs:
       - name: Build, run tests and create Windows packages
         shell: pwsh
         run: .\build-release.ps1 -Version $env:RELEASE_VERSION
+
+      - name: Check NuGet dependency advisories
+        shell: pwsh
+        run: dotnet list .\duokai.sln package --vulnerable --include-transitive
+
+      - name: Check current source and packages for private paths and credentials
+        shell: pwsh
+        run: |
+          $drop = Join-Path $env:GITHUB_WORKSPACE ("artifacts\V" + $env:RELEASE_VERSION)
+          .\scripts\check-public-privacy.ps1 -ArtifactsPath $drop
+          & (Join-Path $env:RUNNER_TEMP 'wechat-duokai-gitleaks\gitleaks.exe') dir $drop --max-archive-depth=3 --redact=100 --no-banner
+          if ($LASTEXITCODE -ne 0) { throw 'Package secret scan failed' }
 
       - name: Exercise a fresh install, manual upgrade and complete uninstall
         shell: pwsh
@@ -127,8 +156,8 @@ jobs:
       - name: Upload tested Windows packages, hashes and SBOM
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: wechat-duokai-v1.1.7-windows-validation
-          path: artifacts/V1.1.7/
+          name: wechat-duokai-v1.1.8-windows-validation
+          path: artifacts/V1.1.8/
           if-no-files-found: error
           include-hidden-files: true
           retention-days: 14

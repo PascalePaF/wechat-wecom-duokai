@@ -62,14 +62,14 @@ namespace WechatDuokai.Core
         {
             lock (SyncRoot)
             {
+                EnsureLocalDirectory(DataDirectory);
                 if (_ready)
                 {
                     return;
                 }
 
-                EnsureLocalDirectory(DataDirectory);
                 if (!HasValidMarker(DataDirectory))
-                    File.WriteAllText(Path.Combine(DataDirectory, DataMarkerName), DataMarkerValue, Encoding.UTF8);
+                    LocalFileSafety.WriteTextAtomic(Path.Combine(DataDirectory, DataMarkerName), DataMarkerValue);
                 MigrateLegacyFiles(LegacyDataDirectory, DataDirectory);
                 _ready = true;
             }
@@ -77,7 +77,8 @@ namespace WechatDuokai.Core
 
         internal static string EnsureSubdirectory(string name)
         {
-            if (string.IsNullOrWhiteSpace(name) || name.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0 ||
+            if (string.IsNullOrWhiteSpace(name) || name == "." || name == ".." ||
+                name.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0 ||
                 name.Contains(Path.DirectorySeparatorChar.ToString()) ||
                 name.Contains(Path.AltDirectorySeparatorChar.ToString()))
             {
@@ -106,6 +107,7 @@ namespace WechatDuokai.Core
                 }
 
                 var marker = Path.Combine(info.FullName, DataMarkerName);
+                LocalFileSafety.RejectReparsePoints(marker);
                 return File.Exists(marker) &&
                        string.Equals(File.ReadAllText(marker, Encoding.UTF8).Trim(), DataMarkerValue,
                            StringComparison.Ordinal);
@@ -118,7 +120,7 @@ namespace WechatDuokai.Core
 
         private static void EnsureLocalDirectory(string directory)
         {
-            Directory.CreateDirectory(directory);
+            LocalFileSafety.EnsureDirectoryUnderRoot(ApplicationDirectory, directory);
             var info = new DirectoryInfo(Path.GetFullPath(directory));
             if ((info.Attributes & FileAttributes.ReparsePoint) != 0)
             {
@@ -142,8 +144,8 @@ namespace WechatDuokai.Core
                 return;
             }
 
-            Directory.CreateDirectory(destination);
-            File.WriteAllText(Path.Combine(destination, DataMarkerName), DataMarkerValue, Encoding.UTF8);
+            LocalFileSafety.EnsureDirectory(destination);
+            LocalFileSafety.WriteTextAtomic(Path.Combine(destination, DataMarkerName), DataMarkerValue);
 
             foreach (var fileName in new[] { "settings.ini", "theme.ini" })
             {
@@ -151,6 +153,8 @@ namespace WechatDuokai.Core
                 var destinationFile = Path.Combine(destination, fileName);
                 try
                 {
+                    LocalFileSafety.RejectReparsePoints(source);
+                    LocalFileSafety.RejectReparsePoints(destinationFile);
                     if (File.Exists(source) && !File.Exists(destinationFile))
                     {
                         File.Copy(source, destinationFile, false);

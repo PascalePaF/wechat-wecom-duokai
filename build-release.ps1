@@ -1,6 +1,7 @@
 [CmdletBinding()]
 param(
-    [string]$Version = '1.1.7'
+    [string]$Version = '1.1.8',
+    [string]$MSBuildPath
 )
 
 $ErrorActionPreference = 'Stop'
@@ -34,15 +35,13 @@ if (-not $artifactRoot.StartsWith($artifactParent + [IO.Path]::DirectorySeparato
 }
 
 $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
-$msbuild = $null
-if (Test-Path -LiteralPath $vswhere) {
+$msbuild = $MSBuildPath
+if (-not $msbuild -and (Test-Path -LiteralPath $vswhere)) {
     $msbuild = & $vswhere -latest -products '*' -requires Microsoft.Component.MSBuild -find 'MSBuild\**\Bin\MSBuild.exe' | Select-Object -First 1
 }
 if (-not $msbuild) {
-    $knownMsBuild = 'D:\Visual Studio\program\MSBuild\Current\Bin\MSBuild.exe'
-    if (Test-Path -LiteralPath $knownMsBuild) {
-        $msbuild = $knownMsBuild
-    }
+    $command = Get-Command MSBuild.exe -ErrorAction SilentlyContinue
+    if ($command) { $msbuild = $command.Source }
 }
 if (-not $msbuild) {
     throw '未找到 Visual Studio MSBuild。请安装 Visual Studio 2019 或更高版本及 .NET Framework 4.8 开发工具。'

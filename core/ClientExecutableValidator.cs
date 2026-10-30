@@ -4,6 +4,8 @@ using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography.X509Certificates;
+using System.Linq;
+using System.Text;
 
 namespace WechatDuokai.Core
 {
@@ -160,9 +162,11 @@ namespace WechatDuokai.Core
 
                 try
                 {
-                    var certificate = new X509Certificate2(X509Certificate.CreateFromSignedFile(path));
-                    publisher = certificate.Subject;
-                    return publisher.IndexOf("Tencent", StringComparison.OrdinalIgnoreCase) >= 0;
+                    using (var certificate = new X509Certificate2(X509Certificate.CreateFromSignedFile(path)))
+                    {
+                        publisher = certificate.Subject;
+                        return IsTencentPublisher(certificate.SubjectName);
+                    }
                 }
                 catch (Exception)
                 {
@@ -174,6 +178,76 @@ namespace WechatDuokai.Core
                 data.Dispose();
                 fileInfo.Dispose();
             }
+        }
+
+        internal static bool IsTencentPublisher(X500DistinguishedName subject)
+        {
+            if (subject == null) return false;
+            string[] organizations;
+            try { organizations = ReadOrganizations(subject.RawData).ToArray(); }
+            catch (Exception exception) when (exception is InvalidDataException ||
+                exception is ArgumentException || exception is OverflowException) { return false; }
+            if (organizations.Length != 1) return false;
+            var normalized = new string(organizations[0].Where(character =>
+                !char.IsWhiteSpace(character) && "(),.（）".IndexOf(character) < 0).ToArray());
+            return string.Equals(normalized, "TencentTechnologyShenzhenCompanyLimited",
+                       StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(normalized, "TencentTechnologyShenzhenCoLtd",
+                       StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(normalized, "腾讯科技深圳有限公司", StringComparison.Ordinal);
+        }
+
+        // Read the DER attribute OID itself; formatted subject text can contain delimiters
+        // or newlines inside a CN and must not be interpreted as an organization attribute.
+        private static IEnumerable<string> ReadOrganizations(byte[] data)
+        {
+            var position = 0;
+            var sequence = ReadDerElement(data, ref position, data.Length, out var tag);
+            if (tag != 0x30 || position != data.Length) throw new InvalidDataException();
+            position = sequence.Offset;
+            var end = sequence.Offset + sequence.Count;
+            while (position < end)
+            {
+                var set = ReadDerElement(data, ref position, end, out tag);
+                if (tag != 0x31) throw new InvalidDataException();
+                var itemPosition = set.Offset;
+                var itemEnd = set.Offset + set.Count;
+                while (itemPosition < itemEnd)
+                {
+                    var attribute = ReadDerElement(data, ref itemPosition, itemEnd, out tag);
+                    if (tag != 0x30) throw new InvalidDataException();
+                    var attributePosition = attribute.Offset;
+                    var attributeEnd = attribute.Offset + attribute.Count;
+                    var oid = ReadDerElement(data, ref attributePosition, attributeEnd, out tag);
+                    if (tag != 0x06) throw new InvalidDataException();
+                    var value = ReadDerElement(data, ref attributePosition, attributeEnd, out tag);
+                    if (attributePosition != attributeEnd) throw new InvalidDataException();
+                    if (oid.Count != 3 || data[oid.Offset] != 0x55 || data[oid.Offset + 1] != 0x04 ||
+                        data[oid.Offset + 2] != 0x0a) continue;
+                    if (tag == 0x0c) yield return new UTF8Encoding(false, true).GetString(data, value.Offset, value.Count);
+                    else if (tag == 0x13 || tag == 0x14) yield return Encoding.ASCII.GetString(data, value.Offset, value.Count);
+                    else if (tag == 0x1e) yield return Encoding.BigEndianUnicode.GetString(data, value.Offset, value.Count);
+                    else throw new InvalidDataException();
+                }
+            }
+        }
+
+        private static ArraySegment<byte> ReadDerElement(byte[] data, ref int position, int end, out byte tag)
+        {
+            if (position + 2 > end) throw new InvalidDataException();
+            tag = data[position++];
+            var length = (int)data[position++];
+            if ((length & 0x80) != 0)
+            {
+                var count = length & 0x7f;
+                if (count == 0 || count > 4 || position + count > end) throw new InvalidDataException();
+                length = 0;
+                for (var index = 0; index < count; index++) length = checked(length * 256 + data[position++]);
+            }
+            if (length > end - position) throw new InvalidDataException();
+            var value = new ArraySegment<byte>(data, position, length);
+            position += length;
+            return value;
         }
 
         private static readonly Guid WinTrustActionGenericVerifyV2 =

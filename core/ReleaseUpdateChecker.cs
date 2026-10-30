@@ -63,6 +63,7 @@ namespace WechatDuokai.Core
         internal const long MaximumSetupBytes = 20L * 1024L * 1024L;
         internal const long MaximumChecksumBytes = 256L * 1024L;
         internal const long MaximumManifestBytes = 64L * 1024L;
+        internal const long MaximumApiResponseBytes = 1024L * 1024L;
         internal const string LatestReleasePage = ReleasesUrl + "/latest";
         internal const string LatestUpdateManifest = ReleasesUrl + "/latest/download/update-manifest.json";
         private const string LatestReleaseApi =
@@ -78,6 +79,7 @@ namespace WechatDuokai.Core
         private static readonly Regex Sha256Pattern = new Regex(
             "^[0-9a-f]{64}$", RegexOptions.Compiled | RegexOptions.CultureInvariant);
         private readonly Func<bool, HttpMessageHandler> _handlerFactory;
+        private readonly TimeSpan _operationTimeout;
 
         public ReleaseUpdateChecker()
             : this(CreateDefaultHandler)
@@ -85,11 +87,32 @@ namespace WechatDuokai.Core
         }
 
         internal ReleaseUpdateChecker(Func<bool, HttpMessageHandler> handlerFactory)
+            : this(handlerFactory, TimeSpan.FromSeconds(60))
+        {
+        }
+
+        internal ReleaseUpdateChecker(Func<bool, HttpMessageHandler> handlerFactory, TimeSpan operationTimeout)
         {
             _handlerFactory = handlerFactory ?? throw new ArgumentNullException(nameof(handlerFactory));
+            if (operationTimeout <= TimeSpan.Zero) throw new ArgumentOutOfRangeException(nameof(operationTimeout));
+            _operationTimeout = operationTimeout;
         }
 
         public async Task<ReleaseUpdateResult> CheckAsync(string currentVersion,
+            CancellationToken cancellationToken)
+        {
+            using (var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken))
+            {
+                deadline.CancelAfter(_operationTimeout);
+                try { return await CheckCoreAsync(currentVersion, deadline.Token); }
+                catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+                {
+                    return CreateError("连接 GitHub 超时，请检查网络或代理后重试。");
+                }
+            }
+        }
+
+        private async Task<ReleaseUpdateResult> CheckCoreAsync(string currentVersion,
             CancellationToken cancellationToken)
         {
             try
@@ -307,8 +330,7 @@ namespace WechatDuokai.Core
                 var buffer = new byte[8192];
                 while (true)
                 {
-                    var read = await input.ReadAsync(buffer, 0, buffer.Length,
-                        cancellationToken);
+                    var read = await NetworkStreamReader.ReadAsync(input, buffer, cancellationToken);
                     if (read == 0) break;
                     if (output.Length + read > maximumBytes)
                     {
@@ -620,13 +642,15 @@ namespace WechatDuokai.Core
                 {
                     request.Headers.TryAddWithoutValidation("X-GitHub-Api-Version", "2022-11-28");
                     using (var response = await client.SendAsync(request,
-                               HttpCompletionOption.ResponseContentRead, cancellationToken))
+                               HttpCompletionOption.ResponseHeadersRead, cancellationToken))
                     {
                         if (!response.IsSuccessStatusCode)
                         {
                             return null;
                         }
-                        return ParseResponse(await response.Content.ReadAsStringAsync(), currentVersion);
+                        var bytes = await ReadBoundedContentAsync(response,
+                            MaximumApiResponseBytes, cancellationToken);
+                        return ParseResponse(Encoding.UTF8.GetString(bytes), currentVersion);
                     }
                 }
             }

@@ -340,13 +340,13 @@
                                         </Grid.ColumnDefinitions>
                                         <StackPanel VerticalAlignment="Center">
                                             <TextBlock Text="本地诊断" FontSize="12" FontWeight="SemiBold" />
-                                            <TextBlock Text="报告仅保存在 data\\diagnostics"
+                                            <TextBlock Text="默认隐藏路径，仅保存到本地"
                                                        Margin="0,4,8,0" Style="{StaticResource CaptionStyle}" />
                                         </StackPanel>
                                         <Button x:Name="DiagnosticsButton" Grid.Column="1" Height="34"
-                                                Padding="14,0" Content="生成报告"
+                                                Padding="14,0" Content="脱敏报告"
                                                 Style="{StaticResource SecondaryButtonStyle}"
-                                                AutomationProperties.Name="生成本地诊断报告"
+                                                AutomationProperties.Name="生成路径已脱敏的本地诊断报告"
                                                 ToolTip="在程序目录生成本地报告，不会上传"
                                                 Click="DiagnosticsButton_Click" />
                                     </Grid>

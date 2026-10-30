@@ -56,9 +56,21 @@ namespace WechatDuokai.Core
         internal const string PortableMarkerValue =
             "wechat-duokai-portable:c4ad4e76-7449-4f7b-9ab7-5b9379dd3631";
         private const string UpdatesFolderName = "updates";
+        private readonly Func<HttpMessageHandler> _handlerFactory;
+        private readonly TimeSpan _operationTimeout;
         private static readonly Regex ChecksumLinePattern = new Regex(
             "^([0-9a-fA-F]{64})\\s+\\*?(.+)$",
             RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+        public ApplicationUpdateService()
+            : this(() => NetworkProxyPolicy.CreateHandler(true), TimeSpan.FromMinutes(5)) { }
+
+        internal ApplicationUpdateService(Func<HttpMessageHandler> handlerFactory, TimeSpan operationTimeout)
+        {
+            _handlerFactory = handlerFactory ?? throw new ArgumentNullException(nameof(handlerFactory));
+            if (operationTimeout <= TimeSpan.Zero) throw new ArgumentOutOfRangeException(nameof(operationTimeout));
+            _operationTimeout = operationTimeout;
+        }
 
         public ApplicationInstallMode DetectCurrentMode()
         {
@@ -69,11 +81,31 @@ namespace WechatDuokai.Core
             ReleaseUpdateResult release, IProgress<UpdateProgressInfo> progress,
             CancellationToken cancellationToken)
         {
+            using (var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken))
+            {
+                deadline.CancelAfter(_operationTimeout);
+                try { return await DownloadAndVerifyCoreAsync(release, progress, deadline.Token); }
+                catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+                {
+                    throw new TimeoutException("更新下载超时，可稍后重试；未完成的更新包不会执行。");
+                }
+            }
+        }
+
+        private async Task<PreparedUpdatePackage> DownloadAndVerifyCoreAsync(
+            ReleaseUpdateResult release, IProgress<UpdateProgressInfo> progress,
+            CancellationToken cancellationToken)
+        {
             if (release == null || !release.CanInstallUpdate)
             {
                 throw new InvalidOperationException(release?.OneClickUpdateError ??
                                                     "当前 Release 不具备一键更新所需附件。");
             }
+
+            if (!string.Equals(release.SetupAsset.Name,
+                    "wechat_duokai-setup-v" + release.LatestVersion + ".exe", StringComparison.Ordinal) ||
+                !string.Equals(release.ChecksumAsset.Name, "SHA256SUMS.txt", StringComparison.Ordinal))
+                throw new InvalidDataException("更新附件名称不符合本项目发布约定。");
 
             var mode = DetectCurrentMode();
             if (mode == ApplicationInstallMode.Unknown)
@@ -87,6 +119,8 @@ namespace WechatDuokai.Core
             var checksumEvidencePath = Path.Combine(updatesDirectory,
                 "SHA256SUMS-v" + release.LatestVersion + ".txt");
             var packagePath = Path.Combine(updatesDirectory, release.SetupAsset.Name);
+            LocalFileSafety.RejectReparsePoints(checksumEvidencePath);
+            LocalFileSafety.RejectReparsePoints(packagePath);
             PreparedUpdatePackage cachedPackage;
             if (TryUseCachedPackage(release, mode, checksumEvidencePath, packagePath,
                     progress, out cachedPackage))
@@ -115,7 +149,7 @@ namespace WechatDuokai.Core
 
             WriteBytesDurable(checksumEvidencePath, checksumBytes);
 
-            var temporaryPath = packagePath + ".part";
+            var temporaryPath = packagePath + "." + Guid.NewGuid().ToString("N") + ".part";
             try
             {
                 await DownloadFileAsync(release.SetupAsset, temporaryPath, progress, cancellationToken);
@@ -127,9 +161,10 @@ namespace WechatDuokai.Core
 
                 if (File.Exists(packagePath))
                 {
-                    File.Delete(packagePath);
+                    LocalFileSafety.RejectReparsePoints(packagePath);
+                    File.Replace(temporaryPath, packagePath, null, true);
                 }
-                File.Move(temporaryPath, packagePath);
+                else File.Move(temporaryPath, packagePath);
 
                 progress?.Report(new UpdateProgressInfo
                 {
@@ -175,6 +210,8 @@ namespace WechatDuokai.Core
             {
                 throw new InvalidOperationException("更新包不在程序自己的 data\\updates 目录中。");
             }
+
+            LocalFileSafety.RejectReparsePoints(package.PackagePath);
 
             using (var packageLock = new FileStream(package.PackagePath, FileMode.Open,
                        FileAccess.Read, FileShare.Read, 81920, FileOptions.SequentialScan))
@@ -246,6 +283,7 @@ namespace WechatDuokai.Core
             try
             {
                 var fullPath = Path.GetFullPath(applicationDirectory);
+                LocalFileSafety.RejectReparsePoints(fullPath);
                 var directory = new DirectoryInfo(fullPath);
                 if (!directory.Exists || (directory.Attributes & FileAttributes.ReparsePoint) != 0 ||
                     !File.Exists(Path.Combine(fullPath, "wechat_duokai.exe")))
@@ -375,7 +413,7 @@ namespace WechatDuokai.Core
             }
         }
 
-        private static async Task<byte[]> DownloadSmallAssetAsync(ReleaseAssetInfo asset,
+        private async Task<byte[]> DownloadSmallAssetAsync(ReleaseAssetInfo asset,
             IProgress<UpdateProgressInfo> progress, CancellationToken cancellationToken)
         {
             using (var client = CreateDownloadClient())
@@ -393,7 +431,7 @@ namespace WechatDuokai.Core
                     long total = 0;
                     while (true)
                     {
-                        var read = await input.ReadAsync(buffer, 0, buffer.Length, cancellationToken);
+                        var read = await NetworkStreamReader.ReadAsync(input, buffer, cancellationToken);
                         if (read == 0) break;
                         total += read;
                         if (total > asset.Size || total > ReleaseUpdateChecker.MaximumChecksumBytes)
@@ -417,7 +455,7 @@ namespace WechatDuokai.Core
             }
         }
 
-        private static async Task DownloadFileAsync(ReleaseAssetInfo asset, string temporaryPath,
+        private async Task DownloadFileAsync(ReleaseAssetInfo asset, string temporaryPath,
             IProgress<UpdateProgressInfo> progress, CancellationToken cancellationToken)
         {
             using (var client = CreateDownloadClient())
@@ -429,14 +467,14 @@ namespace WechatDuokai.Core
                 ValidateFinalDownloadUri(response);
                 ValidateContentLength(response, asset.Size);
                 using (var input = await response.Content.ReadAsStreamAsync())
-                using (var output = new FileStream(temporaryPath, FileMode.Create, FileAccess.Write,
+                using (var output = new FileStream(temporaryPath, FileMode.CreateNew, FileAccess.Write,
                            FileShare.None, 81920, FileOptions.WriteThrough))
                 {
                     var buffer = new byte[81920];
                     long total = 0;
                     while (true)
                     {
-                        var read = await input.ReadAsync(buffer, 0, buffer.Length, cancellationToken);
+                        var read = await NetworkStreamReader.ReadAsync(input, buffer, cancellationToken);
                         if (read == 0) break;
                         total += read;
                         if (total > asset.Size || total > ReleaseUpdateChecker.MaximumSetupBytes)
@@ -460,9 +498,9 @@ namespace WechatDuokai.Core
             }
         }
 
-        private static HttpClient CreateDownloadClient()
+        private HttpClient CreateDownloadClient()
         {
-            return new HttpClient(NetworkProxyPolicy.CreateHandler(true), true)
+            return new HttpClient(_handlerFactory(), true)
             {
                 Timeout = TimeSpan.FromMinutes(5)
             };
@@ -546,15 +584,7 @@ namespace WechatDuokai.Core
 
         private static void WriteBytesDurable(string path, byte[] bytes)
         {
-            var temporaryPath = path + ".new";
-            using (var stream = new FileStream(temporaryPath, FileMode.Create, FileAccess.Write,
-                       FileShare.None, 4096, FileOptions.WriteThrough))
-            {
-                stream.Write(bytes, 0, bytes.Length);
-                stream.Flush(true);
-            }
-            if (File.Exists(path)) File.Delete(path);
-            File.Move(temporaryPath, path);
+            LocalFileSafety.WriteBytesAtomic(path, bytes);
         }
 
         private static void CleanupStaleDownloads(string directory, TimeSpan minimumAge)

@@ -48,12 +48,21 @@
 **/bin/
 **/obj/
 /artifacts/
+/data/
+**/diagnostic-*.txt
+*.dmp
+*.pfx
+*.p12
+*.pem
+.env
+.env.*
 
 # Local review/scanner intermediates; final versioned evidence has no suffix.
 /docs/assets/*-preview.png
 /docs/*-candidate.txt
 /docs/*-candidate-*.txt
 /docs/*-replacement-*.txt
+/docs/*-raw-*.txt
 
 # Kernel Module Compile Results
 *.mod*

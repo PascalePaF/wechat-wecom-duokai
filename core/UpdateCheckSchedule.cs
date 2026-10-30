@@ -199,6 +199,7 @@ namespace WechatDuokai.Core
             try
             {
                 var path = GetStatePath(dataDirectory);
+                LocalFileSafety.RejectReparsePoints(path);
                 if (!File.Exists(path)) return state;
 
                 var values = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -247,9 +248,7 @@ namespace WechatDuokai.Core
 
         private static void Save(string dataDirectory, UpdateCheckState state)
         {
-            Directory.CreateDirectory(dataDirectory);
             var path = GetStatePath(dataDirectory);
-            var temporary = path + ".new";
             var lines = new[]
             {
                 "Format=1",
@@ -260,23 +259,7 @@ namespace WechatDuokai.Core
                     CultureInfo.InvariantCulture),
                 "LatestVersion=" + (state.LatestVersion ?? string.Empty)
             };
-            using (var stream = new FileStream(temporary, FileMode.Create, FileAccess.Write,
-                       FileShare.None, 4096, FileOptions.WriteThrough))
-            using (var writer = new StreamWriter(stream, new UTF8Encoding(false)))
-            {
-                foreach (var line in lines) writer.WriteLine(line);
-                writer.Flush();
-                stream.Flush(true);
-            }
-
-            if (File.Exists(path))
-            {
-                File.Replace(temporary, path, null, true);
-            }
-            else
-            {
-                File.Move(temporary, path);
-            }
+            LocalFileSafety.WriteTextAtomic(path, string.Join(Environment.NewLine, lines) + Environment.NewLine);
         }
 
         private static string FormatTimestamp(DateTimeOffset? value)

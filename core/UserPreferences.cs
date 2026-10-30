@@ -285,6 +285,8 @@ namespace WechatDuokai.Core
             var settingsPath = Path.Combine(dataDirectory, "settings.ini");
             if (!HasValidMarker(dataDirectory)) return result;
             var backupPath = settingsPath + ".bak";
+            LocalFileSafety.RejectReparsePoints(settingsPath);
+            LocalFileSafety.RejectReparsePoints(backupPath);
             if (!File.Exists(settingsPath) && !File.Exists(backupPath)) return result;
             string[] lines;
             try
@@ -311,12 +313,14 @@ namespace WechatDuokai.Core
 
         private static void SaveValues(string dataDirectory, IDictionary<string, string> values)
         {
-            Directory.CreateDirectory(dataDirectory);
+            LocalFileSafety.EnsureDirectory(dataDirectory);
             if (!HasValidMarker(dataDirectory))
-                File.WriteAllText(Path.Combine(dataDirectory, DataMarkerName), DataMarkerValue, Encoding.UTF8);
+                LocalFileSafety.WriteTextAtomic(Path.Combine(dataDirectory, DataMarkerName), DataMarkerValue);
             var settingsPath = Path.Combine(dataDirectory, "settings.ini");
             var temporaryPath = settingsPath + "." + Guid.NewGuid().ToString("N") + ".new";
             var backupPath = settingsPath + ".bak";
+            LocalFileSafety.RejectReparsePoints(settingsPath);
+            LocalFileSafety.RejectReparsePoints(backupPath);
             var lines = new List<string>();
             string target;
             if (values.TryGetValue("TargetInstanceCount", out target)) lines.Add("TargetInstanceCount=" + target);
@@ -359,6 +363,8 @@ namespace WechatDuokai.Core
 
                 if (File.Exists(settingsPath))
                 {
+                    LocalFileSafety.RejectReparsePoints(settingsPath);
+                    LocalFileSafety.RejectReparsePoints(backupPath);
                     File.Replace(temporaryPath, settingsPath, backupPath, true);
                 }
                 else

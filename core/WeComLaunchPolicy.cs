@@ -85,6 +85,12 @@ namespace WechatDuokai.Core
 
         public WeComRegistryRecoveryResult RecoverPendingSession()
         {
+            try { LocalFileSafety.RejectReparsePoints(JournalPath); }
+            catch (IOException)
+            {
+                return Result(WeComRegistryRecoveryOutcome.RetryRequired,
+                    "注册表恢复目录存在路径重定向，已停止恢复。", "RECOVERY_BLOCKED redirected-storage");
+            }
             if (!File.Exists(JournalPath))
             {
                 return HasQuarantinedJournal()
@@ -281,15 +287,17 @@ namespace WechatDuokai.Core
             }
             else
             {
-                Directory.CreateDirectory(_dataDirectory);
+                LocalFileSafety.EnsureDirectory(_dataDirectory);
                 var info = new DirectoryInfo(Path.GetFullPath(_dataDirectory));
                 if ((info.Attributes & FileAttributes.ReparsePoint) != 0)
                     throw new IOException("Registry recovery storage cannot be a reparse point.");
-                File.WriteAllText(Path.Combine(_dataDirectory, ApplicationStorage.DataMarkerName),
-                    ApplicationStorage.DataMarkerValue, Encoding.UTF8);
+                LocalFileSafety.WriteTextAtomic(Path.Combine(_dataDirectory, ApplicationStorage.DataMarkerName),
+                    ApplicationStorage.DataMarkerValue);
             }
-            Directory.CreateDirectory(Path.GetDirectoryName(JournalPath));
-            Directory.CreateDirectory(Path.GetDirectoryName(AuditLogPath));
+            LocalFileSafety.EnsureDirectoryUnderRoot(_dataDirectory, Path.GetDirectoryName(JournalPath));
+            LocalFileSafety.EnsureDirectoryUnderRoot(_dataDirectory, Path.GetDirectoryName(AuditLogPath));
+            LocalFileSafety.RejectReparsePoints(JournalPath);
+            LocalFileSafety.RejectReparsePoints(AuditLogPath);
         }
 
         private void WriteJournal(RecoveryJournal journal)
@@ -360,8 +368,9 @@ namespace WechatDuokai.Core
         {
             try
             {
-                Directory.CreateDirectory(_dataDirectory);
-                Directory.CreateDirectory(Path.GetDirectoryName(AuditLogPath));
+                LocalFileSafety.EnsureDirectory(_dataDirectory);
+                LocalFileSafety.EnsureDirectoryUnderRoot(_dataDirectory, Path.GetDirectoryName(AuditLogPath));
+                LocalFileSafety.RejectReparsePoints(AuditLogPath);
                 if (File.Exists(AuditLogPath) && new FileInfo(AuditLogPath).Length > MaximumAuditBytes)
                 {
                     var previous = AuditLogPath + ".1";

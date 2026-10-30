@@ -42,6 +42,8 @@ namespace WechatDuokai.Tests
             if (args.Length == 1 && args[0] == "--test-install") return TestInstall();
             if (args.Length == 1 && args[0] == "--test-upgrade") return TestUpgrade();
             if (args.Length == 1 && args[0] == "--cleanup-test-install") return CleanupTestInstall();
+            if (args.Length == 3 && args[0] == "--verify-published-update")
+                return SecurityRegressionTests.VerifyPublishedUpdate(args[1], args[2]);
 
             try
             {
@@ -57,6 +59,10 @@ namespace WechatDuokai.Tests
                 Run("Shared dialogs and pickers use the active theme", TestSharedDialogTheme);
                 Run("Dark theme uses a restrained palette and theme-aware icon surfaces", TestDarkThemeComfortPalette);
                 Run("Renamed executables cannot impersonate an official client", TestClientExecutableValidation);
+                Run("Publisher identity rejects lookalike and missing legal organizations", SecurityRegressionTests.PublisherIdentity);
+                Run("Update response bodies honor deadlines and caller cancellation", SecurityRegressionTests.StreamingTimeouts);
+                Run("GitHub API metadata cannot exceed the bounded response limit", SecurityRegressionTests.ApiResponseLimit);
+                Run("Local storage refuses directory and file redirection", SecurityRegressionTests.LocalStorageBoundary);
                 Run("Process environment groups roots and supports deterministic launch tests", TestProcessEnvironmentAbstraction);
                 Run("Exit-all closes only exact-path processes in the current Windows session", TestSafeExitAll);
                 Run("Windows exit layer revalidates and closes the exact requested process", TestWindowsProcessExitBoundary);
@@ -240,7 +246,9 @@ namespace WechatDuokai.Tests
                 window.Show();
                 window.Dispatcher.Invoke(() => { }, DispatcherPriority.ContextIdle);
                 Thread.Sleep(250);
+                ApplySnapshotPrivacy(window, windowName);
                 window.UpdateLayout();
+                AssertSnapshotPrivacy(window);
                 var visual = window.Content as FrameworkElement ?? window;
                 var renderedWidth = Math.Max(1, (int)Math.Ceiling(visual.ActualWidth));
                 var renderedHeight = Math.Max(1, (int)Math.Ceiling(visual.ActualHeight));
@@ -263,6 +271,59 @@ namespace WechatDuokai.Tests
                 Application.Current.Shutdown();
             }
             return 0;
+        }
+
+        private static void ApplySnapshotPrivacy(Window window, string scenario)
+        {
+            Action<string, string> setText = (name, value) =>
+            {
+                var element = window.FindName(name);
+                if (element is TextBlock text) text.Text = value;
+                else if (element is TextBox box) box.Text = value;
+            };
+            if (window is MainWindow)
+            {
+                setText("QQPath", @"C:\Apps\Tencent\QQ\QQ.exe");
+                setText("WeChatPath", @"C:\Apps\Tencent\Weixin\Weixin.exe");
+                setText("WeComPath", @"C:\Apps\Tencent\WXWork\WXWork.exe");
+                setText("QQStatus", "当前运行 1 个实例");
+                setText("WeChatStatus", "当前运行 2 个实例");
+                setText("WeComStatus", "已验证官方客户端");
+                ((Button)window.FindName("QQExitButton")).IsEnabled = true;
+                ((Button)window.FindName("WeChatExitButton")).IsEnabled = true;
+                ((Button)window.FindName("WeComExitButton")).IsEnabled = false;
+                ((TextBlock)window.FindName("QQStatus")).SetResourceReference(TextBlock.ForegroundProperty, "SuccessBrush");
+                setText("FooterQQCount", "1"); setText("FooterWeChatCount", "2"); setText("FooterWeComCount", "0");
+                setText("FooterStatus", string.Empty);
+                setText("UpdateScheduleText", "每天自动检查 · 安装前需确认");
+                setText("UpdateStatusText", "可手动检查；安装前始终需要确认");
+            }
+            setText("InstallPathText", @"C:\Apps\WechatDuokai");
+            setText("VerifiedPathsText", "源码：[演示源码目录]\r\n发布包：[演示发布目录]");
+            if (!scenario.StartsWith("picker-", StringComparison.OrdinalIgnoreCase)) return;
+            var flags = BindingFlags.Instance | BindingFlags.NonPublic;
+            var pathBox = (TextBox)window.GetType().GetField("_pathBox", flags).GetValue(window);
+            var entries = (StackPanel)window.GetType().GetField("_entriesPanel", flags).GetValue(window);
+            pathBox.Text = @"C:\Apps\Tencent";
+            entries.Children.Clear();
+            foreach (var name in new[] { "QQ", "Weixin", "WXWork" })
+                entries.Children.Add(new Button { Content = "▸   " + name, Height = 38,
+                    Margin = new Thickness(0, 0, 0, 3), Padding = new Thickness(12, 0, 12, 0),
+                    Style = (Style)Application.Current.FindResource("PickerRowButtonStyle") });
+            ((TextBlock)window.GetType().GetField("_pageText", flags).GetValue(window)).Text = "第 1 / 1 页";
+            ((Button)window.GetType().GetField("_previousPage", flags).GetValue(window)).IsEnabled = false;
+            ((Button)window.GetType().GetField("_nextPage", flags).GetValue(window)).IsEnabled = false;
+        }
+
+        private static void AssertSnapshotPrivacy(DependencyObject element)
+        {
+            var text = element is TextBlock block ? block.Text : element is TextBox box ? box.Text : null;
+            if (text != null)
+                Assert(!System.Text.RegularExpressions.Regex.IsMatch(text,
+                    @"(?i)[a-z]:\\(?:Users\\(?!Public\\|Default\\|runneradmin\\)|Acode\\|中文安装地址\\|EnglishDownloadInstallPath\\)"),
+                    "Screenshot contains a non-demo local path.");
+            for (var index = 0; index < VisualTreeHelper.GetChildrenCount(element); index++)
+                AssertSnapshotPrivacy(VisualTreeHelper.GetChild(element, index));
         }
 
         private static Type FindPresentationType(Type anchor, string name)
@@ -1436,6 +1497,11 @@ namespace WechatDuokai.Tests
                 var text = File.ReadAllText(report);
                 Assert(text.Contains("不会自动上传") && text.Contains("QQ") && !text.Contains("UserName="),
                     "Diagnostic privacy statement is missing or a user name field was added.");
+                Assert(!text.Contains(folder) && text.Contains("[安装目录]") && text.Contains("已隐藏本机完整路径"),
+                    "Shared diagnostics exposed the full local application path.");
+                var second = new DiagnosticReportService().CreateReport(folder, null, null, new InstanceManager());
+                Assert(report != second && File.Exists(report) && File.Exists(second),
+                    "Repeated diagnostics overwrote an existing report.");
             }
             finally
             {
