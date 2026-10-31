@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Text;
+using System.Collections.Generic;
 
 namespace WechatDuokai.IO
 {
@@ -57,6 +58,36 @@ namespace WechatDuokai.IO
         internal static void WriteTextAtomic(string path, string contents)
         {
             WriteBytesAtomic(path, new UTF8Encoding(false).GetBytes(contents));
+        }
+
+        internal static string ReadTextBounded(string path, int maximumBytes)
+        {
+            if (maximumBytes <= 0 || maximumBytes > 1024 * 1024)
+                throw new ArgumentOutOfRangeException(nameof(maximumBytes));
+            RejectReparsePoints(path);
+            using (var input = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read))
+            {
+                if (input.Length > maximumBytes) throw new InvalidDataException("本地配置文件超过安全大小限制。");
+                var bytes = new byte[maximumBytes + 1];
+                var length = 0;
+                int count;
+                while (length < bytes.Length && (count = input.Read(bytes, length, bytes.Length - length)) > 0)
+                    length += count;
+                if (length > maximumBytes) throw new InvalidDataException("本地配置文件超过安全大小限制。");
+                using (var buffer = new MemoryStream(bytes, 0, length, false))
+                using (var reader = new StreamReader(buffer, Encoding.UTF8, true)) return reader.ReadToEnd();
+            }
+        }
+
+        internal static string[] ReadLinesBounded(string path, int maximumBytes)
+        {
+            var lines = new List<string>();
+            using (var reader = new StringReader(ReadTextBounded(path, maximumBytes)))
+            {
+                string line;
+                while ((line = reader.ReadLine()) != null) lines.Add(line);
+            }
+            return lines.ToArray();
         }
     }
 }

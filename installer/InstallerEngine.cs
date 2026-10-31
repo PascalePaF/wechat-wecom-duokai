@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using WechatDuokai.IO;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
@@ -1151,7 +1152,7 @@ namespace WechatDuokai.Installer
             {
                 FileName = workerPath,
                 Arguments = "/cleanup-worker " + Quote(planPath) +
-                            (ThemeManager.Current == AppTheme.Dark ? " --theme=dark" : " --theme=light"),
+                            " --theme=" + ThemeManager.CommandLineName,
                 WorkingDirectory = tempDirectory,
                 UseShellExecute = true
             });
@@ -1278,7 +1279,7 @@ namespace WechatDuokai.Installer
 
                 return
                        File.Exists(markerPath) &&
-                       string.Equals(File.ReadAllText(markerPath, Encoding.UTF8).Trim(), markerValue, StringComparison.Ordinal);
+                       string.Equals(SafeLocalFile.ReadTextBounded(markerPath, 128).Trim(), markerValue, StringComparison.Ordinal);
             }
             catch (Exception)
             {
@@ -1788,7 +1789,7 @@ namespace WechatDuokai.Installer
 
         public static CleanupPlan Read(string path)
         {
-            var lines = File.ReadAllLines(path, Encoding.UTF8);
+            var lines = SafeLocalFile.ReadLinesBounded(path, 64 * 1024);
             if (lines.Length != 12 || lines[0] != "wechat-duokai-cleanup-plan:v1")
             {
                 throw new InvalidDataException("清理计划无效。未删除任何文件。");

@@ -14,14 +14,16 @@ namespace WechatDuokai.Presentation
     internal enum AppTheme
     {
         Light,
-        Dark
+        Dark,
+        Halloween
     }
 
     internal enum AppThemePreference
     {
         System,
         Light,
-        Dark
+        Dark,
+        Halloween
     }
 
     internal static class ThemeManager
@@ -90,7 +92,25 @@ namespace WechatDuokai.Presentation
             Shadow = "#7A000000"
         };
 
+        private static readonly ThemeColors Halloween = new ThemeColors
+        {
+            Window = "#17131E", WindowTop = "#1C1725",
+            Surface = "#211C2B", SurfaceRaised = "#292333", SurfaceHover = "#352B40",
+            Border = "#40364B", BorderStrong = "#62516D",
+            Text = "#EEE6DE", TextSecondary = "#BEB0C8", TextTertiary = "#A294AC",
+            Accent = "#D39560", AccentHover = "#DDA573", AccentPressed = "#BA7D4B",
+            AccentText = "#22170F", Green = "#80AA91", GreenSurface = "#203329",
+            Blue = "#90A0CA", Warning = "#D39560",
+            Danger = "#CB8389", DangerHover = "#D79196", DangerSurface = "#39232D",
+            Selection = "#392B27", WeChatIconSurface = "#23332D",
+            WeComIconSurface = "#262F40", QqIconSurface = "#262F40", Shadow = "#75000000"
+        };
+
         internal static AppTheme Current { get; private set; }
+        internal static bool IsDark => Current != AppTheme.Light;
+        internal static string CommandLineName => Current.ToString().ToLowerInvariant();
+        internal static string DisplayName => Current == AppTheme.Halloween ? "万圣夜" :
+            Current == AppTheme.Dark ? "夜间" : "日间";
 
         internal static AppThemePreference Preference { get; private set; } = AppThemePreference.System;
 
@@ -98,9 +118,9 @@ namespace WechatDuokai.Presentation
         {
             if (forcedTheme.HasValue)
             {
-                Preference = forcedTheme.Value == AppTheme.Dark
-                    ? AppThemePreference.Dark
-                    : AppThemePreference.Light;
+                if (!Enum.IsDefined(typeof(AppTheme), forcedTheme.Value))
+                    throw new ArgumentOutOfRangeException(nameof(forcedTheme));
+                Preference = PreferenceFor(forcedTheme.Value);
                 Current = forcedTheme.Value;
             }
             else
@@ -113,13 +133,14 @@ namespace WechatDuokai.Presentation
 
         internal static AppTheme Toggle(bool persist = true)
         {
-            SetTheme(Current == AppTheme.Dark ? AppTheme.Light : AppTheme.Dark, persist);
+            SetTheme(IsDark ? AppTheme.Light : AppTheme.Dark, persist);
             return Current;
         }
 
         internal static void SetTheme(AppTheme theme, bool persist = true)
         {
-            Preference = theme == AppTheme.Dark ? AppThemePreference.Dark : AppThemePreference.Light;
+            if (!Enum.IsDefined(typeof(AppTheme), theme)) throw new ArgumentOutOfRangeException(nameof(theme));
+            Preference = PreferenceFor(theme);
             Current = theme;
             ApplyResources(theme);
             if (persist)
@@ -128,15 +149,33 @@ namespace WechatDuokai.Presentation
             }
         }
 
-        internal static void SetPreference(AppThemePreference preference, bool persist = true)
+        internal static bool SetPreference(AppThemePreference preference, bool persist = true)
         {
+            if (!Enum.IsDefined(typeof(AppThemePreference), preference))
+                throw new ArgumentOutOfRangeException(nameof(preference));
             Preference = preference;
             Current = ResolveTheme(preference);
             ApplyResources(Current);
-            if (persist)
+            return !persist || SavePreference(preference);
+        }
+
+        private static AppThemePreference PreferenceFor(AppTheme theme)
+        {
+            return theme == AppTheme.Halloween ? AppThemePreference.Halloween :
+                theme == AppTheme.Dark ? AppThemePreference.Dark : AppThemePreference.Light;
+        }
+
+        internal static AppTheme? ParseForcedTheme(string[] arguments)
+        {
+            foreach (var argument in arguments ?? new string[0])
             {
-                SavePreference(preference);
+                if (argument == null || !argument.StartsWith("--theme=", StringComparison.OrdinalIgnoreCase)) continue;
+                var name = argument.Substring("--theme=".Length);
+                foreach (AppTheme theme in Enum.GetValues(typeof(AppTheme)))
+                    if (string.Equals(name, theme.ToString(), StringComparison.OrdinalIgnoreCase)) return theme;
+                return null;
             }
+            return null;
         }
 
         internal static bool RefreshSystemTheme()
@@ -165,7 +204,9 @@ namespace WechatDuokai.Presentation
                 return;
             }
 
-            var colors = theme == AppTheme.Dark ? Dark : Light;
+            var colors = theme == AppTheme.Halloween ? Halloween : theme == AppTheme.Dark ? Dark : Light;
+            application.Resources["HalloweenDecorationVisibility"] = theme == AppTheme.Halloween
+                ? Visibility.Visible : Visibility.Collapsed;
             SetBrush(application, "WindowBackgroundBrush", colors.Window);
             SetBrush(application, "WindowTopBrush", colors.WindowTop);
             SetBrush(application, "SurfaceBrush", colors.Surface);
@@ -223,12 +264,12 @@ namespace WechatDuokai.Presentation
                 SafeLocalFile.RejectReparsePoints(marker);
                 SafeLocalFile.RejectReparsePoints(themeFile);
                 if (!File.Exists(marker) || !File.Exists(themeFile) ||
-                    !string.Equals(File.ReadAllText(marker, Encoding.UTF8).Trim(), MarkerValue, StringComparison.Ordinal))
+                    !string.Equals(SafeLocalFile.ReadTextBounded(marker, 128).Trim(), MarkerValue, StringComparison.Ordinal))
                 {
                     return AppThemePreference.System;
                 }
 
-                var saved = File.ReadAllText(themeFile, Encoding.UTF8).Trim();
+                var saved = SafeLocalFile.ReadTextBounded(themeFile, 64).Trim();
                 AppThemePreference preference;
                 if (Enum.TryParse(saved, true, out preference) &&
                     Enum.IsDefined(typeof(AppThemePreference), preference)) return preference;
@@ -240,14 +281,21 @@ namespace WechatDuokai.Presentation
             return AppThemePreference.System;
         }
 
-        private static void SavePreference(AppThemePreference preference)
+        private static bool SavePreference(AppThemePreference preference)
+        {
+            return TrySavePreferenceToDirectory(DataDirectory, preference);
+        }
+
+        internal static bool TrySavePreferenceToDirectory(string directory, AppThemePreference preference)
         {
             try
             {
-                SavePreferenceToDirectory(DataDirectory, preference);
+                SavePreferenceToDirectory(directory, preference);
+                return true;
             }
             catch (Exception)
             {
+                return false;
             }
         }
 
@@ -269,6 +317,8 @@ namespace WechatDuokai.Presentation
         {
             switch (preference)
             {
+                case AppThemePreference.Halloween:
+                    return AppTheme.Halloween;
                 case AppThemePreference.Dark:
                     return AppTheme.Dark;
                 case AppThemePreference.Light:
@@ -354,7 +404,7 @@ namespace WechatDuokai.Presentation
 
             try
             {
-                var dark = ThemeManager.Current == AppTheme.Dark ? 1 : 0;
+                var dark = ThemeManager.IsDark ? 1 : 0;
                 if (DwmSetWindowAttribute(handle, DwmUseImmersiveDarkMode, ref dark, sizeof(int)) != 0)
                 {
                     DwmSetWindowAttribute(handle, DwmUseImmersiveDarkModeBefore20H1, ref dark, sizeof(int));

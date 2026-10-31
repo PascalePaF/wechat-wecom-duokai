@@ -377,7 +377,7 @@ namespace WechatDuokai.Core
                     if (File.Exists(previous)) File.Delete(previous);
                     File.Move(AuditLogPath, previous);
                 }
-                var existing = File.Exists(AuditLogPath) ? File.ReadAllText(AuditLogPath, Encoding.UTF8) : string.Empty;
+                var existing = File.Exists(AuditLogPath) ? LocalFileSafety.ReadTextBounded(AuditLogPath, (int)MaximumAuditBytes) : string.Empty;
                 LocalFileSafety.WriteTextAtomic(AuditLogPath, existing +
                     DateTimeOffset.Now.ToString("yyyy-MM-dd HH:mm:ss.fff zzz", CultureInfo.InvariantCulture) +
                     " " + message + Environment.NewLine);
@@ -502,7 +502,7 @@ namespace WechatDuokai.Core
             internal static RecoveryJournal Read(string path, string expectedRegistryPath,
                 string expectedValueName)
             {
-                var values = File.ReadAllLines(path, Encoding.UTF8)
+                var values = LocalFileSafety.ReadLinesBounded(path, 64 * 1024)
                     .Select(line => new { Line = line, Separator = line.IndexOf('=') })
                     .Where(item => item.Separator > 0)
                     .ToDictionary(item => item.Line.Substring(0, item.Separator),

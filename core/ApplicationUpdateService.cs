@@ -239,8 +239,7 @@ namespace WechatDuokai.Core
                 plan.WriteDurable(planPath);
 
                 var arguments = "/auto-update " + Quote(planPath) +
-                                " --theme=" + (string.Equals(themeName, "dark",
-                                    StringComparison.OrdinalIgnoreCase) ? "dark" : "light");
+                                " --theme=" + NormalizeThemeName(themeName);
                 var process = Process.Start(new ProcessStartInfo
                 {
                     FileName = package.PackagePath,
@@ -263,6 +262,12 @@ namespace WechatDuokai.Core
                 }
                 return process;
             }
+        }
+
+        internal static string NormalizeThemeName(string themeName)
+        {
+            if (string.Equals(themeName, "halloween", StringComparison.OrdinalIgnoreCase)) return "halloween";
+            return string.Equals(themeName, "dark", StringComparison.OrdinalIgnoreCase) ? "dark" : "light";
         }
 
         public void CleanupStaleDownloads()
@@ -579,7 +584,7 @@ namespace WechatDuokai.Core
         {
             var marker = Path.Combine(directory, markerName);
             return File.Exists(marker) && string.Equals(
-                File.ReadAllText(marker, Encoding.UTF8).Trim(), markerValue, StringComparison.Ordinal);
+                LocalFileSafety.ReadTextBounded(marker, 128).Trim(), markerValue, StringComparison.Ordinal);
         }
 
         private static void WriteBytesDurable(string path, byte[] bytes)

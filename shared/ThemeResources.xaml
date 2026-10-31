@@ -28,12 +28,76 @@
     <SolidColorBrush x:Key="WeComIconSurfaceBrush" Color="#E7F2FE" />
     <SolidColorBrush x:Key="QqIconSurfaceBrush" Color="#E7F2FE" />
     <Color x:Key="ShadowColor">#24304B43</Color>
+    <Visibility x:Key="HalloweenDecorationVisibility">Collapsed</Visibility>
+
+    <DrawingImage x:Key="HalloweenPumpkinImage">
+        <DrawingImage.Drawing>
+            <DrawingGroup>
+                <GeometryDrawing Brush="#8E9D76" Geometry="M 29,12 C 28,5 34,2 39,4 L 37,9 C 33,8 33,11 33,14 Z" />
+                <GeometryDrawing Brush="#C87E48" Geometry="M 32,15 C 11,3 0,23 5,42 C 8,58 22,61 32,57 C 45,62 60,53 61,38 C 64,21 51,4 32,15 Z" />
+                <GeometryDrawing Brush="#DB9A61" Geometry="M 31,15 C 15,11 11,28 14,44 C 17,54 23,58 31,57 C 42,57 49,47 49,34 C 50,22 42,13 31,15 Z" />
+                <GeometryDrawing Brush="#E6AD75" Geometry="M 31,15 C 23,20 22,45 31,57 C 39,46 40,24 31,15 Z" />
+                <GeometryDrawing Brush="#35201D" Geometry="M 15,31 L 25,24 L 26,35 Z M 38,25 L 49,32 L 37,35 Z M 15,41 L 23,44 L 27,41 L 32,46 L 36,42 L 41,44 L 49,40 C 44,56 22,56 15,41 Z" />
+            </DrawingGroup>
+        </DrawingImage.Drawing>
+    </DrawingImage>
+    <DrawingImage x:Key="ThemePreviewLight">
+        <DrawingImage.Drawing>
+            <DrawingGroup>
+                <GeometryDrawing Brush="#EEF5F2"><GeometryDrawing.Geometry><RectangleGeometry Rect="0,0,112,66" RadiusX="9" RadiusY="9" /></GeometryDrawing.Geometry></GeometryDrawing>
+                <GeometryDrawing Brush="#FFFFFF" Geometry="M 8,22 H 75 V 57 H 8 Z M 81,22 H 104 V 57 H 81 Z" />
+                <GeometryDrawing Brush="#168F55" Geometry="M 9,8 H 18 V 16 H 9 Z M 18,31 H 28 V 41 H 18 Z M 48,32 H 66 V 40 H 48 Z" />
+                <GeometryDrawing Brush="#C4D8D2" Geometry="M 24,10 H 63 V 13 H 24 Z M 18,47 H 66 V 50 H 18 Z M 88,36 H 97 V 40 H 88 Z" />
+            </DrawingGroup>
+        </DrawingImage.Drawing>
+    </DrawingImage>
+    <DrawingImage x:Key="ThemePreviewDark">
+        <DrawingImage.Drawing>
+            <DrawingGroup>
+                <GeometryDrawing Brush="#101719"><GeometryDrawing.Geometry><RectangleGeometry Rect="0,0,112,66" RadiusX="9" RadiusY="9" /></GeometryDrawing.Geometry></GeometryDrawing>
+                <GeometryDrawing Brush="#1B282D" Geometry="M 8,22 H 75 V 57 H 8 Z M 81,22 H 104 V 57 H 81 Z" />
+                <GeometryDrawing Brush="#348B65" Geometry="M 9,8 H 18 V 16 H 9 Z M 18,31 H 28 V 41 H 18 Z M 48,32 H 66 V 40 H 48 Z" />
+                <GeometryDrawing Brush="#6F8581" Geometry="M 24,10 H 63 V 13 H 24 Z M 18,47 H 66 V 50 H 18 Z M 88,36 H 97 V 40 H 88 Z" />
+            </DrawingGroup>
+        </DrawingImage.Drawing>
+    </DrawingImage>
+    <DrawingImage x:Key="ThemePreviewSystem">
+        <DrawingImage.Drawing>
+            <DrawingGroup>
+                <GeometryDrawing Brush="#EEF5F2"><GeometryDrawing.Geometry><RectangleGeometry Rect="0,0,112,66" RadiusX="9" RadiusY="9" /></GeometryDrawing.Geometry></GeometryDrawing>
+                <GeometryDrawing Brush="#1B282D" Geometry="M 66,0 H 103 Q 112,0 112,9 V 57 Q 112,66 103,66 H 34 Z" />
+                <GeometryDrawing Brush="#FFFFFF" Geometry="M 10,24 H 43 V 55 H 10 Z" />
+                <GeometryDrawing Brush="#385057" Geometry="M 70,24 H 102 V 55 H 70 Z" />
+                <GeometryDrawing Brush="#168F55" Geometry="M 12,10 H 36 V 15 H 12 Z M 16,32 H 35 V 40 H 16 Z" />
+                <GeometryDrawing Brush="#6CA087" Geometry="M 77,10 H 101 V 15 H 77 Z M 76,32 H 95 V 40 H 76 Z" />
+            </DrawingGroup>
+        </DrawingImage.Drawing>
+    </DrawingImage>
+    <DrawingImage x:Key="ThemePreviewHalloween">
+        <DrawingImage.Drawing>
+            <DrawingGroup>
+                <GeometryDrawing Brush="#17131E"><GeometryDrawing.Geometry><RectangleGeometry Rect="0,0,112,66" RadiusX="9" RadiusY="9" /></GeometryDrawing.Geometry></GeometryDrawing>
+                <GeometryDrawing Brush="#292333" Geometry="M 8,22 H 75 V 57 H 8 Z M 81,22 H 104 V 57 H 81 Z" />
+                <GeometryDrawing Brush="#D39560" Geometry="M 9,8 H 18 V 16 H 9 Z M 18,31 H 28 V 41 H 18 Z M 48,32 H 66 V 40 H 48 Z" />
+                <GeometryDrawing Brush="#A294AC" Geometry="M 24,10 H 63 V 13 H 24 Z M 18,47 H 66 V 50 H 18 Z M 88,36 H 97 V 40 H 88 Z" />
+                <GeometryDrawing Brush="#D39560" Geometry="M 94,5 A 7,7 0 1 0 103,16 A 7,7 0 0 1 94,5 Z" />
+            </DrawingGroup>
+        </DrawingImage.Drawing>
+    </DrawingImage>
 
     <Style TargetType="TextBlock">
         <Setter Property="FontFamily" Value="{StaticResource AppFont}" />
         <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
         <Setter Property="TextOptions.TextFormattingMode" Value="Ideal" />
         <Setter Property="TextOptions.TextRenderingMode" Value="ClearType" />
+        <Style.Triggers>
+            <DataTrigger Binding="{Binding IsEnabled, RelativeSource={RelativeSource AncestorType={x:Type Button}}}" Value="True">
+                <Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Button}}}" />
+            </DataTrigger>
+            <DataTrigger Binding="{Binding IsEnabled, RelativeSource={RelativeSource AncestorType={x:Type Button}}}" Value="False">
+                <Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Button}}}" />
+            </DataTrigger>
+        </Style.Triggers>
     </Style>
 
     <Style TargetType="ToolTip">
@@ -495,6 +559,45 @@
                         <Trigger Property="IsEnabled" Value="False">
                             <Setter Property="Opacity" Value="0.42" />
                         </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+    <Style x:Key="ThemeChoiceCardStyle" TargetType="RadioButton">
+        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="RadioButton">
+                    <Border x:Name="Card" Background="{DynamicResource SurfaceRaisedBrush}"
+                            BorderBrush="{DynamicResource BorderBrush}" BorderThickness="2"
+                            CornerRadius="14" Padding="14,10,38,10">
+                        <Grid>
+                            <ContentPresenter HorizontalAlignment="Stretch" VerticalAlignment="Center" />
+                            <Grid Width="17" Height="17" HorizontalAlignment="Right" Margin="0,0,-24,0">
+                                <Ellipse x:Name="Ring" Stroke="{DynamicResource BorderStrongBrush}" StrokeThickness="1" />
+                                <Ellipse x:Name="Dot" Width="7" Height="7" Fill="{DynamicResource AccentBrush}" Visibility="Collapsed" />
+                            </Grid>
+                        </Grid>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Card" Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+                            <Setter TargetName="Card" Property="Background" Value="{DynamicResource SelectionBrush}" />
+                            <Setter TargetName="Ring" Property="Stroke" Value="{DynamicResource AccentBrush}" />
+                            <Setter TargetName="Dot" Property="Visibility" Value="Visible" />
+                        </Trigger>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Card" Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Setter TargetName="Card" Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+                            <Setter TargetName="Ring" Property="StrokeThickness" Value="2" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.45" /></Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>

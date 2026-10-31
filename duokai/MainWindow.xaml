@@ -42,8 +42,11 @@
                                    Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" />
                     </Border>
                     <Button x:Name="ThemeButton" Margin="10,0,0,0" Style="{StaticResource PillButtonStyle}"
-                            AutomationProperties.Name="切换日间或夜间主题" Click="ThemeButton_Click">
+                            AutomationProperties.Name="打开主题设置" ToolTip="选择日间、夜间或万圣夜主题" Click="ThemeButton_Click">
                         <StackPanel Orientation="Horizontal">
+                            <Image x:Name="HalloweenThemeGlyph" Width="18" Height="18" Margin="0,0,6,0"
+                                   Source="{StaticResource HalloweenPumpkinImage}"
+                                   Visibility="{DynamicResource HalloweenDecorationVisibility}" />
                             <TextBlock x:Name="ThemeGlyph" Text="☾" FontSize="12" Margin="0,0,6,0" />
                             <TextBlock x:Name="ThemeLabel" Text="夜间" />
                         </StackPanel>
@@ -245,6 +248,10 @@
                             </Border>
                         </Grid>
                     </Border>
+                    <Image x:Name="HalloweenWatermark" Source="{StaticResource HalloweenPumpkinImage}"
+                           Width="48" Height="48" Margin="0,15,14,0" HorizontalAlignment="Right" VerticalAlignment="Top"
+                           Opacity="0.13" IsHitTestVisible="False"
+                           Visibility="{DynamicResource HalloweenDecorationVisibility}" />
                 </Grid>
         </Grid>
 
@@ -272,6 +279,9 @@
                             <Button x:Name="GeneralSettingsTabButton" Content="常规" Padding="14,0"
                                     FontWeight="SemiBold" Style="{StaticResource PillButtonStyle}"
                                     AutomationProperties.Name="打开常规设置" Click="GeneralSettingsTabButton_Click" />
+                            <Button x:Name="ThemeSettingsTabButton" Content="主题" Padding="14,0" Margin="8,0,0,0"
+                                    Opacity="0.68" Style="{StaticResource PillButtonStyle}"
+                                    AutomationProperties.Name="打开主题设置" Click="ThemeSettingsTabButton_Click" />
                             <Button x:Name="AboutSettingsTabButton" Content="软件介绍" Padding="14,0" Margin="8,0,0,0"
                                     Opacity="0.68" Style="{StaticResource PillButtonStyle}"
                                     AutomationProperties.Name="打开软件介绍" Click="AboutSettingsTabButton_Click" />
@@ -299,22 +309,8 @@
                                     <RowDefinition Height="Auto" />
                                     <RowDefinition Height="*" />
                                 </Grid.RowDefinitions>
-                                <TextBlock Text="界面与启动" FontSize="14" FontWeight="SemiBold" />
-                                <StackPanel Grid.Row="1" Margin="0,11,0,0" Orientation="Horizontal">
-                                    <RadioButton x:Name="SystemThemeRadio" GroupName="ThemePreference"
-                                                 Content="跟随 Windows 系统" Tag="System"
-                                                 Style="{StaticResource PremiumRadioStyle}"
-                                                 Checked="ThemePreference_Checked" />
-                                    <RadioButton x:Name="LightThemeRadio" GroupName="ThemePreference"
-                                                 Content="日间主题" Tag="Light" Margin="16,0,0,0"
-                                                 Style="{StaticResource PremiumRadioStyle}"
-                                                 Checked="ThemePreference_Checked" />
-                                    <RadioButton x:Name="DarkThemeRadio" GroupName="ThemePreference"
-                                                 Content="夜间主题" Tag="Dark" Margin="16,0,0,0"
-                                                  Style="{StaticResource PremiumRadioStyle}"
-                                                  Checked="ThemePreference_Checked" />
-                                </StackPanel>
-                                <StackPanel Grid.Row="2" Margin="0,12,0,0">
+                                <TextBlock Text="启动与诊断" FontSize="14" FontWeight="SemiBold" />
+                                <StackPanel Grid.Row="1" Margin="0,16,0,0">
                                     <CheckBox x:Name="RunAtStartupCheckBox"
                                               Content="开机后自动启动微窗助手"
                                               Style="{StaticResource PremiumCheckBoxStyle}"
@@ -402,6 +398,62 @@
                                 </StackPanel>
                             </Grid>
                         </Border>
+                    </Grid>
+
+                    <Grid x:Name="ThemeSettingsPanel" Grid.Row="1" Visibility="Collapsed">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" /><ColumnDefinition Width="14" /><ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="*" /><RowDefinition Height="12" /><RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+                        <RadioButton x:Name="SystemThemeRadio" GroupName="ThemePreference" Tag="System"
+                                     Style="{StaticResource ThemeChoiceCardStyle}" Checked="ThemePreference_Checked"
+                                     AutomationProperties.Name="跟随 Windows 系统主题">
+                            <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="108" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                <Image Source="{StaticResource ThemePreviewSystem}" Width="98" Height="58" HorizontalAlignment="Left" />
+                                <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
+                                    <TextBlock Text="跟随系统" FontSize="14" FontWeight="SemiBold" />
+                                    <TextBlock Text="随 Windows 切换日夜" FontSize="11" Margin="0,7,0,0" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                </StackPanel>
+                            </Grid>
+                        </RadioButton>
+                        <RadioButton x:Name="LightThemeRadio" Grid.Column="2" GroupName="ThemePreference" Tag="Light"
+                                     Style="{StaticResource ThemeChoiceCardStyle}" Checked="ThemePreference_Checked"
+                                     AutomationProperties.Name="日间主题">
+                            <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="108" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                <Image Source="{StaticResource ThemePreviewLight}" Width="98" Height="58" HorizontalAlignment="Left" />
+                                <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
+                                    <TextBlock Text="日间" FontSize="14" FontWeight="SemiBold" />
+                                    <TextBlock Text="清透浅色 · 绿蓝点缀" FontSize="11" Margin="0,7,0,0" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                </StackPanel>
+                            </Grid>
+                        </RadioButton>
+                        <RadioButton x:Name="DarkThemeRadio" Grid.Row="2" GroupName="ThemePreference" Tag="Dark"
+                                     Style="{StaticResource ThemeChoiceCardStyle}" Checked="ThemePreference_Checked"
+                                     AutomationProperties.Name="夜间主题">
+                            <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="108" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                <Image Source="{StaticResource ThemePreviewDark}" Width="98" Height="58" HorizontalAlignment="Left" />
+                                <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
+                                    <TextBlock Text="夜间" FontSize="14" FontWeight="SemiBold" />
+                                    <TextBlock Text="低亮墨色 · 柔和护眼" FontSize="11" Margin="0,7,0,0" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                </StackPanel>
+                            </Grid>
+                        </RadioButton>
+                        <RadioButton x:Name="HalloweenThemeRadio" Grid.Row="2" Grid.Column="2" GroupName="ThemePreference" Tag="Halloween"
+                                     Style="{StaticResource ThemeChoiceCardStyle}" Checked="ThemePreference_Checked"
+                                     AutomationProperties.Name="万圣夜主题">
+                            <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="108" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                <Image Source="{StaticResource ThemePreviewHalloween}" Width="98" Height="58" HorizontalAlignment="Left" />
+                                <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="万圣夜" FontSize="14" FontWeight="SemiBold" />
+                                        <Image Width="18" Height="18" Margin="7,0,0,0" Source="{StaticResource HalloweenPumpkinImage}" />
+                                    </StackPanel>
+                                    <TextBlock Text="南瓜暖橙 · 静谧紫夜" FontSize="11" Margin="0,7,0,0" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                </StackPanel>
+                            </Grid>
+                        </RadioButton>
                     </Grid>
 
                     <Grid x:Name="AboutSettingsPanel" Grid.Row="1" Visibility="Collapsed">

@@ -109,7 +109,7 @@ namespace WechatDuokai.Core
                 var marker = Path.Combine(info.FullName, DataMarkerName);
                 LocalFileSafety.RejectReparsePoints(marker);
                 return File.Exists(marker) &&
-                       string.Equals(File.ReadAllText(marker, Encoding.UTF8).Trim(), DataMarkerValue,
+                       string.Equals(LocalFileSafety.ReadTextBounded(marker, 128).Trim(), DataMarkerValue,
                            StringComparison.Ordinal);
             }
             catch (Exception)

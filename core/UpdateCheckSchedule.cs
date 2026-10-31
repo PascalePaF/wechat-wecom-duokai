@@ -203,7 +203,7 @@ namespace WechatDuokai.Core
                 if (!File.Exists(path)) return state;
 
                 var values = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-                foreach (var rawLine in File.ReadAllLines(path, Encoding.UTF8))
+                foreach (var rawLine in LocalFileSafety.ReadLinesBounded(path, 64 * 1024))
                 {
                     var line = (rawLine ?? string.Empty).Trim();
                     var separator = line.IndexOf('=');

@@ -43,11 +43,7 @@ namespace WechatDuokai.Cleanup
 
         private static WechatDuokai.Presentation.AppTheme? ParseForcedTheme(string[] args)
         {
-            var value = args?.FirstOrDefault(arg => arg.StartsWith("--theme=", StringComparison.OrdinalIgnoreCase));
-            if (value == null) return null;
-            return value.EndsWith("dark", StringComparison.OrdinalIgnoreCase)
-                ? WechatDuokai.Presentation.AppTheme.Dark
-                : WechatDuokai.Presentation.AppTheme.Light;
+            return WechatDuokai.Presentation.ThemeManager.ParseForcedTheme(args);
         }
     }
 }

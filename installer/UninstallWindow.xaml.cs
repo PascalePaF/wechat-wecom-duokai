@@ -108,7 +108,7 @@ namespace WechatDuokai.Installer
 
         private void UpdateThemeButton()
         {
-            var dark = ThemeManager.Current == AppTheme.Dark;
+            var dark = ThemeManager.IsDark;
             ThemeGlyph.Text = dark ? "☀" : "☾";
             ThemeLabel.Text = dark ? "日间" : "夜间";
         }

@@ -58,6 +58,10 @@ namespace WechatDuokai.Tests
                 Run("QQ launches through its official executable and counts independent roots", TestQQDirectLaunch);
                 Run("Shared dialogs and pickers use the active theme", TestSharedDialogTheme);
                 Run("Dark theme uses a restrained palette and theme-aware icon surfaces", TestDarkThemeComfortPalette);
+                Run("Halloween preferences and installer theme arguments survive a round trip", ThemeRegressionTests.SharedThemeRoundTrip);
+                Run("Theme choices have a dedicated responsive and accessible settings tab", ThemeRegressionTests.ThemePageNavigation);
+                Run("Oversized local configuration fails safely and theme write failures are reported", ThemeRegressionTests.BoundedLocalState);
+                Run("Closing during startup recovery cannot revive timers or access disposed cancellation", ThemeRegressionTests.CloseDuringStartupRecovery);
                 Run("Renamed executables cannot impersonate an official client", TestClientExecutableValidation);
                 Run("Publisher identity rejects lookalike and missing legal organizations", SecurityRegressionTests.PublisherIdentity);
                 Run("Update response bodies honor deadlines and caller cancellation", SecurityRegressionTests.StreamingTimeouts);
@@ -137,7 +141,7 @@ namespace WechatDuokai.Tests
             return 0;
         }
 
-        private static void BootstrapWpf(Type anchorType, string themeName)
+        internal static void BootstrapWpf(Type anchorType, string themeName)
         {
             if (Application.Current == null)
             {
@@ -169,6 +173,7 @@ namespace WechatDuokai.Tests
             var showInstallerCompletion = false;
             var showMainSettings = false;
             var showMainAbout = false;
+            var showMainThemes = false;
             bool? previousAutoCheck = null;
             switch (windowName.ToLowerInvariant())
             {
@@ -181,6 +186,11 @@ namespace WechatDuokai.Tests
                     windowType = typeof(MainWindow);
                     showMainSettings = true;
                     showMainAbout = true;
+                    break;
+                case "main-themes":
+                    windowType = typeof(MainWindow);
+                    showMainSettings = true;
+                    showMainThemes = true;
                     break;
                 case "installer": windowType = typeof(InstallWindow); break;
                 case "installer-complete":
@@ -243,6 +253,7 @@ namespace WechatDuokai.Tests
                     {
                         ((MainWindow)window).SetSettingsSection(true);
                     }
+                    if (showMainThemes) ((MainWindow)window).SetSettingsSection(MainWindow.SettingsSection.Themes);
                 }
                 window.Show();
                 window.Dispatcher.Invoke(() => { }, DispatcherPriority.ContextIdle);
@@ -802,14 +813,14 @@ namespace WechatDuokai.Tests
             }
         }
 
-        private static Color GetThemeColor(string resourceKey)
+        internal static Color GetThemeColor(string resourceKey)
         {
             var brush = Application.Current.Resources[resourceKey] as SolidColorBrush;
             Assert(brush != null, "Missing theme brush: " + resourceKey);
             return brush.Color;
         }
 
-        private static double GetLuminance(Color color)
+        internal static double GetLuminance(Color color)
         {
             Func<byte, double> linear = value =>
             {
@@ -852,7 +863,8 @@ namespace WechatDuokai.Tests
                         window.GetType().Name + " must explicitly bind the product icon for its title bar and taskbar button.");
                     var themeButton = window.FindName("ThemeButton") as DependencyObject;
                     Assert(themeButton != null &&
-                           string.Equals(AutomationProperties.GetName(themeButton), "切换日间或夜间主题", StringComparison.Ordinal),
+                           string.Equals(AutomationProperties.GetName(themeButton), window is MainWindow
+                               ? "打开主题设置" : "切换日间或夜间主题", StringComparison.Ordinal),
                         window.GetType().Name + " theme switch is missing.");
                     var logoName = window is MainWindow ? "BrandLogo" : "HeaderLogo";
                     var logo = window.FindName(logoName) as Image;
@@ -1112,7 +1124,7 @@ namespace WechatDuokai.Tests
         {
             foreach (var anchor in new[] { typeof(MainWindow), typeof(InstallWindow), LoadCleanupWindowType() })
             {
-                foreach (var theme in new[] { "Light", "Dark" })
+                foreach (var theme in new[] { "Light", "Dark", "Halloween" })
                 {
                     BootstrapWpf(anchor, theme);
                     Assert(Application.Current.FindResource(typeof(ToolTip)) is Style &&
@@ -1133,6 +1145,11 @@ namespace WechatDuokai.Tests
                                 "A secondary window does not use the active window palette.");
                             Assert(window.WindowStyle == WindowStyle.SingleBorderWindow && window.Content is Grid,
                                 "A secondary window lost its movable title bar or themed layout.");
+                            window.WindowStartupLocation = WindowStartupLocation.Manual;
+                            window.Left = -10000; window.Top = -10000; window.ShowInTaskbar = false;
+                            window.Show();
+                            window.UpdateLayout();
+                            ThemeRegressionTests.CheckRenderedButtonLabels(window);
                         }
                         finally
                         {
@@ -1927,7 +1944,7 @@ namespace WechatDuokai.Tests
                 "An invalid or path-bearing proxy URL was accepted.");
         }
 
-        private static void DeleteTestDirectoryWithRetries(string path)
+        internal static void DeleteTestDirectoryWithRetries(string path)
         {
             for (var attempt = 0; attempt < 50; attempt++)
             {
@@ -2243,7 +2260,7 @@ namespace WechatDuokai.Tests
                 "Shortcut identity or legacy migration target is incorrect.");
         }
 
-        private static Type LoadCleanupWindowType()
+        internal static Type LoadCleanupWindowType()
         {
             var path = Path.Combine(FindProjectRoot(), "cleanup", "bin", "Release", "net48",
                 "wechat_duokai-cleanup-v" + CurrentVersion + ".exe");

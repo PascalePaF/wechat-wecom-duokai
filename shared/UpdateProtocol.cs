@@ -103,7 +103,7 @@ namespace WechatDuokai.Update
             {
                 throw new InvalidDataException("更新计划文件大小无效。");
             }
-            var lines = File.ReadAllLines(fullPath, Encoding.UTF8);
+            var lines = SafeLocalFile.ReadLinesBounded(fullPath, 16 * 1024);
             if (lines.Length != 11 || !string.Equals(lines[0], Header, StringComparison.Ordinal))
             {
                 throw new InvalidDataException("更新计划格式无效。");

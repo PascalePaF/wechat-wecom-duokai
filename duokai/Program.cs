@@ -111,15 +111,7 @@ namespace WechatDuokai.App
 
         private static AppTheme? ParseForcedTheme(string[] args)
         {
-            var themeArgument = args?.FirstOrDefault(value => value.StartsWith("--theme=", StringComparison.OrdinalIgnoreCase));
-            if (themeArgument == null)
-            {
-                return null;
-            }
-
-            return themeArgument.EndsWith("dark", StringComparison.OrdinalIgnoreCase)
-                ? AppTheme.Dark
-                : AppTheme.Light;
+            return ThemeManager.ParseForcedTheme(args);
         }
 
         internal static bool HasArgument(string[] args, string expected)

@@ -291,16 +291,19 @@ namespace WechatDuokai.Core
             string[] lines;
             try
             {
-                lines = File.ReadAllLines(File.Exists(settingsPath) ? settingsPath : backupPath,
-                    Encoding.UTF8);
+                lines = LocalFileSafety.ReadLinesBounded(File.Exists(settingsPath) ? settingsPath : backupPath, 64 * 1024);
             }
             catch (IOException) when (File.Exists(backupPath))
             {
-                lines = File.ReadAllLines(backupPath, Encoding.UTF8);
+                lines = LocalFileSafety.ReadLinesBounded(backupPath, 64 * 1024);
+            }
+            catch (InvalidDataException) when (File.Exists(backupPath))
+            {
+                lines = LocalFileSafety.ReadLinesBounded(backupPath, 64 * 1024);
             }
             catch (UnauthorizedAccessException) when (File.Exists(backupPath))
             {
-                lines = File.ReadAllLines(backupPath, Encoding.UTF8);
+                lines = LocalFileSafety.ReadLinesBounded(backupPath, 64 * 1024);
             }
             foreach (var line in lines)
             {

@@ -47,9 +47,7 @@ namespace WechatDuokai.Installer
 
         private static AppTheme? ParseForcedTheme(string[] args)
         {
-            var value = args?.FirstOrDefault(arg => arg.StartsWith("--theme=", StringComparison.OrdinalIgnoreCase));
-            if (value == null) return null;
-            return value.EndsWith("dark", StringComparison.OrdinalIgnoreCase) ? AppTheme.Dark : AppTheme.Light;
+            return ThemeManager.ParseForcedTheme(args);
         }
     }
 

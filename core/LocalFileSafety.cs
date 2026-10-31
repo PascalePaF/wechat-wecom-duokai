@@ -38,5 +38,15 @@ namespace WechatDuokai.Core
         {
             SafeLocalFile.WriteTextAtomic(path, contents);
         }
+
+        internal static string ReadTextBounded(string path, int maximumBytes)
+        {
+            return SafeLocalFile.ReadTextBounded(path, maximumBytes);
+        }
+
+        internal static string[] ReadLinesBounded(string path, int maximumBytes)
+        {
+            return SafeLocalFile.ReadLinesBounded(path, maximumBytes);
+        }
     }
 }

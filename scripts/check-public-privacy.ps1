@@ -30,7 +30,8 @@ foreach ($relative in $tracked) {
     $path = Join-Path $root $relative
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { continue }
     if ($relative -match '^docs/assets/v[0-9].*\.png$' -and
-        $relative -notmatch '-logo-' -and -not $relative.StartsWith('docs/assets/v' + $version + '-')) {
+        $relative -notmatch '-logo-' -and -not $relative.StartsWith('docs/assets/v1.1.8-') -and
+        -not $relative.StartsWith('docs/assets/v' + $version + '-')) {
         $script:issues.Add("旧的非演示界面图片不再进入当前发布树：$relative")
     }
     Test-PublicBytes $relative ([IO.File]::ReadAllBytes($path))

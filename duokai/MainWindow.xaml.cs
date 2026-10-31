@@ -28,6 +28,7 @@ namespace WechatDuokai.App
         private readonly DispatcherTimer _automaticUpdateTimer;
         private readonly AutomaticUpdateCoordinator _automaticUpdateCoordinator;
         private readonly CancellationTokenSource _lifetime = new CancellationTokenSource();
+        private readonly CancellationToken _lifetimeToken;
         private AppDefinition _qq;
         private AppDefinition _weChat;
         private AppDefinition _weCom;
@@ -49,9 +50,11 @@ namespace WechatDuokai.App
 
         internal MainWindow(InstanceManager instanceManager, ReleaseUpdateChecker updateChecker)
         {
+            _lifetimeToken = _lifetime.Token;
             _instanceManager = instanceManager ?? throw new ArgumentNullException(nameof(instanceManager));
             _updateChecker = updateChecker ?? throw new ArgumentNullException(nameof(updateChecker));
             InitializeComponent();
+            UpdateThemeButton();
             Title = ProductIdentity.Name + " V" + CurrentVersion;
             HeaderVersionText.Text = "V" + CurrentVersion;
             SettingsVersionText.Text = "V" + CurrentVersion;
@@ -85,6 +88,7 @@ namespace WechatDuokai.App
             Loaded += async (sender, args) =>
             {
                 var recovery = await Task.Run(() => _instanceManager.RecoverPendingWeComRegistryState());
+                if (_lifetimeToken.IsCancellationRequested) return;
                 LocateClients();
                 SetBusy(false);
                 UpdateThemeButton();
@@ -93,6 +97,7 @@ namespace WechatDuokai.App
                 _refreshTimer.Start();
                 _automaticUpdateTimer.Start();
                 await Task.Run(() => _applicationUpdater.CleanupStaleDownloads());
+                if (_lifetimeToken.IsCancellationRequested) return;
                 if (recovery.Outcome != WeComRegistryRecoveryOutcome.None &&
                     !string.IsNullOrWhiteSpace(recovery.Message))
                 {
@@ -109,11 +114,11 @@ namespace WechatDuokai.App
                 {
                     // Stagger the first check; the timer continues to honor the local schedule
                     // for as long as this window remains open.
-                    await Task.Delay(UpdateCheckSchedule.GetStartupDelay(), _lifetime.Token);
+                    await Task.Delay(UpdateCheckSchedule.GetStartupDelay(), _lifetimeToken);
                     _automaticUpdateCoordinator.CompleteStartupDelay();
                     await CheckScheduledUpdateSafelyAsync();
                 }
-                catch (OperationCanceledException) when (_lifetime.IsCancellationRequested)
+                catch (OperationCanceledException) when (_lifetimeToken.IsCancellationRequested)
                 {
                 }
             };
@@ -385,12 +390,12 @@ namespace WechatDuokai.App
                 var result = await _instanceManager.EnsureTargetCountAsync(
                     application, target,
                     message => Dispatcher.Invoke(() => SetStatus(message, "InfoBrush")),
-                    _lifetime.Token);
+                    _lifetimeToken);
                 SetStatus(result.Message, result.Success ? "SuccessBrush" : "WarningBrush");
                 if (!result.Success)
                     ThemedDialogService.Show(this, "补开结果", result.Message);
             }
-            catch (OperationCanceledException) when (_lifetime.IsCancellationRequested)
+            catch (OperationCanceledException) when (_lifetimeToken.IsCancellationRequested)
             {
             }
             catch (Exception ex)
@@ -435,14 +440,14 @@ namespace WechatDuokai.App
                 var result = await _instanceManager.ExitAllInstancesAsync(
                     application,
                     message => Dispatcher.Invoke(() => SetStatus(message, "InfoBrush")),
-                    _lifetime.Token);
+                    _lifetimeToken);
                 SetStatus(result.Message, result.Success ? "SuccessBrush" : "WarningBrush");
                 if (!result.Success)
                 {
                     ThemedDialogService.Show(this, "退出结果", result.Message);
                 }
             }
-            catch (OperationCanceledException) when (_lifetime.IsCancellationRequested)
+            catch (OperationCanceledException) when (_lifetimeToken.IsCancellationRequested)
             {
             }
             catch (Exception ex)
@@ -482,6 +487,7 @@ namespace WechatDuokai.App
             SystemThemeRadio.IsEnabled = !busy;
             LightThemeRadio.IsEnabled = !busy;
             DarkThemeRadio.IsEnabled = !busy;
+            HalloweenThemeRadio.IsEnabled = !busy;
             CheckUpdateButton.IsEnabled = !busy && !_checkingUpdates && !_preparingUpdate;
             UpdateNowButton.IsEnabled = !busy && !_installingUpdate && !_preparingUpdate &&
                                         _availableUpdate != null && _availableUpdate.CanInstallUpdate;
@@ -534,17 +540,15 @@ namespace WechatDuokai.App
 
         private void ThemeButton_Click(object sender, RoutedEventArgs e)
         {
-            ThemeManager.Toggle();
-            UpdateThemeButton();
-            SynchronizeThemePreferenceControls();
-            WindowChromeHelper.Apply(this);
+            SetSettingsViewVisible(true);
+            SetSettingsSection(SettingsSection.Themes);
         }
 
         private void UpdateThemeButton()
         {
-            var dark = ThemeManager.Current == AppTheme.Dark;
-            ThemeGlyph.Text = dark ? "☀" : "☾";
-            ThemeLabel.Text = dark ? "日间" : "夜间";
+            ThemeGlyph.Text = ThemeManager.IsDark ? "☾" : "☀";
+            ThemeGlyph.Visibility = ThemeManager.Current == AppTheme.Halloween ? Visibility.Collapsed : Visibility.Visible;
+            ThemeLabel.Text = ThemeManager.DisplayName;
         }
 
         private void SynchronizeSettingsControls()
@@ -569,6 +573,7 @@ namespace WechatDuokai.App
             SystemThemeRadio.IsChecked = ThemeManager.Preference == AppThemePreference.System;
             LightThemeRadio.IsChecked = ThemeManager.Preference == AppThemePreference.Light;
             DarkThemeRadio.IsChecked = ThemeManager.Preference == AppThemePreference.Dark;
+            HalloweenThemeRadio.IsChecked = ThemeManager.Preference == AppThemePreference.Halloween;
             _initializingSettings = wasInitializing;
         }
 
@@ -580,17 +585,18 @@ namespace WechatDuokai.App
             }
 
             AppThemePreference preference;
-            if (!Enum.TryParse(Convert.ToString(radio.Tag), true, out preference))
+            if (!Enum.TryParse(Convert.ToString(radio.Tag), true, out preference) ||
+                !Enum.IsDefined(typeof(AppThemePreference), preference))
             {
                 return;
             }
 
-            ThemeManager.SetPreference(preference);
+            var saved = ThemeManager.SetPreference(preference);
             UpdateThemeButton();
             WindowChromeHelper.Apply(this);
-            SetStatus(preference == AppThemePreference.System
+            SetStatus(!saved ? "主题已临时应用，但保存失败 · 请检查程序目录写入权限" : preference == AppThemePreference.System
                 ? "主题已设为跟随 Windows 系统"
-                : "主题设置已保存", "SuccessBrush");
+                : "主题设置已保存", saved ? "SuccessBrush" : "WarningBrush");
         }
 
         private async void AutoUpdateCheckBox_Changed(object sender, RoutedEventArgs e)
@@ -616,7 +622,7 @@ namespace WechatDuokai.App
             {
                 await _automaticUpdateCoordinator.CheckIfDueAsync();
             }
-            catch (OperationCanceledException) when (_lifetime.IsCancellationRequested)
+            catch (OperationCanceledException) when (_lifetimeToken.IsCancellationRequested)
             {
             }
             catch (Exception ex)
@@ -750,20 +756,38 @@ namespace WechatDuokai.App
             SetSettingsSection(true);
         }
 
+        private void ThemeSettingsTabButton_Click(object sender, RoutedEventArgs e)
+        {
+            SetSettingsSection(SettingsSection.Themes);
+        }
+
+        internal enum SettingsSection { General, Themes, About }
+
         internal void SetSettingsSection(bool showAbout)
         {
-            GeneralSettingsPanel.Visibility = showAbout ? Visibility.Collapsed : Visibility.Visible;
+            SetSettingsSection(showAbout ? SettingsSection.About : SettingsSection.General);
+        }
+
+        internal void SetSettingsSection(SettingsSection section)
+        {
+            if (!Enum.IsDefined(typeof(SettingsSection), section)) throw new ArgumentOutOfRangeException(nameof(section));
+            var showAbout = section == SettingsSection.About;
+            var showThemes = section == SettingsSection.Themes;
+            GeneralSettingsPanel.Visibility = section == SettingsSection.General ? Visibility.Visible : Visibility.Collapsed;
+            ThemeSettingsPanel.Visibility = showThemes ? Visibility.Visible : Visibility.Collapsed;
             AboutSettingsPanel.Visibility = showAbout ? Visibility.Visible : Visibility.Collapsed;
-            GeneralSettingsTabButton.FontWeight = showAbout ? FontWeights.Normal : FontWeights.SemiBold;
+            GeneralSettingsTabButton.FontWeight = section == SettingsSection.General ? FontWeights.SemiBold : FontWeights.Normal;
+            ThemeSettingsTabButton.FontWeight = showThemes ? FontWeights.SemiBold : FontWeights.Normal;
             AboutSettingsTabButton.FontWeight = showAbout ? FontWeights.SemiBold : FontWeights.Normal;
-            GeneralSettingsTabButton.Opacity = showAbout ? 0.68 : 1d;
+            GeneralSettingsTabButton.Opacity = section == SettingsSection.General ? 1d : 0.68;
+            ThemeSettingsTabButton.Opacity = showThemes ? 1d : 0.68;
             AboutSettingsTabButton.Opacity = showAbout ? 1d : 0.68;
 
             if (_showingSettings)
             {
                 SetStatus(showAbout
                     ? "软件介绍 · 使用说明与安全边界"
-                    : "常规设置 · 更改会自动保存在本机", "InfoBrush");
+                    : showThemes ? "主题 · 即时预览，自动记住选择" : "常规设置 · 更改会自动保存在本机", "InfoBrush");
             }
         }
 
@@ -808,7 +832,7 @@ namespace WechatDuokai.App
             ReleaseUpdateResult result;
             try
             {
-                result = await _updateChecker.CheckAsync(CurrentVersion, _lifetime.Token);
+                result = await _updateChecker.CheckAsync(CurrentVersion, _lifetimeToken);
             }
             catch (OperationCanceledException)
             {
@@ -919,7 +943,7 @@ namespace WechatDuokai.App
                 SetStatus("V" + _availableUpdate.LatestVersion +
                           " 已下载并完成校验 · 请确认安装", "SuccessBrush");
             }
-            catch (OperationCanceledException) when (_lifetime.IsCancellationRequested)
+            catch (OperationCanceledException) when (_lifetimeToken.IsCancellationRequested)
             {
             }
             catch (Exception ex)
@@ -957,6 +981,7 @@ namespace WechatDuokai.App
             {
                 var progress = new Progress<UpdateProgressInfo>(info =>
                 {
+                    if (_lifetimeToken.IsCancellationRequested) return;
                     UpdateStatusText.Text = info.Message +
                                             (info.TotalBytes > 0
                                                 ? " · " + info.Percentage + "%"
@@ -964,7 +989,7 @@ namespace WechatDuokai.App
                     UpdateProgressBar.Value = info.Percentage;
                 });
                 var package = await _applicationUpdater.DownloadAndVerifyAsync(
-                    release, progress, _lifetime.Token);
+                    release, progress, _lifetimeToken);
                 if (_availableUpdate == null || !string.Equals(release.LatestVersion,
                         _availableUpdate.LatestVersion, StringComparison.Ordinal))
                 {
@@ -1048,10 +1073,10 @@ namespace WechatDuokai.App
                         : "Release 校验文件与安装包 SHA-256 校验通过 · 正在启动更新";
                 SetStatus("更新包校验通过 · 正在安全切换版本", "SuccessBrush");
                 _applicationUpdater.LaunchVerifiedInstaller(package, CurrentVersion,
-                    ThemeManager.Current == AppTheme.Dark ? "dark" : "light");
+                    ThemeManager.CommandLineName);
                 Application.Current.Shutdown(0);
             }
-            catch (OperationCanceledException) when (_lifetime.IsCancellationRequested)
+            catch (OperationCanceledException) when (_lifetimeToken.IsCancellationRequested)
             {
             }
             catch (Exception ex)
