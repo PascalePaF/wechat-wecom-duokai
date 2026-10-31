@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [string]$Version = '1.1.10',
+    [string]$Version = '1.1.11',
     [string]$MSBuildPath
 )
 
@@ -238,7 +238,8 @@ $manifest = @(
     'ShellIdentity=Explicit WPF window icon plus matching process/shortcut AppUserModelID and Explorer icon-cache notification',
     'Framework=.NET Framework 4.8',
     'Platform=Windows 10/11 x64',
-    'UI=Unified light/dark WPF dialogs and pickers; proportional three-client layout from 901x513 through maximized; no outer scrollbars',
+    'UI=Unified classic light/dark and complete Halloween day/night artwork across WPF windows, dialogs and pickers; proportional three-client layout from 901x513 through maximized; no outer scrollbars',
+    'SeasonalPresentation=Embedded vector logo, in-memory active-window icon, moon/bats/webs/ghosts, gradient cards and candy traces; passive decoration with no animation timers or remote assets; classic shell icons remain stable',
     'LaunchPolicy=Explicit confirmation after install',
     'ExitAllPolicy=Per-client confirmation; current session and exact verified executable path only; graceful close before force',
     'UpgradePolicy=Prompt before closing exact-path running helper',

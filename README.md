@@ -26,9 +26,9 @@
 
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/v1.1.10-main-dark-901x513.png">
-    <source media="(prefers-color-scheme: light)" srcset="docs/assets/v1.1.10-main-light-901x513.png">
-    <img src="docs/assets/v1.1.10-main-light-901x513.png" width="901" alt="微窗助手 V1.1.10 主界面">
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/v1.1.11-main-dark-901x513.png">
+    <source media="(prefers-color-scheme: light)" srcset="docs/assets/v1.1.11-main-light-901x513.png">
+    <img src="docs/assets/v1.1.11-main-light-901x513.png" width="901" alt="微窗助手 V1.1.11 主界面">
   </picture>
 </p>
 
@@ -42,21 +42,21 @@
 
 ## 下载
 
-当前正式版本：**V1.1.10**。请只从本仓库的
+当前正式版本：**V1.1.11**。请只从本仓库的
 [GitHub Releases](https://github.com/PascalePaF/wechat-wecom-duokai/releases/latest) 下载。
 
 | 版本 | 适合谁 | 下载 |
 | --- | --- | --- |
-| 安装版（推荐） | 希望自选安装目录、创建快捷方式并使用完整卸载功能 | [下载 `wechat_duokai-setup-v1.1.10.exe`](https://github.com/PascalePaF/wechat-wecom-duokai/releases/download/v1.1.10/wechat_duokai-setup-v1.1.10.exe) |
-| 绿色免安装版 | 希望解压即用，不写入安装登记 | [下载 `wechat_duokai-portable-v1.1.10.zip`](https://github.com/PascalePaF/wechat-wecom-duokai/releases/download/v1.1.10/wechat_duokai-portable-v1.1.10.zip) |
-| 独立清理器 | 需要完整卸载，或清理本项目安装包与带标记的源码目录 | [下载 `wechat_duokai-cleanup-v1.1.10.exe`](https://github.com/PascalePaF/wechat-wecom-duokai/releases/download/v1.1.10/wechat_duokai-cleanup-v1.1.10.exe) |
+| 安装版（推荐） | 希望自选安装目录、创建快捷方式并使用完整卸载功能 | [下载 `wechat_duokai-setup-v1.1.11.exe`](https://github.com/PascalePaF/wechat-wecom-duokai/releases/download/v1.1.11/wechat_duokai-setup-v1.1.11.exe) |
+| 绿色免安装版 | 希望解压即用，不写入安装登记 | [下载 `wechat_duokai-portable-v1.1.11.zip`](https://github.com/PascalePaF/wechat-wecom-duokai/releases/download/v1.1.11/wechat_duokai-portable-v1.1.11.zip) |
+| 独立清理器 | 需要完整卸载，或清理本项目安装包与带标记的源码目录 | [下载 `wechat_duokai-cleanup-v1.1.11.exe`](https://github.com/PascalePaF/wechat-wecom-duokai/releases/download/v1.1.11/wechat_duokai-cleanup-v1.1.11.exe) |
 
 发布核验资料：
 
-- [SHA256SUMS.txt](https://github.com/PascalePaF/wechat-wecom-duokai/releases/download/v1.1.10/SHA256SUMS.txt)：正式附件 SHA-256 清单；
-- [SPDX 2.2 SBOM](https://github.com/PascalePaF/wechat-wecom-duokai/releases/download/v1.1.10/manifest.spdx.json)：软件物料清单；
-- [Kaspersky 扫描记录（路径已脱敏）](https://github.com/PascalePaF/wechat-wecom-duokai/releases/download/v1.1.10/kaspersky-scan-v1.1.10.txt)：对正式发布原件的扫描记录；
-- [V1.1.10 发布说明](https://github.com/PascalePaF/wechat-wecom-duokai/releases/tag/v1.1.10)：变化、限制和全部附件。
+- [SHA256SUMS.txt](https://github.com/PascalePaF/wechat-wecom-duokai/releases/download/v1.1.11/SHA256SUMS.txt)：正式附件 SHA-256 清单；
+- [SPDX 2.2 SBOM](https://github.com/PascalePaF/wechat-wecom-duokai/releases/download/v1.1.11/manifest.spdx.json)：软件物料清单；
+- [Kaspersky 扫描记录（路径已脱敏）](https://github.com/PascalePaF/wechat-wecom-duokai/releases/download/v1.1.11/kaspersky-scan-v1.1.11.txt)：对正式发布原件的扫描记录；
+- [V1.1.11 发布说明](https://github.com/PascalePaF/wechat-wecom-duokai/releases/tag/v1.1.11)：变化、限制和全部附件。
 
 > [!CAUTION]
 > 当前版本没有受公共信任的 Authenticode 代码签名，首次运行可能出现“未知发布者”、SmartScreen 或
@@ -89,39 +89,42 @@
 | 确认式一键更新 | 可选发现版本后自动下载并校验；安装仍需确认，支持验证缓存复用、独立安装进程与失败回滚 |
 | 可核验发布 | 源码标签、干净 Windows CI、哈希、SPDX SBOM、UI 回归矩阵与扫描日志公开 |
 
-## V1.1.10 更新
+## V1.1.11 更新
 
-- 新增浅色“万圣日间”：奶油暖白、南瓜橙与淡紫点缀，与“万圣夜”配对；
-- 跟随系统独立置于主题页顶部，下方四张预览卡，五个选项在最小窗口内完整显示；
-- 安装器与清理器的万圣节日夜切换保持节日家族，不跳到普通主题；
-- 主题记忆、原生标题栏、共享弹窗和一键更新完整识别新增浅色主题，保留已有安全保护。
+- 万圣节不再只是换颜色：双窗口标识加入巫师帽与幽灵，活动窗口图标随主题切换；
+- 背景加入月亮、蝙蝠、星光、角落蛛网与悬挂小幽灵，数量卡片增加南瓜组合插画；
+- 卡片渐变材质、橙紫细边框、糖果纹细线、幽灵启动按钮和客户端图标底框成套适配；
+- “万圣日间”采用暖纸橙紫，“万圣夜”采用低亮度月光紫，安装器、清理器、弹窗和选择器使用同一套设计；
+- 切回普通日间/夜间后恢复经典标识与控件；装饰不接收点击和焦点，无动画计时器或远程素材。
+
+> 节日图标作用于应用内标识和活动窗口；磁盘 EXE、固定快捷方式保留经典绿蓝图标，不修改 Windows 图标缓存。
 
 完整变化见 [CHANGELOG.md](CHANGELOG.md)。
 
 <details>
 <summary><strong>查看万圣夜、独立主题页和大尺寸适配</strong></summary>
 
-![V1.1.10 万圣日间主题](docs/assets/v1.1.10-main-halloween-light-901x513.png)
+![V1.1.11 万圣日间主题](docs/assets/v1.1.11-main-halloween-light-901x513.png)
 
-![V1.1.10 万圣日间主题页](docs/assets/v1.1.10-themes-halloween-light-901x513.png)
+![V1.1.11 万圣日间主题页](docs/assets/v1.1.11-themes-halloween-light-901x513.png)
 
-![V1.1.10 万圣夜主题](docs/assets/v1.1.10-main-halloween-901x513.png)
+![V1.1.11 万圣夜主题](docs/assets/v1.1.11-main-halloween-901x513.png)
 
-![V1.1.10 独立主题页](docs/assets/v1.1.10-themes-halloween-901x513.png)
+![V1.1.11 独立主题页](docs/assets/v1.1.11-themes-halloween-901x513.png)
 
-![V1.1.10 夜间主题](docs/assets/v1.1.10-main-dark-901x513.png)
+![V1.1.11 夜间主题](docs/assets/v1.1.11-main-dark-901x513.png)
 
-![V1.1.10 设置页](docs/assets/v1.1.10-settings-light-901x513.png)
+![V1.1.11 设置页](docs/assets/v1.1.11-settings-light-901x513.png)
 
-![V1.1.10 软件介绍页](docs/assets/v1.1.10-about-light-901x513.png)
+![V1.1.11 软件介绍页](docs/assets/v1.1.11-about-light-901x513.png)
 
-![V1.1.10 1920×1080 夜间界面](docs/assets/v1.1.10-main-dark-1920x1080.png)
+![V1.1.11 1920×1080 夜间界面](docs/assets/v1.1.11-main-dark-1920x1080.png)
 
-![V1.1.10 3440×1392 超宽屏界面](docs/assets/v1.1.10-main-ultrawide-light-3440x1392.png)
+![V1.1.11 3440×1392 超宽屏界面](docs/assets/v1.1.11-main-ultrawide-light-3440x1392.png)
 
-![V1.1.10 统一主题的确认弹窗](docs/assets/v1.1.10-confirm-dark.png)
+![V1.1.11 统一主题的确认弹窗](docs/assets/v1.1.11-confirm-dark.png)
 
-![V1.1.10 统一主题的路径选择器](docs/assets/v1.1.10-picker-folder-light.png)
+![V1.1.11 统一主题的路径选择器](docs/assets/v1.1.11-picker-folder-light.png)
 
 </details>
 
@@ -129,13 +132,13 @@
 
 ### 安装版
 
-1. 运行 `wechat_duokai-setup-v1.1.10.exe`；
+1. 运行 `wechat_duokai-setup-v1.1.11.exe`；
 2. 点击“选择文件夹”，选择或新建专用安装目录；
 3. 选择是否创建桌面快捷方式，然后点击“立即安装”；
 4. 如果旧版正在运行，安装器会询问是否关闭对应目录中的助手后覆盖；
 5. 安装完成后不会自行启动，只有点击“确认并启动”才会运行。
 
-![V1.1.10 安装器](docs/assets/v1.1.10-installer-light.png)
+![V1.1.11 安装器](docs/assets/v1.1.11-installer-light.png)
 
 如果安装过程中断电或被强制结束，助手会提示安装未完成，不会运行可能混合了新旧文件的程序。重新运行同版本或更新版本的正式安装包，并选择原安装目录即可完成安装。
 
@@ -214,17 +217,17 @@ Windows 用户的标准 `Run` 启动项；除这一项和安装版已有的卸�
 
 安全资料：
 
-- [V1.1.10 完整安全审计报告](docs/微窗助手_V1.1.10_完整安全审计报告.txt)
-- [V1.1.10 更新与安装安全验证报告](docs/V1.1.10-一键更新安全验证报告.md)
-- [V1.1.10 全项目自查报告](docs/V1.1.10-全项目自查报告.md)
-- [V1.1.10 UI 回归矩阵](docs/V1.1.10-UI回归矩阵.md)
+- [V1.1.11 完整安全审计报告](docs/微窗助手_V1.1.11_完整安全审计报告.txt)
+- [V1.1.11 更新与安装安全验证报告](docs/V1.1.11-一键更新安全验证报告.md)
+- [V1.1.11 全项目自查报告](docs/V1.1.11-全项目自查报告.md)
+- [V1.1.11 UI 回归矩阵](docs/V1.1.11-UI回归矩阵.md)
 - [源码与旧版二进制安全审计（历史）](SECURITY-AUDIT.md)
 - [旧版 EXE 硬编码路径说明](docs/旧版EXE硬编码路径说明与风险评估报告.txt)
 
 ### 在 Windows 中核对 SHA-256
 
 ```powershell
-Get-FileHash .\wechat_duokai-setup-v1.1.10.exe -Algorithm SHA256
+Get-FileHash .\wechat_duokai-setup-v1.1.11.exe -Algorithm SHA256
 ```
 
 将结果与同一 Release 中的 `SHA256SUMS.txt` 比较。文件名相同但哈希不同，不要运行。
@@ -289,7 +292,7 @@ Get-FileHash .\wechat_duokai-setup-v1.1.10.exe -Algorithm SHA256
 1. **删除程序与全部发布包，保留源码**：删除已验证安装目录、快捷方式、安装包、绿色版和助手设置；
 2. **全部删除，包括源码与全部发布包**：只有源码目录带正确标记且结构匹配时可选，还需要额外复选和确认。
 
-![V1.1.10 完整卸载器](docs/assets/v1.1.10-uninstaller-light.png)
+![V1.1.11 完整卸载器](docs/assets/v1.1.11-uninstaller-light.png)
 
 ## 兼容性与限制
 
@@ -308,10 +311,10 @@ Get-FileHash .\wechat_duokai-setup-v1.1.10.exe -Algorithm SHA256
 ```powershell
 MSBuild .\duokai.sln /restore /t:Rebuild /p:Configuration=Release
 .\tests\bin\Release\net48\WechatDuokai.Tests.exe
-PowerShell -ExecutionPolicy Bypass -File .\build-release.ps1 -Version 1.1.10
+PowerShell -ExecutionPolicy Bypass -File .\build-release.ps1 -Version 1.1.11
 ```
 
-产物位于 `artifacts\V1.1.10`。构建脚本会重新编译、执行测试、分别打包 setup/cleanup、生成绿色版、
+产物位于 `artifacts\V1.1.11`。构建脚本会重新编译、执行测试、分别打包 setup/cleanup、生成绿色版、
 发布清单、静态更新清单和 SHA-256。GitHub Actions 会在全新的 Windows Server 2022 环境重复构建，
 复核哈希并生成、验证 SPDX 2.2 SBOM。
 

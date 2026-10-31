@@ -250,6 +250,7 @@ namespace WechatDuokai.Presentation
             SetBrush(application, "WeComIconSurfaceBrush", colors.WeComIconSurface);
             SetBrush(application, "QqIconSurfaceBrush", colors.QqIconSurface);
             application.Resources["ShadowColor"] = ParseColor(colors.Shadow);
+            SeasonalPresentation.ApplyResources(application);
         }
 
         private static void SetBrush(Application application, string key, string value)

@@ -59,10 +59,11 @@ namespace WechatDuokai.Presentation
             FontFamily = (FontFamily)Application.Current.FindResource("AppFont");
             UseLayoutRounding = true;
             SetResourceReference(BackgroundProperty, "WindowBackgroundBrush");
+            SetResourceReference(IconProperty, "ProductWindowIcon");
             SourceInitialized += (sender, args) => WindowChromeHelper.Apply(this);
 
             var root = new Grid();
-            root.SetResourceReference(Panel.BackgroundProperty, "WindowBackgroundBrush");
+            root.SetResourceReference(Panel.BackgroundProperty, "WindowCanvasBrush");
             root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(82) });
             root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(76) });
@@ -86,6 +87,12 @@ namespace WechatDuokai.Presentation
             glyphText.SetResourceReference(TextBlock.ForegroundProperty,
                 warning ? "DangerBrush" : "AccentBrush");
             glyph.Child = glyphText;
+            if (!warning && ThemeManager.IsHalloween)
+            {
+                var seasonalGlyph = new Image { Width = 24, Height = 24, IsHitTestVisible = false };
+                seasonalGlyph.SetResourceReference(Image.SourceProperty, "SeasonalGhostImage");
+                glyph.Child = seasonalGlyph;
+            }
             headerGrid.Children.Add(glyph);
             var titleStack = new StackPanel { Margin = new Thickness(13, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
             var titleText = new TextBlock { Text = title, FontSize = 17, FontWeight = FontWeights.SemiBold };
@@ -110,8 +117,8 @@ namespace WechatDuokai.Presentation
                 CornerRadius = new CornerRadius(14),
                 BorderThickness = new Thickness(1)
             };
-            bodyCard.SetResourceReference(Border.BackgroundProperty, "SurfaceBrush");
-            bodyCard.SetResourceReference(Border.BorderBrushProperty, "BorderBrush");
+            bodyCard.SetResourceReference(Border.BackgroundProperty, "CardBackgroundBrush");
+            bodyCard.SetResourceReference(Border.BorderBrushProperty, "CardBorderBrush");
             var bodyScroll = new ScrollViewer
             {
                 MaxHeight = 360,
@@ -153,6 +160,8 @@ namespace WechatDuokai.Presentation
             footer.Child = buttons;
             Grid.SetRow(footer, 2);
             root.Children.Add(footer);
+            var scene = new HalloweenScene { Scene = HalloweenSceneKind.Dialog };
+            Grid.SetRowSpan(scene, 3); Panel.SetZIndex(scene, 20); root.Children.Add(scene);
             Content = root;
         }
 
@@ -226,10 +235,11 @@ namespace WechatDuokai.Presentation
             FontFamily = (FontFamily)Application.Current.FindResource("AppFont");
             UseLayoutRounding = true;
             SetResourceReference(BackgroundProperty, "WindowBackgroundBrush");
+            SetResourceReference(IconProperty, "ProductWindowIcon");
             SourceInitialized += (sender, args) => WindowChromeHelper.Apply(this);
 
             var root = new Grid();
-            root.SetResourceReference(Panel.BackgroundProperty, "WindowBackgroundBrush");
+            root.SetResourceReference(Panel.BackgroundProperty, "WindowCanvasBrush");
             root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(78) });
             root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(62) });
             root.RowDefinitions.Add(new RowDefinition());
@@ -293,8 +303,8 @@ namespace WechatDuokai.Presentation
                 CornerRadius = new CornerRadius(14),
                 BorderThickness = new Thickness(1)
             };
-            listCard.SetResourceReference(Border.BackgroundProperty, "SurfaceBrush");
-            listCard.SetResourceReference(Border.BorderBrushProperty, "BorderBrush");
+            listCard.SetResourceReference(Border.BackgroundProperty, "CardBackgroundBrush");
+            listCard.SetResourceReference(Border.BorderBrushProperty, "CardBorderBrush");
             var listGrid = new Grid();
             listGrid.RowDefinitions.Add(new RowDefinition());
             listGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(34) });
@@ -389,6 +399,8 @@ namespace WechatDuokai.Presentation
             footer.Child = footerGrid;
             Grid.SetRow(footer, 3);
             root.Children.Add(footer);
+            var scene = new HalloweenScene { Scene = HalloweenSceneKind.Picker };
+            Grid.SetRowSpan(scene, 4); Panel.SetZIndex(scene, 20); root.Children.Add(scene);
             Content = root;
 
             Navigate(FindExistingDirectory(initialDirectory));
@@ -401,6 +413,7 @@ namespace WechatDuokai.Presentation
                 Content = label,
                 Width = width,
                 Height = 36,
+                Padding = new Thickness(8, 0, 8, 0),
                 Style = (Style)Application.Current.FindResource("SecondaryButtonStyle")
             };
         }

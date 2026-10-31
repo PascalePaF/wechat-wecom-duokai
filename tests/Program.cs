@@ -60,6 +60,8 @@ namespace WechatDuokai.Tests
                 Run("Dark theme uses a restrained palette and theme-aware icon surfaces", TestDarkThemeComfortPalette);
                 Run("Halloween preferences and installer theme arguments survive a round trip", ThemeRegressionTests.SharedThemeRoundTrip);
                 Run("Halloween day palette remains readable and toggles within the seasonal pair", ThemeRegressionTests.HalloweenDayPalette);
+                Run("Seasonal artwork, native window icons and classic resources switch together", ThemeRegressionTests.SeasonalArtworkRoundTrip);
+                Run("Seasonal layouts keep decoration passive and button labels inside controls", ThemeRegressionTests.SeasonalLayoutMatrix);
                 Run("Theme choices have a dedicated responsive and accessible settings tab", ThemeRegressionTests.ThemePageNavigation);
                 Run("Oversized local configuration fails safely and theme write failures are reported", ThemeRegressionTests.BoundedLocalState);
                 Run("Closing during startup recovery cannot revive timers or access disposed cancellation", ThemeRegressionTests.CloseDuringStartupRecovery);
@@ -1151,6 +1153,7 @@ namespace WechatDuokai.Tests
                             window.Show();
                             window.UpdateLayout();
                             ThemeRegressionTests.CheckRenderedButtonLabels(window);
+                            ThemeRegressionTests.CheckButtonBounds(window);
                         }
                         finally
                         {
@@ -1333,7 +1336,7 @@ namespace WechatDuokai.Tests
                 catch (Exception)
                 {
                 }
-                if (Directory.Exists(recoveryDirectory)) Directory.Delete(recoveryDirectory, true);
+                DeleteTestDirectoryWithRetries(recoveryDirectory);
             }
         }
 
@@ -1448,7 +1451,7 @@ namespace WechatDuokai.Tests
             {
                 try { Registry.CurrentUser.DeleteSubKeyTree(registryPath, false); }
                 catch (Exception) { }
-                if (Directory.Exists(dataDirectory)) Directory.Delete(dataDirectory, true);
+                DeleteTestDirectoryWithRetries(dataDirectory);
             }
         }
 
@@ -2301,7 +2304,7 @@ namespace WechatDuokai.Tests
             }
             finally
             {
-                if (Directory.Exists(testRoot)) Directory.Delete(testRoot, true);
+                DeleteTestDirectoryWithRetries(testRoot);
             }
         }
 

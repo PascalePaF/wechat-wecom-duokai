@@ -168,18 +168,23 @@
     </Style>
 
     <Style x:Key="SurfaceCardStyle" TargetType="Border">
-        <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
-        <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="CornerRadius" Value="18" />
+        <Setter Property="Background" Value="{DynamicResource CardBackgroundBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource CardBorderBrush}" />
+        <Setter Property="BorderThickness" Value="{DynamicResource SeasonalCardThickness}" />
+        <Setter Property="CornerRadius" Value="{DynamicResource SeasonalCardRadius}" />
         <Setter Property="SnapsToDevicePixels" Value="False" />
     </Style>
 
     <Style x:Key="RaisedCardStyle" TargetType="Border">
-        <Setter Property="Background" Value="{DynamicResource SurfaceRaisedBrush}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
-        <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="CornerRadius" Value="14" />
+        <Setter Property="Background" Value="{DynamicResource RaisedCardBackgroundBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource CardBorderBrush}" />
+        <Setter Property="BorderThickness" Value="{DynamicResource SeasonalCardThickness}" />
+        <Setter Property="CornerRadius" Value="{DynamicResource SeasonalRaisedRadius}" />
+    </Style>
+
+    <Style x:Key="ClientIconFrameStyle" TargetType="Border">
+        <Setter Property="BorderBrush" Value="{DynamicResource SeasonalIconBorderBrush}" />
+        <Setter Property="BorderThickness" Value="{DynamicResource SeasonalIconThickness}" />
     </Style>
 
     <Style x:Key="ShadowLayerStyle" TargetType="Border">
@@ -216,11 +221,13 @@
                             Background="{TemplateBinding Background}"
                             BorderBrush="{TemplateBinding BorderBrush}"
                             BorderThickness="{TemplateBinding BorderThickness}"
-                            CornerRadius="12">
-                        <ContentPresenter HorizontalAlignment="Center"
-                                          VerticalAlignment="Center"
-                                          Margin="{TemplateBinding Padding}"
-                                          RecognizesAccessKey="True" />
+                            CornerRadius="{DynamicResource SeasonalControlRadius}">
+                        <Grid>
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"
+                                              Margin="{TemplateBinding Padding}" RecognizesAccessKey="True" />
+                            <Border Margin="5,0,5,3" Height="1" VerticalAlignment="Bottom" Background="{DynamicResource SeasonalTraceBrush}"
+                                    IsHitTestVisible="False" Opacity="0.65" Visibility="{DynamicResource HalloweenDecorationVisibility}" />
+                        </Grid>
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
@@ -241,8 +248,9 @@
 
     <Style x:Key="PrimaryButtonStyle" TargetType="Button" BasedOn="{StaticResource SecondaryButtonStyle}">
         <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Padding" Value="{DynamicResource SeasonalPrimaryPadding}" />
         <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}" />
-        <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
+        <Setter Property="Background" Value="{DynamicResource PrimaryFillBrush}" />
         <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
         <Setter Property="Template">
             <Setter.Value>
@@ -251,12 +259,23 @@
                             Background="{TemplateBinding Background}"
                             BorderBrush="{TemplateBinding BorderBrush}"
                             BorderThickness="{TemplateBinding BorderThickness}"
-                            CornerRadius="12">
-                        <ContentPresenter HorizontalAlignment="Center"
-                                          VerticalAlignment="Center"
-                                          Margin="{TemplateBinding Padding}" />
+                            CornerRadius="{DynamicResource SeasonalControlRadius}">
+                        <Grid>
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                        Margin="{TemplateBinding Padding}">
+                                <Image x:Name="SeasonalActionGlyph" Width="14" Height="14" Margin="0,0,6,0" IsHitTestVisible="False"
+                                       Source="{DynamicResource SeasonalButtonGlyph}" Visibility="{DynamicResource HalloweenDecorationVisibility}" />
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </StackPanel>
+                            <Border Height="1" VerticalAlignment="Top" Margin="7,3,7,0" Background="{DynamicResource AccentTextBrush}"
+                                    Opacity="0.18" IsHitTestVisible="False" Visibility="{DynamicResource HalloweenDecorationVisibility}" />
+                        </Grid>
                     </Border>
                     <ControlTemplate.Triggers>
+                        <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Setter TargetName="Chrome" Property="BorderBrush" Value="{DynamicResource TextBrush}" />
+                            <Setter TargetName="Chrome" Property="BorderThickness" Value="2" />
+                        </Trigger>
                         <Trigger Property="IsMouseOver" Value="True">
                             <Setter TargetName="Chrome" Property="Background" Value="{DynamicResource AccentHoverBrush}" />
                             <Setter TargetName="Chrome" Property="BorderBrush" Value="{DynamicResource AccentHoverBrush}" />
@@ -284,7 +303,7 @@
                             Background="{TemplateBinding Background}"
                             BorderBrush="{TemplateBinding BorderBrush}"
                             BorderThickness="{TemplateBinding BorderThickness}"
-                            CornerRadius="12">
+                            CornerRadius="{DynamicResource SeasonalControlRadius}">
                         <ContentPresenter HorizontalAlignment="Center"
                                           VerticalAlignment="Center"
                                           Margin="{TemplateBinding Padding}" />
@@ -321,7 +340,7 @@
                             Background="{TemplateBinding Background}"
                             BorderBrush="{TemplateBinding BorderBrush}"
                             BorderThickness="{TemplateBinding BorderThickness}"
-                            CornerRadius="12">
+                            CornerRadius="{DynamicResource SeasonalControlRadius}">
                         <ContentPresenter HorizontalAlignment="Center"
                                           VerticalAlignment="Center"
                                           Margin="{TemplateBinding Padding}" />
@@ -447,7 +466,11 @@
                 <ControlTemplate TargetType="TextBox">
                     <Border x:Name="Chrome" CornerRadius="9" Background="{TemplateBinding Background}"
                             BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}">
-                        <ScrollViewer x:Name="PART_ContentHost" Margin="9,2" />
+                        <Grid>
+                            <ScrollViewer x:Name="PART_ContentHost" Margin="9,2" />
+                            <Border Height="1" VerticalAlignment="Bottom" Margin="5,0,5,2" Background="{DynamicResource SeasonalTraceBrush}"
+                                    IsHitTestVisible="False" Visibility="{DynamicResource HalloweenDecorationVisibility}" Opacity="0.6" />
+                        </Grid>
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsKeyboardFocusWithin" Value="True">
@@ -584,8 +607,8 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="RadioButton">
-                    <Border x:Name="Card" Background="{DynamicResource SurfaceRaisedBrush}"
-                            BorderBrush="{DynamicResource BorderBrush}" BorderThickness="2"
+                    <Border x:Name="Card" Background="{DynamicResource RaisedCardBackgroundBrush}"
+                            BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="2"
                             CornerRadius="14" Padding="14,10,38,10">
                         <Grid>
                             <ContentPresenter HorizontalAlignment="Stretch" VerticalAlignment="Center" />

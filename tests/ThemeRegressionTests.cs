@@ -1,11 +1,15 @@
 using System;
+using System.Globalization;
 using System.IO;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
+using System.Windows.Interop;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using WechatDuokai.App;
 using WechatDuokai.Core;
@@ -112,6 +116,185 @@ namespace WechatDuokai.Tests
             }
             finally { Program.BootstrapWpf(typeof(MainWindow), "Light"); }
         }
+
+        internal static void SeasonalArtworkRoundTrip()
+        {
+            try
+            {
+                foreach (var anchor in new[] { typeof(MainWindow), typeof(InstallWindow), Program.LoadCleanupWindowType() })
+                {
+                    Program.BootstrapWpf(anchor, "Light");
+                    var classicLogo = Application.Current.Resources["ProductLogoImage"];
+                    var classicIcon = Application.Current.Resources["ProductWindowIcon"];
+                    var window = (Window)Activator.CreateInstance(anchor);
+                    try
+                    {
+                        ShowOffscreen(window);
+                        foreach (var theme in new[] { "Halloween", "HalloweenLight", "Dark", "Light", "Halloween", "Light" })
+                        {
+                            Program.BootstrapWpf(anchor, theme);
+                            FlushLayout(window);
+                            var holiday = theme.StartsWith("Halloween", StringComparison.Ordinal);
+                            var resources = Application.Current.Resources;
+                            var logo = (Image)window.FindName(window is MainWindow ? "BrandLogo" : "HeaderLogo");
+                            var scene = (FrameworkElement)window.FindName("HolidayScene");
+                            Assert(ReferenceEquals(logo.Source, resources["ProductLogoImage"]) &&
+                                   ReferenceEquals(window.Icon, resources["ProductWindowIcon"]),
+                                "Header and native window icon diverged from the active theme: " + anchor.Name + "/" + theme);
+                            Assert(scene != null && !scene.IsHitTestVisible && !scene.Focusable &&
+                                   scene.Visibility == (holiday ? Visibility.Visible : Visibility.Collapsed),
+                                "Seasonal scene intercepted input or leaked into another theme.");
+                            if (holiday)
+                            {
+                                Assert(logo.Source is DrawingImage && logo.Source.IsFrozen &&
+                                       window.Icon is BitmapSource && window.Icon.IsFrozen,
+                                    "Seasonal artwork must be embedded, immutable vector/bitmap resources.");
+                                foreach (var key in new[] { "WindowCanvasBrush", "CardBackgroundBrush", "RaisedCardBackgroundBrush", "CardBorderBrush", "PrimaryFillBrush" })
+                                    Assert(resources[key] is LinearGradientBrush brush && brush.IsFrozen,
+                                        "Seasonal material is missing or mutable: " + key);
+                                Assert(resources["SeasonalTraceBrush"] is DrawingBrush trace && trace.IsFrozen &&
+                                       resources["ThemePreviewHalloween"] is DrawingImage &&
+                                       resources["ThemePreviewHalloweenLight"] is DrawingImage,
+                                    "Seasonal borders or preview cards are not using the embedded artwork.");
+                                var foreground = Program.GetLuminance(Program.GetThemeColor("AccentTextBrush"));
+                                foreach (var stop in ((LinearGradientBrush)resources["PrimaryFillBrush"]).GradientStops)
+                                {
+                                    var background = Program.GetLuminance(stop.Color);
+                                    Assert((Math.Max(background, foreground) + 0.05) / (Math.Min(background, foreground) + 0.05) >= 4.5,
+                                        "A seasonal primary gradient endpoint makes its label unreadable: " + theme);
+                                }
+                            }
+                            else
+                            {
+                                Assert(ReferenceEquals(logo.Source, classicLogo) && ReferenceEquals(window.Icon, classicIcon) &&
+                                       ReferenceEquals(resources["PrimaryFillBrush"], resources["AccentBrush"]) &&
+                                       ReferenceEquals(resources["WindowCanvasBrush"], resources["WindowBackgroundBrush"]) &&
+                                       ReferenceEquals(resources["CardBorderBrush"], resources["BorderBrush"]) &&
+                                       ((Thickness)resources["SeasonalCardThickness"]).Left == 1 &&
+                                       (double)resources["ProductLogoSize"] == 58,
+                                    "Leaving Halloween did not restore the original product identity and materials.");
+                            }
+                            CheckNativeIcon(window, holiday);
+                        }
+                    }
+                    finally { window.Close(); }
+                }
+            }
+            finally { Program.BootstrapWpf(typeof(MainWindow), "Light"); }
+        }
+
+        internal static void SeasonalLayoutMatrix()
+        {
+            try
+            {
+                foreach (var theme in new[] { "Halloween", "HalloweenLight" })
+                {
+                    Program.BootstrapWpf(typeof(MainWindow), theme);
+                    var window = new MainWindow();
+                    try
+                    {
+                        ShowOffscreen(window);
+                        foreach (var size in new[] { new Size(901, 513), new Size(1280, 720), new Size(1920, 1080), new Size(3440, 1392) })
+                        {
+                            window.Width = size.Width; window.Height = size.Height;
+                            foreach (var section in new[] { -1, 0, 1, 2 })
+                            {
+                                window.SetSettingsViewVisible(section >= 0);
+                                if (section >= 0) window.SetSettingsSection((MainWindow.SettingsSection)section);
+                                FlushLayout(window);
+                                CheckRenderedButtonLabels(window);
+                                CheckButtonBounds(window);
+                                var scene = (FrameworkElement)window.FindName("HolidayScene");
+                                var root = (FrameworkElement)window.FindName("ScaledRoot");
+                                Assert(Math.Abs(scene.ActualWidth - root.ActualWidth) < 0.1 &&
+                                       Math.Abs(scene.ActualHeight - root.ActualHeight) < 0.1 && !scene.IsHitTestVisible && !scene.Focusable,
+                                    "Decoration does not follow the scaled surface or can steal input.");
+                            }
+                            window.SetSettingsViewVisible(false);
+                            FlushLayout(window);
+                            foreach (var name in new[] { "QQButton", "WeChatButton", "WeComButton" })
+                            {
+                                var button = (Button)window.FindName(name);
+                                var glyph = button.Template.FindName("SeasonalActionGlyph", button) as Image;
+                                Assert(glyph != null && glyph.IsVisible && !glyph.IsHitTestVisible,
+                                    "A seasonal launch action lost its passive ghost glyph.");
+                            }
+                        }
+                    }
+                    finally { window.Close(); }
+                }
+            }
+            finally { Program.BootstrapWpf(typeof(MainWindow), "Light"); }
+        }
+
+        private static void ShowOffscreen(Window window)
+        {
+            window.ShowInTaskbar = false;
+            window.WindowStartupLocation = WindowStartupLocation.Manual;
+            window.Left = -10000; window.Top = -10000;
+            window.Show();
+            FlushLayout(window);
+        }
+
+        private static void FlushLayout(Window window)
+        {
+            window.Dispatcher.Invoke(() => { }, DispatcherPriority.ContextIdle);
+            window.UpdateLayout();
+        }
+
+        internal static void CheckButtonBounds(DependencyObject root)
+        {
+            if (root is Button button && button.IsVisible && button.Content is string content)
+            {
+                var label = FindLabel(button, content);
+                Assert(label != null, "A visible action has no rendered label: " + content);
+                var bounds = label.TransformToAncestor(button).TransformBounds(new Rect(label.RenderSize));
+                var available = new Rect(button.RenderSize);
+                available.Inflate(0.5, 0.5);
+                Assert(available.Contains(bounds), "Button text escapes its control: " + content);
+                var expectedText = new FormattedText(content, CultureInfo.CurrentCulture, label.FlowDirection,
+                    new Typeface(label.FontFamily, label.FontStyle, label.FontWeight, label.FontStretch),
+                    label.FontSize, label.Foreground, VisualTreeHelper.GetDpi(label).PixelsPerDip);
+                Assert(label.ActualWidth + 1 >= expectedText.WidthIncludingTrailingWhitespace,
+                    "Button label is clipped by its padding: " + content + "; rendered=" + label.ActualWidth +
+                    "; required=" + expectedText.WidthIncludingTrailingWhitespace);
+            }
+            for (var index = 0; index < VisualTreeHelper.GetChildrenCount(root); index++)
+                CheckButtonBounds(VisualTreeHelper.GetChild(root, index));
+        }
+
+        private static void CheckNativeIcon(Window window, bool holiday)
+        {
+            // Read the actual HICON supplied to the native window, not just Window.Icon.
+            var handle = SendMessage(new WindowInteropHelper(window).Handle, 0x007F, new IntPtr(1), IntPtr.Zero);
+            Assert(handle != IntPtr.Zero, "The active native window has no large icon.");
+            using (var borrowed = System.Drawing.Icon.FromHandle(handle))
+            using (var icon = (System.Drawing.Icon)borrowed.Clone())
+            using (var bitmap = icon.ToBitmap())
+            {
+                var first = 0; var second = 0;
+                for (var y = 0; y < bitmap.Height; y++)
+                    for (var x = 0; x < bitmap.Width; x++)
+                    {
+                        var pixel = bitmap.GetPixel(x, y);
+                        if (pixel.A < 32) continue;
+                        if (holiday)
+                        {
+                            if (pixel.R >= pixel.G + 16 && pixel.G >= pixel.B + 10) first++;
+                            if (pixel.B >= pixel.R + 8 && pixel.R >= pixel.G + 5) second++;
+                        }
+                        else
+                        {
+                            if (pixel.G >= pixel.R + 18 && pixel.G >= pixel.B + 10) first++;
+                            if (pixel.B >= pixel.R + 18 && pixel.B >= pixel.G + 18) second++;
+                        }
+                    }
+                Assert(first >= 8 && second >= 8, "The active native window icon retained colors from another theme.");
+            }
+        }
+
+        [DllImport("user32.dll", CharSet = CharSet.Auto)]
+        private static extern IntPtr SendMessage(IntPtr window, uint message, IntPtr wParam, IntPtr lParam);
 
         internal static void BoundedLocalState()
         {
@@ -259,7 +442,7 @@ namespace WechatDuokai.Tests
 
         internal static void CheckRenderedButtonLabels(DependencyObject root)
         {
-            if (root is Button button && button.Content is string content)
+            if (root is Button button && button.IsVisible && button.Content is string content)
             {
                 var label = FindLabel(button, content);
                 Assert(label != null && ((SolidColorBrush)label.Foreground).Color == ((SolidColorBrush)button.Foreground).Color,
