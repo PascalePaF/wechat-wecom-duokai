@@ -15,7 +15,8 @@ namespace WechatDuokai.Presentation
     {
         Light,
         Dark,
-        Halloween
+        Halloween,
+        HalloweenLight
     }
 
     internal enum AppThemePreference
@@ -23,7 +24,8 @@ namespace WechatDuokai.Presentation
         System,
         Light,
         Dark,
-        Halloween
+        Halloween,
+        HalloweenLight
     }
 
     internal static class ThemeManager
@@ -106,10 +108,24 @@ namespace WechatDuokai.Presentation
             WeComIconSurface = "#262F40", QqIconSurface = "#262F40", Shadow = "#75000000"
         };
 
+        private static readonly ThemeColors HalloweenLight = new ThemeColors
+        {
+            Window = "#FFF7EE", WindowTop = "#FFFBF6", Surface = "#FFFEFC",
+            SurfaceRaised = "#FFF7EF", SurfaceHover = "#F8EBDD",
+            Border = "#E9D6C3", BorderStrong = "#D5B99C",
+            Text = "#322824", TextSecondary = "#746451", TextTertiary = "#826E60",
+            Accent = "#A95723", AccentHover = "#934615", AccentPressed = "#7D3A0F", AccentText = "#FFFDF9",
+            Green = "#35774E", GreenSurface = "#E9F3E8", Blue = "#7460A2", Warning = "#A95723",
+            Danger = "#AD4952", DangerHover = "#963944", DangerSurface = "#FBECEE",
+            Selection = "#FCEBDD", WeChatIconSurface = "#E9F4E9",
+            WeComIconSurface = "#F0EDF8", QqIconSurface = "#F0EDF8", Shadow = "#203D2C1B"
+        };
+
         internal static AppTheme Current { get; private set; }
-        internal static bool IsDark => Current != AppTheme.Light;
+        internal static bool IsDark => Current == AppTheme.Dark || Current == AppTheme.Halloween;
+        internal static bool IsHalloween => Current == AppTheme.Halloween || Current == AppTheme.HalloweenLight;
         internal static string CommandLineName => Current.ToString().ToLowerInvariant();
-        internal static string DisplayName => Current == AppTheme.Halloween ? "万圣夜" :
+        internal static string DisplayName => Current == AppTheme.HalloweenLight ? "万圣日间" : Current == AppTheme.Halloween ? "万圣夜" :
             Current == AppTheme.Dark ? "夜间" : "日间";
 
         internal static AppThemePreference Preference { get; private set; } = AppThemePreference.System;
@@ -133,7 +149,8 @@ namespace WechatDuokai.Presentation
 
         internal static AppTheme Toggle(bool persist = true)
         {
-            SetTheme(IsDark ? AppTheme.Light : AppTheme.Dark, persist);
+            SetTheme(Current == AppTheme.Halloween ? AppTheme.HalloweenLight :
+                Current == AppTheme.HalloweenLight ? AppTheme.Halloween : IsDark ? AppTheme.Light : AppTheme.Dark, persist);
             return Current;
         }
 
@@ -161,7 +178,7 @@ namespace WechatDuokai.Presentation
 
         private static AppThemePreference PreferenceFor(AppTheme theme)
         {
-            return theme == AppTheme.Halloween ? AppThemePreference.Halloween :
+            return theme == AppTheme.HalloweenLight ? AppThemePreference.HalloweenLight : theme == AppTheme.Halloween ? AppThemePreference.Halloween :
                 theme == AppTheme.Dark ? AppThemePreference.Dark : AppThemePreference.Light;
         }
 
@@ -204,8 +221,8 @@ namespace WechatDuokai.Presentation
                 return;
             }
 
-            var colors = theme == AppTheme.Halloween ? Halloween : theme == AppTheme.Dark ? Dark : Light;
-            application.Resources["HalloweenDecorationVisibility"] = theme == AppTheme.Halloween
+            var colors = theme == AppTheme.HalloweenLight ? HalloweenLight : theme == AppTheme.Halloween ? Halloween : theme == AppTheme.Dark ? Dark : Light;
+            application.Resources["HalloweenDecorationVisibility"] = IsHalloween
                 ? Visibility.Visible : Visibility.Collapsed;
             SetBrush(application, "WindowBackgroundBrush", colors.Window);
             SetBrush(application, "WindowTopBrush", colors.WindowTop);
@@ -319,6 +336,8 @@ namespace WechatDuokai.Presentation
             {
                 case AppThemePreference.Halloween:
                     return AppTheme.Halloween;
+                case AppThemePreference.HalloweenLight:
+                    return AppTheme.HalloweenLight;
                 case AppThemePreference.Dark:
                     return AppTheme.Dark;
                 case AppThemePreference.Light:

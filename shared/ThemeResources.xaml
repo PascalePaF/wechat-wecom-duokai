@@ -85,6 +85,18 @@
         </DrawingImage.Drawing>
     </DrawingImage>
 
+    <DrawingImage x:Key="ThemePreviewHalloweenLight">
+        <DrawingImage.Drawing>
+            <DrawingGroup>
+                <GeometryDrawing Brush="#FFF3E5"><GeometryDrawing.Geometry><RectangleGeometry Rect="0,0,112,66" RadiusX="9" RadiusY="9" /></GeometryDrawing.Geometry></GeometryDrawing>
+                <GeometryDrawing Brush="#FFFEFC" Geometry="M 8,22 H 75 V 57 H 8 Z M 81,22 H 104 V 57 H 81 Z" />
+                <GeometryDrawing Brush="#A95723" Geometry="M 9,8 H 18 V 16 H 9 Z M 18,31 H 28 V 41 H 18 Z M 48,32 H 66 V 40 H 48 Z" />
+                <GeometryDrawing Brush="#D5B99C" Geometry="M 24,10 H 63 V 13 H 24 Z M 18,47 H 66 V 50 H 18 Z M 88,36 H 97 V 40 H 88 Z" />
+                <GeometryDrawing Brush="#D99A58"><GeometryDrawing.Geometry><EllipseGeometry Center="96,11" RadiusX="6" RadiusY="6" /></GeometryDrawing.Geometry></GeometryDrawing>
+            </DrawingGroup>
+        </DrawingImage.Drawing>
+    </DrawingImage>
+
     <Style TargetType="TextBlock">
         <Setter Property="FontFamily" Value="{StaticResource AppFont}" />
         <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />

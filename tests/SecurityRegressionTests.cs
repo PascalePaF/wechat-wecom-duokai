@@ -150,7 +150,7 @@ namespace WechatDuokai.Tests
             {
                 if (Directory.Exists(linkedData)) Directory.Delete(linkedData, false);
                 if (File.Exists(fileLink)) File.Delete(fileLink);
-                if (Directory.Exists(root)) Directory.Delete(root, true);
+                Program.DeleteTestDirectoryWithRetries(root);
             }
         }
 
@@ -238,7 +238,7 @@ namespace WechatDuokai.Tests
                 if (Directory.Exists(linkedData)) Directory.Delete(linkedData, false);
                 foreach (var path in new[] { marker, theme, planPath, planPath + ".new" })
                     if (File.Exists(path)) File.Delete(path);
-                if (Directory.Exists(root)) Directory.Delete(root, true);
+                Program.DeleteTestDirectoryWithRetries(root);
             }
         }
 

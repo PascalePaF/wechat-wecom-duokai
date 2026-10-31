@@ -57,6 +57,14 @@ $scenarios = @(
     @{ Window='picker-folder'; Theme='Halloween'; Width=660; Height=580; File=($prefix + '-picker-folder-halloween.png') }
 )
 
+$dayScenarios = foreach ($scenario in @($scenarios | Where-Object { $_.Theme -eq 'Halloween' })) {
+    $day = $scenario.Clone()
+    $day.Theme = 'HalloweenLight'
+    $day.File = $day.File.Replace('-halloween', '-halloween-light')
+    $day
+}
+$scenarios += @($dayScenarios)
+
 foreach ($scenario in $scenarios) {
     $target = Join-Path $output $scenario.File
     & $runner --snapshot $scenario.Window $target $scenario.Theme $scenario.Width $scenario.Height

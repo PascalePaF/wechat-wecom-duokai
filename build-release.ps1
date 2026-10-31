@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [string]$Version = '1.1.9',
+    [string]$Version = '1.1.10',
     [string]$MSBuildPath
 )
 

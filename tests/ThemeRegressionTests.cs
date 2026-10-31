@@ -26,7 +26,7 @@ namespace WechatDuokai.Tests
                 {
                     var manager = anchor.Assembly.GetType("WechatDuokai.Presentation.ThemeManager", true);
                     var preference = anchor.Assembly.GetType("WechatDuokai.Presentation.AppThemePreference", true);
-                    foreach (var name in new[] { "System", "Light", "Dark", "Halloween" })
+                    foreach (var name in new[] { "System", "Light", "Dark", "Halloween", "HalloweenLight" })
                     {
                         manager.GetMethod("SavePreferenceToDirectory", StaticInternal).Invoke(null,
                             new[] { (object)directory, Enum.Parse(preference, name) });
@@ -66,6 +66,51 @@ namespace WechatDuokai.Tests
                 Program.DeleteTestDirectoryWithRetries(directory);
                 Program.BootstrapWpf(typeof(MainWindow), "Light");
             }
+        }
+
+        internal static void HalloweenDayPalette()
+        {
+            try
+            {
+                foreach (var anchor in new[] { typeof(MainWindow), typeof(InstallWindow), Program.LoadCleanupWindowType() })
+                {
+                    Program.BootstrapWpf(anchor, "HalloweenLight");
+                    var manager = anchor.Assembly.GetType("WechatDuokai.Presentation.ThemeManager", true);
+                    Assert(!(bool)manager.GetProperty("IsDark", StaticInternal).GetValue(null) &&
+                           (bool)manager.GetProperty("IsHalloween", StaticInternal).GetValue(null),
+                        "Halloween day mode must retain its seasonal identity and use light window chrome.");
+                    var surface = Program.GetLuminance(Program.GetThemeColor("SurfaceRaisedBrush"));
+                    var text = Program.GetLuminance(Program.GetThemeColor("TextBrush"));
+                    var accent = Program.GetLuminance(Program.GetThemeColor("AccentBrush"));
+                    var accentText = Program.GetLuminance(Program.GetThemeColor("AccentTextBrush"));
+                    Assert(surface >= 0.85 && (surface + 0.05) / (text + 0.05) >= 7 &&
+                           (accentText + 0.05) / (accent + 0.05) >= 4.5,
+                        "Halloween day palette is not light or its primary text lacks contrast.");
+                    Assert((Visibility)Application.Current.Resources["HalloweenDecorationVisibility"] == Visibility.Visible,
+                        "Halloween day decorations disappeared.");
+                    var parsed = manager.GetMethod("ParseForcedTheme", StaticInternal).Invoke(null,
+                        new object[] { new[] { "--theme=HALLOWEENLIGHT" } });
+                    Assert(parsed.ToString() == "HalloweenLight", "Halloween day argument was lost.");
+                    var toggle = manager.GetMethod("Toggle", StaticInternal);
+                    Assert(toggle.Invoke(null, new object[] { false }).ToString() == "Halloween" &&
+                           toggle.Invoke(null, new object[] { false }).ToString() == "HalloweenLight",
+                        "Seasonal day/night toggling switched to an unrelated theme.");
+                }
+                Assert(ApplicationUpdateService.NormalizeThemeName("HALLOWEENLIGHT") == "halloweenlight" &&
+                       ApplicationUpdateService.NormalizeThemeName("halloweenlight --unexpected") == "light",
+                    "Updater does not preserve the exact allowlisted day identity.");
+                Program.BootstrapWpf(typeof(MainWindow), "HalloweenLight");
+                var window = new MainWindow();
+                try
+                {
+                    Assert(((RadioButton)window.FindName("HalloweenLightThemeRadio")).IsChecked == true &&
+                           ((RadioButton)window.FindName("HalloweenThemeRadio")).IsChecked != true &&
+                           ((TextBlock)window.FindName("ThemeLabel")).Text == "万圣日间",
+                        "Halloween day selection or header identity is incorrect.");
+                }
+                finally { window.Close(); }
+            }
+            finally { Program.BootstrapWpf(typeof(MainWindow), "Light"); }
         }
 
         internal static void BoundedLocalState()
@@ -130,11 +175,14 @@ namespace WechatDuokai.Tests
                     window.UpdateLayout();
                     var panel = (FrameworkElement)window.FindName("ThemeSettingsPanel");
                     var panelBounds = new Rect(new Point(), panel.RenderSize);
-                    foreach (var name in new[] { "SystemThemeRadio", "LightThemeRadio", "DarkThemeRadio", "HalloweenThemeRadio" })
+                    foreach (var name in new[] { "SystemThemeRadio", "LightThemeRadio", "DarkThemeRadio", "HalloweenLightThemeRadio", "HalloweenThemeRadio" })
                     {
                         var radio = (RadioButton)window.FindName(name);
-                        Assert(AutomationProperties.GetName(radio).Length > 0 && radio.ActualHeight >= 80 && radio.ActualWidth >= 300,
-                            "Theme choice is not accessible or is clipped at a supported size.");
+                        Assert(AutomationProperties.GetName(radio).Length > 0 &&
+                               (name == "SystemThemeRadio" ? radio.ActualHeight >= 18 && radio.ActualWidth >= 140 :
+                                   radio.ActualHeight >= 68 && radio.ActualWidth >= 300),
+                            "Theme choice is not accessible or is clipped at a supported size: " + name +
+                            " " + radio.ActualWidth + "x" + radio.ActualHeight);
                         var bounds = radio.TransformToAncestor(panel).TransformBounds(new Rect(radio.RenderSize));
                         Assert(panelBounds.Contains(bounds), "Theme preview escaped its settings panel.");
                     }

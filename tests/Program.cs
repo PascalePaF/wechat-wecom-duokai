@@ -59,6 +59,7 @@ namespace WechatDuokai.Tests
                 Run("Shared dialogs and pickers use the active theme", TestSharedDialogTheme);
                 Run("Dark theme uses a restrained palette and theme-aware icon surfaces", TestDarkThemeComfortPalette);
                 Run("Halloween preferences and installer theme arguments survive a round trip", ThemeRegressionTests.SharedThemeRoundTrip);
+                Run("Halloween day palette remains readable and toggles within the seasonal pair", ThemeRegressionTests.HalloweenDayPalette);
                 Run("Theme choices have a dedicated responsive and accessible settings tab", ThemeRegressionTests.ThemePageNavigation);
                 Run("Oversized local configuration fails safely and theme write failures are reported", ThemeRegressionTests.BoundedLocalState);
                 Run("Closing during startup recovery cannot revive timers or access disposed cancellation", ThemeRegressionTests.CloseDuringStartupRecovery);
@@ -1124,7 +1125,7 @@ namespace WechatDuokai.Tests
         {
             foreach (var anchor in new[] { typeof(MainWindow), typeof(InstallWindow), LoadCleanupWindowType() })
             {
-                foreach (var theme in new[] { "Light", "Dark", "Halloween" })
+                foreach (var theme in new[] { "Light", "Dark", "Halloween", "HalloweenLight" })
                 {
                     BootstrapWpf(anchor, theme);
                     Assert(Application.Current.FindResource(typeof(ToolTip)) is Style &&
@@ -2143,7 +2144,7 @@ namespace WechatDuokai.Tests
             finally
             {
                 DeleteTestDirectoryWithRetries(root);
-                if (Directory.Exists(portableRoot)) Directory.Delete(portableRoot, true);
+                DeleteTestDirectoryWithRetries(portableRoot);
             }
         }
 

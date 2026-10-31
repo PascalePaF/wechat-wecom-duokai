@@ -266,6 +266,7 @@ namespace WechatDuokai.Core
 
         internal static string NormalizeThemeName(string themeName)
         {
+            if (string.Equals(themeName, "halloweenlight", StringComparison.OrdinalIgnoreCase)) return "halloweenlight";
             if (string.Equals(themeName, "halloween", StringComparison.OrdinalIgnoreCase)) return "halloween";
             return string.Equals(themeName, "dark", StringComparison.OrdinalIgnoreCase) ? "dark" : "light";
         }

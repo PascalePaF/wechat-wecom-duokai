@@ -488,6 +488,7 @@ namespace WechatDuokai.App
             LightThemeRadio.IsEnabled = !busy;
             DarkThemeRadio.IsEnabled = !busy;
             HalloweenThemeRadio.IsEnabled = !busy;
+            HalloweenLightThemeRadio.IsEnabled = !busy;
             CheckUpdateButton.IsEnabled = !busy && !_checkingUpdates && !_preparingUpdate;
             UpdateNowButton.IsEnabled = !busy && !_installingUpdate && !_preparingUpdate &&
                                         _availableUpdate != null && _availableUpdate.CanInstallUpdate;
@@ -547,7 +548,7 @@ namespace WechatDuokai.App
         private void UpdateThemeButton()
         {
             ThemeGlyph.Text = ThemeManager.IsDark ? "☾" : "☀";
-            ThemeGlyph.Visibility = ThemeManager.Current == AppTheme.Halloween ? Visibility.Collapsed : Visibility.Visible;
+            ThemeGlyph.Visibility = ThemeManager.IsHalloween ? Visibility.Collapsed : Visibility.Visible;
             ThemeLabel.Text = ThemeManager.DisplayName;
         }
 
@@ -574,6 +575,7 @@ namespace WechatDuokai.App
             LightThemeRadio.IsChecked = ThemeManager.Preference == AppThemePreference.Light;
             DarkThemeRadio.IsChecked = ThemeManager.Preference == AppThemePreference.Dark;
             HalloweenThemeRadio.IsChecked = ThemeManager.Preference == AppThemePreference.Halloween;
+            HalloweenLightThemeRadio.IsChecked = ThemeManager.Preference == AppThemePreference.HalloweenLight;
             _initializingSettings = wasInitializing;
         }
 
