@@ -76,6 +76,16 @@ namespace WechatDuokai.Core
 
         public int ForcedProcessCount { get; set; }
 
+        public int RemainingProcessCount { get; set; }
+
+        public int UnverifiedProcessCount { get; set; }
+
+        public int AccessDeniedProcessCount { get; set; }
+
+        public bool InspectionFailed { get; set; }
+
+        public bool WindowCountKnown { get; set; }
+
         public string Message { get; set; }
     }
 }

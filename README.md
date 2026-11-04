@@ -26,9 +26,9 @@
 
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/v1.1.11-main-dark-901x513.png">
-    <source media="(prefers-color-scheme: light)" srcset="docs/assets/v1.1.11-main-light-901x513.png">
-    <img src="docs/assets/v1.1.11-main-light-901x513.png" width="901" alt="微窗助手 V1.1.11 主界面">
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/v1.2.0-main-dark-901x513.png">
+    <source media="(prefers-color-scheme: light)" srcset="docs/assets/v1.2.0-main-light-901x513.png">
+    <img src="docs/assets/v1.2.0-main-light-901x513.png" width="901" alt="微窗助手 V1.2.0 主界面">
   </picture>
 </p>
 
@@ -42,21 +42,21 @@
 
 ## 下载
 
-当前正式版本：**V1.1.11**。请只从本仓库的
+当前正式版本：**V1.2.0**。请只从本仓库的
 [GitHub Releases](https://github.com/PascalePaF/wechat-wecom-duokai/releases/latest) 下载。
 
 | 版本 | 适合谁 | 下载 |
 | --- | --- | --- |
-| 安装版（推荐） | 希望自选安装目录、创建快捷方式并使用完整卸载功能 | [下载 `wechat_duokai-setup-v1.1.11.exe`](https://github.com/PascalePaF/wechat-wecom-duokai/releases/download/v1.1.11/wechat_duokai-setup-v1.1.11.exe) |
-| 绿色免安装版 | 希望解压即用，不写入安装登记 | [下载 `wechat_duokai-portable-v1.1.11.zip`](https://github.com/PascalePaF/wechat-wecom-duokai/releases/download/v1.1.11/wechat_duokai-portable-v1.1.11.zip) |
-| 独立清理器 | 需要完整卸载，或清理本项目安装包与带标记的源码目录 | [下载 `wechat_duokai-cleanup-v1.1.11.exe`](https://github.com/PascalePaF/wechat-wecom-duokai/releases/download/v1.1.11/wechat_duokai-cleanup-v1.1.11.exe) |
+| 安装版（推荐） | 希望自选安装目录、创建快捷方式并使用完整卸载功能 | [下载 `wechat_duokai-setup-v1.2.0.exe`](https://github.com/PascalePaF/wechat-wecom-duokai/releases/download/v1.2.0/wechat_duokai-setup-v1.2.0.exe) |
+| 绿色免安装版 | 希望解压即用，不写入安装登记 | [下载 `wechat_duokai-portable-v1.2.0.zip`](https://github.com/PascalePaF/wechat-wecom-duokai/releases/download/v1.2.0/wechat_duokai-portable-v1.2.0.zip) |
+| 独立清理器 | 需要完整卸载，或清理本项目安装包与带标记的源码目录 | [下载 `wechat_duokai-cleanup-v1.2.0.exe`](https://github.com/PascalePaF/wechat-wecom-duokai/releases/download/v1.2.0/wechat_duokai-cleanup-v1.2.0.exe) |
 
 发布核验资料：
 
-- [SHA256SUMS.txt](https://github.com/PascalePaF/wechat-wecom-duokai/releases/download/v1.1.11/SHA256SUMS.txt)：正式附件 SHA-256 清单；
-- [SPDX 2.2 SBOM](https://github.com/PascalePaF/wechat-wecom-duokai/releases/download/v1.1.11/manifest.spdx.json)：软件物料清单；
-- [Kaspersky 扫描记录（路径已脱敏）](https://github.com/PascalePaF/wechat-wecom-duokai/releases/download/v1.1.11/kaspersky-scan-v1.1.11.txt)：对正式发布原件的扫描记录；
-- [V1.1.11 发布说明](https://github.com/PascalePaF/wechat-wecom-duokai/releases/tag/v1.1.11)：变化、限制和全部附件。
+- [SHA256SUMS.txt](https://github.com/PascalePaF/wechat-wecom-duokai/releases/download/v1.2.0/SHA256SUMS.txt)：正式附件 SHA-256 清单；
+- [SPDX 2.2 SBOM](https://github.com/PascalePaF/wechat-wecom-duokai/releases/download/v1.2.0/manifest.spdx.json)：软件物料清单；
+- [Kaspersky 扫描记录（路径已脱敏）](https://github.com/PascalePaF/wechat-wecom-duokai/releases/download/v1.2.0/kaspersky-scan-v1.2.0.txt)：对正式发布原件的扫描记录；
+- [V1.2.0 发布说明](https://github.com/PascalePaF/wechat-wecom-duokai/releases/tag/v1.2.0)：变化、限制和全部附件。
 
 > [!CAUTION]
 > 当前版本没有受公共信任的 Authenticode 代码签名，首次运行可能出现“未知发布者”、SmartScreen 或
@@ -67,7 +67,9 @@
 
 1. 打开微窗助手，在右侧用 `−` / `+` 设置目标窗口数；QQ、微信和企业微信共用这个 `1–10` 的目标值。
 2. 点击对应客户端的“启动 / 补开”；程序会先统计现有窗口，只启动缺少的数量。
-3. 某个窗口被误关后，再点一次对应按钮即可补回；要退出某一端的全部窗口，点击“全部退出”并确认。
+3. 某个窗口被误关后，再点一次对应按钮即可补回；要退出某一端及其经核验的关联后台，点击“全部退出”并确认。关闭客户端不等于注销账号，也不会删除聊天；强制结束阶段可能丢失未保存内容。
+
+退出会先请求正常关闭，再清理可信关联后台并连续复查。仅处理当前用户与会话中的匹配主程序，以及可证明父子关系、创建时间和腾讯签名的白名单辅助程序；不会按名称前缀关闭所有腾讯程序或共享服务。权限受限时如实报告，不会自动提权或关闭安全软件。此前捕获的残留后台在同一次助手运行期间仍可重试。
 
 没有自动识别客户端时，点击卡片中的 `…` 手动选择官方程序：QQ 为 `QQ.exe`，微信为 `Weixin.exe`
 或 `WeChat.exe`，企业微信通常为 `WXWork.exe`。自定义程序必须通过腾讯 Authenticode 数字签名验证。
@@ -89,13 +91,13 @@
 | 确认式一键更新 | 可选发现版本后自动下载并校验；安装仍需确认，支持验证缓存复用、独立安装进程与失败回滚 |
 | 可核验发布 | 源码标签、干净 Windows CI、哈希、SPDX SBOM、UI 回归矩阵与扫描日志公开 |
 
-## V1.1.11 更新
+## V1.2.0 更新
 
-- 万圣节不再只是换颜色：双窗口标识加入巫师帽与幽灵，活动窗口图标随主题切换；
-- 背景加入月亮、蝙蝠、星光、角落蛛网与悬挂小幽灵，数量卡片增加南瓜组合插画；
-- 卡片渐变材质、橙紫细边框、糖果纹细线、幽灵启动按钮和客户端图标底框成套适配；
-- “万圣日间”采用暖纸橙紫，“万圣夜”采用低亮度月光紫，安装器、清理器、弹窗和选择器使用同一套设计；
-- 切回普通日间/夜间后恢复经典标识与控件；装饰不接收点击和焦点，无动画计时器或远程素材。
+- “全部退出”采用正常关闭、可信后台清理和连续复查，处理短暂重启与迟到子进程；
+- 区分可见窗口、后台残留、权限拒绝和无法核验，不再把无窗口后台笼统报告成“窗口未关闭”；
+- 限定用户 SID、会话、精确主路径、辅助名称白名单、腾讯签名、创建时间与父子关系；结束使用同一已核验原生句柄，文件保持只读租约；
+- 右上角按钮按“日间 → 夜间 → 万圣日间 → 万圣夜”循环，不跳转页面；跟随系统仍在“设置 → 主题”；
+- 本地诊断补充最近退出计数；启动恢复异常安全失败，阻止新的企微临时注册表会话。
 
 > 节日图标作用于应用内标识和活动窗口；磁盘 EXE、固定快捷方式保留经典绿蓝图标，不修改 Windows 图标缓存。
 
@@ -104,27 +106,27 @@
 <details>
 <summary><strong>查看万圣夜、独立主题页和大尺寸适配</strong></summary>
 
-![V1.1.11 万圣日间主题](docs/assets/v1.1.11-main-halloween-light-901x513.png)
+![V1.2.0 万圣日间主题](docs/assets/v1.2.0-main-halloween-light-901x513.png)
 
-![V1.1.11 万圣日间主题页](docs/assets/v1.1.11-themes-halloween-light-901x513.png)
+![V1.2.0 万圣日间主题页](docs/assets/v1.2.0-themes-halloween-light-901x513.png)
 
-![V1.1.11 万圣夜主题](docs/assets/v1.1.11-main-halloween-901x513.png)
+![V1.2.0 万圣夜主题](docs/assets/v1.2.0-main-halloween-901x513.png)
 
-![V1.1.11 独立主题页](docs/assets/v1.1.11-themes-halloween-901x513.png)
+![V1.2.0 独立主题页](docs/assets/v1.2.0-themes-halloween-901x513.png)
 
-![V1.1.11 夜间主题](docs/assets/v1.1.11-main-dark-901x513.png)
+![V1.2.0 夜间主题](docs/assets/v1.2.0-main-dark-901x513.png)
 
-![V1.1.11 设置页](docs/assets/v1.1.11-settings-light-901x513.png)
+![V1.2.0 设置页](docs/assets/v1.2.0-settings-light-901x513.png)
 
-![V1.1.11 软件介绍页](docs/assets/v1.1.11-about-light-901x513.png)
+![V1.2.0 软件介绍页](docs/assets/v1.2.0-about-light-901x513.png)
 
-![V1.1.11 1920×1080 夜间界面](docs/assets/v1.1.11-main-dark-1920x1080.png)
+![V1.2.0 1920×1080 夜间界面](docs/assets/v1.2.0-main-dark-1920x1080.png)
 
-![V1.1.11 3440×1392 超宽屏界面](docs/assets/v1.1.11-main-ultrawide-light-3440x1392.png)
+![V1.2.0 3440×1392 超宽屏界面](docs/assets/v1.2.0-main-ultrawide-light-3440x1392.png)
 
-![V1.1.11 统一主题的确认弹窗](docs/assets/v1.1.11-confirm-dark.png)
+![V1.2.0 统一主题的确认弹窗](docs/assets/v1.2.0-confirm-dark.png)
 
-![V1.1.11 统一主题的路径选择器](docs/assets/v1.1.11-picker-folder-light.png)
+![V1.2.0 统一主题的路径选择器](docs/assets/v1.2.0-picker-folder-light.png)
 
 </details>
 
@@ -132,13 +134,13 @@
 
 ### 安装版
 
-1. 运行 `wechat_duokai-setup-v1.1.11.exe`；
+1. 运行 `wechat_duokai-setup-v1.2.0.exe`；
 2. 点击“选择文件夹”，选择或新建专用安装目录；
 3. 选择是否创建桌面快捷方式，然后点击“立即安装”；
 4. 如果旧版正在运行，安装器会询问是否关闭对应目录中的助手后覆盖；
 5. 安装完成后不会自行启动，只有点击“确认并启动”才会运行。
 
-![V1.1.11 安装器](docs/assets/v1.1.11-installer-light.png)
+![V1.2.0 安装器](docs/assets/v1.2.0-installer-light.png)
 
 如果安装过程中断电或被强制结束，助手会提示安装未完成，不会运行可能混合了新旧文件的程序。重新运行同版本或更新版本的正式安装包，并选择原安装目录即可完成安装。
 
@@ -173,7 +175,7 @@
 
 右下角“设置”包含：
 
-- **主题选项卡**：跟随 Windows，以及日间、夜间、万圣日间、万圣夜四张预览卡，点击即应用；
+- **主题选项卡**：跟随 Windows，以及四张外观预览卡；主界面右上角按钮直接循环切换四种外观，不跳转页面；
 - 当前用户开机自动启动，以及自动启动时是否最小化；
 - 每天自动检查、发现后自动下载并校验、检查计划和手动检查；
 - 本地诊断报告；
@@ -217,17 +219,17 @@ Windows 用户的标准 `Run` 启动项；除这一项和安装版已有的卸�
 
 安全资料：
 
-- [V1.1.11 完整安全审计报告](docs/微窗助手_V1.1.11_完整安全审计报告.txt)
-- [V1.1.11 更新与安装安全验证报告](docs/V1.1.11-一键更新安全验证报告.md)
-- [V1.1.11 全项目自查报告](docs/V1.1.11-全项目自查报告.md)
-- [V1.1.11 UI 回归矩阵](docs/V1.1.11-UI回归矩阵.md)
+- [V1.2.0 完整安全审计报告](docs/微窗助手_V1.2.0_完整安全审计报告.txt)
+- [V1.2.0 更新与安装安全验证报告](docs/V1.2.0-一键更新安全验证报告.md)
+- [V1.2.0 全项目自查报告](docs/V1.2.0-全项目自查报告.md)
+- [V1.2.0 UI 回归矩阵](docs/V1.2.0-UI回归矩阵.md)
 - [源码与旧版二进制安全审计（历史）](SECURITY-AUDIT.md)
 - [旧版 EXE 硬编码路径说明](docs/旧版EXE硬编码路径说明与风险评估报告.txt)
 
 ### 在 Windows 中核对 SHA-256
 
 ```powershell
-Get-FileHash .\wechat_duokai-setup-v1.1.11.exe -Algorithm SHA256
+Get-FileHash .\wechat_duokai-setup-v1.2.0.exe -Algorithm SHA256
 ```
 
 将结果与同一 Release 中的 `SHA256SUMS.txt` 比较。文件名相同但哈希不同，不要运行。
@@ -292,7 +294,7 @@ Get-FileHash .\wechat_duokai-setup-v1.1.11.exe -Algorithm SHA256
 1. **删除程序与全部发布包，保留源码**：删除已验证安装目录、快捷方式、安装包、绿色版和助手设置；
 2. **全部删除，包括源码与全部发布包**：只有源码目录带正确标记且结构匹配时可选，还需要额外复选和确认。
 
-![V1.1.11 完整卸载器](docs/assets/v1.1.11-uninstaller-light.png)
+![V1.2.0 完整卸载器](docs/assets/v1.2.0-uninstaller-light.png)
 
 ## 兼容性与限制
 
@@ -311,10 +313,10 @@ Get-FileHash .\wechat_duokai-setup-v1.1.11.exe -Algorithm SHA256
 ```powershell
 MSBuild .\duokai.sln /restore /t:Rebuild /p:Configuration=Release
 .\tests\bin\Release\net48\WechatDuokai.Tests.exe
-PowerShell -ExecutionPolicy Bypass -File .\build-release.ps1 -Version 1.1.11
+PowerShell -ExecutionPolicy Bypass -File .\build-release.ps1 -Version 1.2.0
 ```
 
-产物位于 `artifacts\V1.1.11`。构建脚本会重新编译、执行测试、分别打包 setup/cleanup、生成绿色版、
+产物位于 `artifacts\V1.2.0`。构建脚本会重新编译、执行测试、分别打包 setup/cleanup、生成绿色版、
 发布清单、静态更新清单和 SHA-256。GitHub Actions 会在全新的 Windows Server 2022 环境重复构建，
 复核哈希并生成、验证 SPDX 2.2 SBOM。
 

@@ -286,7 +286,13 @@ namespace WechatDuokai.App
             status.Text = count > 0 ? $"当前运行 {count} 个实例" : "已验证官方客户端";
             status.SetResourceReference(ForegroundProperty, count > 0 ? "SuccessBrush" : "TextSecondaryBrush");
             button.IsEnabled = !_busy;
-            exitButton.IsEnabled = !_busy && count > 0;
+            var backgroundCount = count == 0 ? _instanceManager.GetKnownBackgroundProcessCount(application) : 0;
+            if (count == 0 && backgroundCount > 0)
+            {
+                status.Text = $"仍有 {backgroundCount} 个关联后台待清理";
+                status.SetResourceReference(ForegroundProperty, "WarningBrush");
+            }
+            exitButton.IsEnabled = !_busy && (count > 0 || backgroundCount > 0);
         }
 
         private async void QQButton_Click(object sender, RoutedEventArgs e)
@@ -400,14 +406,18 @@ namespace WechatDuokai.App
             }
             catch (Exception ex)
             {
+                if (_lifetimeToken.IsCancellationRequested) return;
                 SetStatus("启动未完成：" + ex.Message, "DangerBrush");
                 ThemedDialogService.Show(this, "启动提示",
                     "启动未完成，但程序没有修改客户端文件。\r\n\r\n" + ex.Message, true);
             }
             finally
             {
-                SetBusy(false);
-                RefreshClientStatus();
+                if (!_lifetimeToken.IsCancellationRequested)
+                {
+                    SetBusy(false);
+                    RefreshClientStatus();
+                }
             }
         }
 
@@ -417,7 +427,8 @@ namespace WechatDuokai.App
             var application = ClientFor(kind);
             var name = DisplayName(kind);
             var count = GetCurrentCount(application);
-            if (count == 0)
+            var backgroundCount = _instanceManager.GetKnownBackgroundProcessCount(application);
+            if (count == 0 && backgroundCount == 0)
             {
                 SetStatus("当前没有正在运行的" + name + "窗口。", "InfoBrush");
                 RefreshClientStatus();
@@ -426,8 +437,9 @@ namespace WechatDuokai.App
 
             var confirmed = ThemedDialogService.Confirm(this,
                 "退出全部" + name + "窗口",
-                "将退出当前 Windows 会话中检测到的全部 " + count + " 个" + name + "窗口。\r\n\r\n" +
-                "这只会关闭客户端程序，不会注销账号；尚未发送的内容可能丢失。是否继续？",
+                (count > 0 ? "将退出当前 Windows 用户会话中的全部 " + count + " 个" + name + "实例，并清理已核验的关联后台。"
+                    : "将重新核验此前捕获的 " + backgroundCount + " 个关联后台候选，仅在归属确认后清理。") + "\r\n\r\n" +
+                "先请求正常关闭，超时后结束仍残留的目标进程。不会注销账号或删除聊天；尚未保存的内容可能丢失。是否继续？",
                 "确认退出", true);
             if (!confirmed)
             {
@@ -441,6 +453,7 @@ namespace WechatDuokai.App
                     application,
                     message => Dispatcher.Invoke(() => SetStatus(message, "InfoBrush")),
                     _lifetimeToken);
+                _lifetimeToken.ThrowIfCancellationRequested();
                 SetStatus(result.Message, result.Success ? "SuccessBrush" : "WarningBrush");
                 if (!result.Success)
                 {
@@ -452,15 +465,19 @@ namespace WechatDuokai.App
             }
             catch (Exception ex)
             {
+                if (_lifetimeToken.IsCancellationRequested) return;
                 SetStatus("退出未完成：" + ex.Message, "DangerBrush");
                 ThemedDialogService.Show(this, "退出提示",
-                    "退出未完成；程序只尝试处理路径完全匹配的官方客户端进程。\r\n\r\n" + ex.Message,
+                    "退出未完成；程序只处理当前用户会话中的匹配主程序与经核验的关联后台，不会扩大结束范围。\r\n\r\n" + ex.Message,
                     true);
             }
             finally
             {
-                SetBusy(false);
-                RefreshClientStatus();
+                if (!_lifetimeToken.IsCancellationRequested)
+                {
+                    SetBusy(false);
+                    RefreshClientStatus();
+                }
             }
         }
 
@@ -470,9 +487,9 @@ namespace WechatDuokai.App
             QQButton.IsEnabled = !busy && _qq != null && _qq.IsAvailable;
             WeChatButton.IsEnabled = !busy && _weChat != null && _weChat.IsAvailable;
             WeComButton.IsEnabled = !busy && _weCom != null && _weCom.IsAvailable;
-            QQExitButton.IsEnabled = !busy && GetCurrentCount(_qq) > 0;
-            WeChatExitButton.IsEnabled = !busy && GetCurrentCount(_weChat) > 0;
-            WeComExitButton.IsEnabled = !busy && GetCurrentCount(_weCom) > 0;
+            QQExitButton.IsEnabled = !busy && (GetCurrentCount(_qq) > 0 || _instanceManager.GetKnownBackgroundProcessCount(_qq) > 0);
+            WeChatExitButton.IsEnabled = !busy && (GetCurrentCount(_weChat) > 0 || _instanceManager.GetKnownBackgroundProcessCount(_weChat) > 0);
+            WeComExitButton.IsEnabled = !busy && (GetCurrentCount(_weCom) > 0 || _instanceManager.GetKnownBackgroundProcessCount(_weCom) > 0);
             QQSelectButton.IsEnabled = !busy;
             WeChatSelectButton.IsEnabled = !busy;
             WeComSelectButton.IsEnabled = !busy;
@@ -493,6 +510,7 @@ namespace WechatDuokai.App
             UpdateNowButton.IsEnabled = !busy && !_installingUpdate && !_preparingUpdate &&
                                         _availableUpdate != null && _availableUpdate.CanInstallUpdate;
             SettingsReleaseButton.IsEnabled = !busy;
+            ThemeButton.IsEnabled = !busy;
         }
 
         private int GetTargetCount()
@@ -541,8 +559,13 @@ namespace WechatDuokai.App
 
         private void ThemeButton_Click(object sender, RoutedEventArgs e)
         {
-            SetSettingsViewVisible(true);
-            SetSettingsSection(SettingsSection.Themes);
+            if (_busy || _lifetimeToken.IsCancellationRequested) return;
+            var saved = ThemeManager.Cycle();
+            UpdateThemeButton();
+            SynchronizeThemePreferenceControls();
+            WindowChromeHelper.Apply(this);
+            SetStatus(saved ? "已切换为" + ThemeManager.DisplayName + "主题" : "主题已临时应用，但保存失败 · 请检查程序目录写入权限",
+                saved ? "SuccessBrush" : "WarningBrush");
         }
 
         private void UpdateThemeButton()
@@ -550,6 +573,7 @@ namespace WechatDuokai.App
             ThemeGlyph.Text = ThemeManager.IsDark ? "☾" : "☀";
             ThemeGlyph.Visibility = ThemeManager.IsHalloween ? Visibility.Collapsed : Visibility.Visible;
             ThemeLabel.Text = ThemeManager.DisplayName;
+            ThemeButton.ToolTip = "下一主题：" + ThemeManager.NextDisplayName + "；完整选项位于设置 → 主题";
         }
 
         private void SynchronizeSettingsControls()

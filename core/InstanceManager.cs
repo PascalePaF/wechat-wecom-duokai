@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -11,6 +12,9 @@ namespace WechatDuokai.Core
     {
         private readonly IProcessEnvironment _environment;
         private readonly IWeComLaunchPolicy _weComLaunchPolicy;
+        private readonly ConcurrentDictionary<string, ExitAllResult> _lastExitResults =
+            new ConcurrentDictionary<string, ExitAllResult>(StringComparer.OrdinalIgnoreCase);
+        private WeComRegistryRecoveryResult _startupRecovery;
 
         public InstanceManager()
             : this(new WindowsProcessEnvironment(), new WindowsWeComLaunchPolicy())
@@ -30,7 +34,10 @@ namespace WechatDuokai.Core
 
         public WeComRegistryRecoveryResult RecoverPendingWeComRegistryState()
         {
-            return _weComLaunchPolicy.RecoverPendingSession();
+            try { return _startupRecovery = _weComLaunchPolicy.RecoverPendingSession() ??
+                new WeComRegistryRecoveryResult(WeComRegistryRecoveryOutcome.RetryRequired, "启动恢复检查没有返回有效结果，请生成本地诊断后重启助手重试。"); }
+            catch (Exception) { return _startupRecovery = new WeComRegistryRecoveryResult(WeComRegistryRecoveryOutcome.RetryRequired,
+                "启动恢复检查未完成；本次不修改企业微信多开注册表。请核对程序目录权限，生成本地诊断后重启助手重试。"); }
         }
 
         public int GetInstanceCount(AppDefinition application)
@@ -72,6 +79,8 @@ namespace WechatDuokai.Core
             }
 
             targetCount = Math.Max(1, Math.Min(10, targetCount));
+            if (application.Kind == AppKind.WeCom && _startupRecovery != null && !_startupRecovery.CanStartNewSession)
+                return new LaunchResult { RequestedCount = targetCount, Message = _startupRecovery.Message };
             var result = new LaunchResult
             {
                 RequestedCount = targetCount,
@@ -155,6 +164,13 @@ namespace WechatDuokai.Core
                 return result;
             }
 
+            if (_environment is IClientShutdownEnvironment shutdown)
+            {
+                result = await ClientShutdownWorkflow.RunAsync(shutdown, _environment, application, reportStatus, cancellationToken);
+                RecordExitResult(application, result);
+                return result;
+            }
+
             result.BeforeCount = GetInstanceCount(application);
             if (result.BeforeCount == 0)
             {
@@ -171,14 +187,35 @@ namespace WechatDuokai.Core
 
             result.GracefulProcessCount = closeSummary.GracefulExitCount;
             result.ForcedProcessCount = closeSummary.ForcedExitCount;
-            result.AfterCount = GetInstanceCount(application);
+            result.AccessDeniedProcessCount = closeSummary.AccessDeniedProcessCount;
+            // Legacy injected environments still receive a short settling window rather than one stale check.
+            for (var sample = 0; sample < 4; sample++)
+            {
+                result.AfterCount = GetInstanceCount(application);
+                if (result.AfterCount == 0) break;
+                await _environment.DelayAsync(TimeSpan.FromMilliseconds(250), cancellationToken);
+            }
+            result.RemainingProcessCount = GetApplicationProcessIds(application).Count;
             result.Success = result.AfterCount == 0;
             result.Message = result.Success
                 ? application.DisplayName + "已全部退出，共关闭 " + result.BeforeCount + " 个窗口。"
                 : application.DisplayName + "仍有 " + result.AfterCount +
                   " 个窗口未退出；请保存工作后手动关闭，或稍后重试。";
+            RecordExitResult(application, result);
             return result;
         }
+
+        private void RecordExitResult(AppDefinition application, ExitAllResult result)
+        {
+            if (_lastExitResults.Count >= 16) _lastExitResults.Clear();
+            _lastExitResults[application.Kind + "|" + application.ExecutablePath] = result;
+        }
+
+        internal ExitAllResult GetLastExitResult(AppDefinition application) => application != null &&
+            _lastExitResults.TryGetValue(application.Kind + "|" + application.ExecutablePath, out var result) ? result : null;
+
+        public int GetKnownBackgroundProcessCount(AppDefinition application) =>
+            _environment is IClientShutdownEnvironment shutdown ? shutdown.GetKnownClientProcessCount(application) : 0;
 
         public HashSet<int> GetApplicationProcessIds(AppDefinition application)
         {
@@ -193,7 +230,7 @@ namespace WechatDuokai.Core
             {
                 try
                 {
-                    if (process.SessionId != currentSession)
+                    if (process.SessionId != currentSession || !process.IsCurrentUser)
                     {
                         continue;
                     }

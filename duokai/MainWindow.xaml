@@ -46,7 +46,7 @@
                                    Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" />
                     </Border>
                     <Button x:Name="ThemeButton" Margin="10,0,0,0" Style="{StaticResource PillButtonStyle}"
-                            AutomationProperties.Name="打开主题设置" ToolTip="选择日间、夜间或万圣节日夜主题" Click="ThemeButton_Click">
+                            AutomationProperties.Name="切换到下一个主题" ToolTip="依次切换日间、夜间、万圣日间和万圣夜" Click="ThemeButton_Click">
                         <StackPanel Orientation="Horizontal">
                             <Image x:Name="HalloweenThemeGlyph" Width="18" Height="18" Margin="0,0,6,0"
                                    Source="{StaticResource HalloweenPumpkinImage}"

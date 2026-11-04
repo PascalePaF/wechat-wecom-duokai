@@ -154,6 +154,15 @@ namespace WechatDuokai.Presentation
             return Current;
         }
 
+        internal static AppTheme NextTheme => Current == AppTheme.Light ? AppTheme.Dark :
+            Current == AppTheme.Dark ? AppTheme.HalloweenLight :
+            Current == AppTheme.HalloweenLight ? AppTheme.Halloween : AppTheme.Light;
+
+        internal static bool Cycle(bool persist = true) => SetPreference(PreferenceFor(NextTheme), persist);
+
+        internal static string NextDisplayName => NextTheme == AppTheme.Light ? "日间" :
+            NextTheme == AppTheme.Dark ? "夜间" : NextTheme == AppTheme.HalloweenLight ? "万圣日间" : "万圣夜";
+
         internal static void SetTheme(AppTheme theme, bool persist = true)
         {
             if (!Enum.IsDefined(typeof(AppTheme), theme)) throw new ArgumentOutOfRangeException(nameof(theme));

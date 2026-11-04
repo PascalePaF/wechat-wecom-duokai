@@ -33,6 +33,7 @@ foreach ($relative in $tracked) {
         $relative -notmatch '-logo-' -and -not $relative.StartsWith('docs/assets/v1.1.8-') -and
         -not $relative.StartsWith('docs/assets/v1.1.9-') -and
         -not $relative.StartsWith('docs/assets/v1.1.10-') -and
+        -not $relative.StartsWith('docs/assets/v1.1.11-') -and
         -not $relative.StartsWith('docs/assets/v' + $version + '-')) {
         $script:issues.Add("旧的非演示界面图片不再进入当前发布树：$relative")
     }

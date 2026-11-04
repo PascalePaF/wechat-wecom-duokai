@@ -347,8 +347,14 @@ namespace WechatDuokai.Installer
             ApplyInstallPayloadTransaction(targetDirectory, failAfterReplacement, false);
         }
 
+        internal static void ApplyInstallPayloadTransactionForTests(string targetDirectory,
+            int failAfterReplacement, Action<string> beforeFailure)
+        {
+            ApplyInstallPayloadTransaction(targetDirectory, failAfterReplacement, false, beforeFailure);
+        }
+
         private static void ApplyInstallPayloadTransaction(string installDirectory,
-            int failAfterReplacement, bool migrateLegacy)
+            int failAfterReplacement, bool migrateLegacy, Action<string> beforeFailure = null)
         {
             var wasInstalled = ValidateInstallDirectory(installDirectory);
             var directoryAlreadyExisted = Directory.Exists(installDirectory);
@@ -371,7 +377,7 @@ namespace WechatDuokai.Installer
                 }
                 PrepareInstalledDataDirectory(installDirectory);
                 ApplyPayloadTransaction(installDirectory, UpdateTargetMode.Installed,
-                    failAfterReplacement);
+                    failAfterReplacement, beforeFailure);
                 payloadCommitted = true;
                 WriteDurableMarker(Path.Combine(installDirectory, InstallMarkerName),
                     InstallMarkerValue, false);
@@ -384,23 +390,19 @@ namespace WechatDuokai.Installer
                 if (!payloadCommitted && pendingCreatedThisAttempt &&
                     !(ex is PayloadRollbackIncompleteException))
                 {
-                    try
+                    if (wasInstalled)
                     {
-                        if (File.Exists(pendingMarker)) File.Delete(pendingMarker);
+                        try { if (File.Exists(pendingMarker)) File.Delete(pendingMarker); }
+                        catch (IOException) { /* Keep a recoverable blocked target while the marker is locked. */ }
                     }
-                    catch (IOException)
-                    {
-                        // Keep a blocked, recoverable target if the pending marker is locked.
-                    }
-                    if (!wasInstalled)
-                        CleanupAbortedFreshInstall(installDirectory, directoryAlreadyExisted);
+                    else CleanupAbortedFreshInstall(installDirectory, directoryAlreadyExisted);
                 }
                 throw;
             }
         }
 
         private static void ApplyPayloadTransaction(string targetDirectory,
-            UpdateTargetMode mode, int failAfterReplacement)
+            UpdateTargetMode mode, int failAfterReplacement, Action<string> beforeFailure = null)
         {
             var fullTarget = Path.GetFullPath(targetDirectory);
             if (!ValidateUserDataBelowTarget(fullTarget))
@@ -465,6 +467,7 @@ namespace WechatDuokai.Installer
 
                     if (failAfterReplacement > 0 && replaced.Count >= failAfterReplacement)
                     {
+                        beforeFailure?.Invoke(staging);
                         throw new IOException("Simulated update interruption.");
                     }
                 }
@@ -773,27 +776,25 @@ namespace WechatDuokai.Installer
 
         private static void DeleteOwnedWorkingDirectory(string path, string expectedParent)
         {
-            try
+            for (var attempt = 0; attempt < 10; attempt++)
             {
-                var directory = new DirectoryInfo(Path.GetFullPath(path));
-                if (!directory.Exists || !UpdatePlan.PathsEqual(directory.Parent?.FullName, expectedParent) ||
-                    (!directory.Name.StartsWith("staging-", StringComparison.Ordinal) &&
-                     !directory.Name.StartsWith("backup-", StringComparison.Ordinal)) ||
-                    (directory.Attributes & FileAttributes.ReparsePoint) != 0)
+                try
                 {
+                    SafeLocalFile.RejectReparsePoints(path);
+                    var directory = new DirectoryInfo(Path.GetFullPath(path));
+                    if (!directory.Exists || !UpdatePlan.PathsEqual(directory.Parent?.FullName, expectedParent) ||
+                        (!directory.Name.StartsWith("staging-", StringComparison.Ordinal) &&
+                         !directory.Name.StartsWith("backup-", StringComparison.Ordinal)) ||
+                        (directory.Attributes & FileAttributes.ReparsePoint) != 0) return;
+                    foreach (var file in directory.EnumerateFiles()) file.Delete();
+                    foreach (var child in directory.EnumerateDirectories())
+                        if ((child.Attributes & FileAttributes.ReparsePoint) == 0 && !child.EnumerateFileSystemInfos().Any()) child.Delete(false);
+                    if (!directory.EnumerateFileSystemInfos().Any()) directory.Delete(false);
                     return;
                 }
-                foreach (var file in directory.EnumerateFiles()) file.Delete();
-                foreach (var child in directory.EnumerateDirectories())
-                {
-                    if ((child.Attributes & FileAttributes.ReparsePoint) == 0 && !child.EnumerateFileSystemInfos().Any())
-                        child.Delete(false);
-                }
-                if (!directory.EnumerateFileSystemInfos().Any()) directory.Delete(false);
-            }
-            catch (Exception)
-            {
-                // Staging evidence can remain for diagnostics; application data is untouched.
+                catch (Exception ex) when ((ex is IOException || ex is UnauthorizedAccessException) && attempt < 9)
+                { Thread.Sleep(100); }
+                catch (Exception) { return; /* Preserve staging evidence rather than expanding deletion. */ }
             }
         }
 
@@ -905,6 +906,7 @@ namespace WechatDuokai.Installer
         {
             try
             {
+                SafeLocalFile.RejectReparsePoints(installDirectory);
                 var dataDirectory = GetInstalledDataDirectory(installDirectory);
                 if (ValidateMarkedDirectory(dataDirectory, UserDataMarkerName,
                         UserDataMarkerValue))
@@ -923,6 +925,14 @@ namespace WechatDuokai.Installer
                     }
                 }
 
+                var pending = Path.Combine(installDirectory, PendingInstallMarkerName);
+                // Keep the already-created recovery marker if any staging/data remains locked.
+                // An unmarked non-empty fresh target would be neither runnable nor retryable.
+                if (Directory.Exists(installDirectory) &&
+                    ValidateMarkedDirectory(installDirectory, PendingInstallMarkerName, PendingInstallMarkerValue) &&
+                    Directory.EnumerateFileSystemEntries(installDirectory).All(path =>
+                        string.Equals(Path.GetFileName(path), PendingInstallMarkerName, StringComparison.OrdinalIgnoreCase)))
+                    File.Delete(pending);
                 if (!directoryAlreadyExisted && Directory.Exists(installDirectory) &&
                     (new DirectoryInfo(installDirectory).Attributes & FileAttributes.ReparsePoint) == 0 &&
                     !Directory.EnumerateFileSystemEntries(installDirectory).Any())

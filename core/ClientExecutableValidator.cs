@@ -147,7 +147,7 @@ namespace WechatDuokai.Core
                    string.Equals(normalized, "腾讯QQ", StringComparison.OrdinalIgnoreCase);
         }
 
-        private static bool HasValidTencentSignature(string path, out string publisher)
+        internal static bool HasValidTencentSignature(string path, out string publisher)
         {
             publisher = null;
             var fileInfo = new WinTrustFileInfo(path);

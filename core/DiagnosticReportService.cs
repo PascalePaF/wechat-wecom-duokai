@@ -108,6 +108,16 @@ namespace WechatDuokai.Core
             lines.Add("版本=" + (validation.FileVersion ?? string.Empty));
             lines.Add("腾讯签名=" + (validation.IsValid ? "有效" : "未通过"));
             lines.Add("检测实例=" + instanceManager.GetInstanceCount(app));
+            var lastExit = instanceManager.GetLastExitResult(app);
+            if (lastExit != null)
+            {
+                lines.Add("最近退出检查=" + (lastExit.Success ? "通过" : "未完成"));
+                lines.Add("退出后可见窗口=" + (lastExit.WindowCountKnown ? lastExit.AfterCount.ToString() : "未能核验"));
+                lines.Add("退出后已核验进程=" + lastExit.RemainingProcessCount);
+                lines.Add("归属未核验候选=" + lastExit.UnverifiedProcessCount);
+                lines.Add("退出访问受限=" + lastExit.AccessDeniedProcessCount);
+                lines.Add("退出复查异常=" + lastExit.InspectionFailed);
+            }
         }
 
         private static string GetVersion()

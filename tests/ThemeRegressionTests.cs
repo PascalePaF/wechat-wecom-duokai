@@ -347,11 +347,12 @@ namespace WechatDuokai.Tests
             try
             {
                 window.Show();
-                ((Button)window.FindName("ThemeButton")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                window.SetSettingsViewVisible(true);
+                window.SetSettingsSection(MainWindow.SettingsSection.Themes);
                 Assert(((FrameworkElement)window.FindName("ThemeSettingsPanel")).Visibility == Visibility.Visible &&
                        ((FrameworkElement)window.FindName("GeneralSettingsPanel")).Visibility == Visibility.Collapsed &&
                        ((FrameworkElement)window.FindName("AboutSettingsPanel")).Visibility == Visibility.Collapsed,
-                    "The header shortcut did not open the dedicated theme tab.");
+                    "The dedicated theme tab did not open through settings navigation.");
                 foreach (var size in new[] { new Size(901, 513), new Size(1280, 720), new Size(1920, 1080), new Size(3440, 1392) })
                 {
                     window.Width = size.Width; window.Height = size.Height;
@@ -380,6 +381,40 @@ namespace WechatDuokai.Tests
                 Assert(label != null && ((SolidColorBrush)label.Foreground).Color == ((SolidColorBrush)launch.Foreground).Color,
                     "Rendered button label ignored its theme-specific foreground: label=" + (label == null ? "missing" : label.Foreground.ToString()) +
                     "; button=" + launch.Foreground + "; content=" + launch.Content);
+            }
+            finally { window.Close(); Program.BootstrapWpf(typeof(MainWindow), "Light"); }
+        }
+
+        internal static void HeaderThemeCycle()
+        {
+            Program.BootstrapWpf(typeof(MainWindow), "Light");
+            var window = new MainWindow();
+            try
+            {
+                ShowOffscreen(window);
+                typeof(MainWindow).GetMethod("SetBusy", BindingFlags.Instance | BindingFlags.NonPublic).Invoke(window, new object[] { false });
+                var manager = typeof(MainWindow).Assembly.GetType("WechatDuokai.Presentation.ThemeManager", true);
+                var button = (Button)window.FindName("ThemeButton");
+                foreach (var expected in new[] { "Dark", "HalloweenLight", "Halloween", "Light", "Dark" })
+                {
+                    button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    FlushLayout(window);
+                    Assert(manager.GetProperty("Current", StaticInternal).GetValue(null).ToString() == expected,
+                        "Header cycle skipped or repeated a theme: " + expected);
+                    Assert(((FrameworkElement)window.FindName("SettingsWorkspace")).Visibility == Visibility.Collapsed,
+                        "Cycling a theme navigated away from the main view.");
+                    Assert(Convert.ToString(button.ToolTip).Contains("下一主题") &&
+                           AutomationProperties.GetName(button) == "切换到下一个主题",
+                        "Theme cycle lost its accessible action or next-theme hint.");
+                }
+                window.SetSettingsViewVisible(true);
+                window.SetSettingsSection(MainWindow.SettingsSection.General);
+                button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                Assert(((FrameworkElement)window.FindName("GeneralSettingsPanel")).Visibility == Visibility.Visible &&
+                       ((RadioButton)window.FindName("HalloweenLightThemeRadio")).IsChecked == true,
+                    "Theme cycle changed the active settings page or left stale selection controls.");
+                var preference = manager.GetProperty("Preference", StaticInternal).GetValue(null);
+                Assert(preference.ToString() == "HalloweenLight", "A direct theme cycle must leave follow-system mode.");
             }
             finally { window.Close(); Program.BootstrapWpf(typeof(MainWindow), "Light"); }
         }

@@ -63,6 +63,7 @@ namespace WechatDuokai.Tests
                 Run("Seasonal artwork, native window icons and classic resources switch together", ThemeRegressionTests.SeasonalArtworkRoundTrip);
                 Run("Seasonal layouts keep decoration passive and button labels inside controls", ThemeRegressionTests.SeasonalLayoutMatrix);
                 Run("Theme choices have a dedicated responsive and accessible settings tab", ThemeRegressionTests.ThemePageNavigation);
+                Run("Header button cycles every visual theme without leaving the current view", ThemeRegressionTests.HeaderThemeCycle);
                 Run("Oversized local configuration fails safely and theme write failures are reported", ThemeRegressionTests.BoundedLocalState);
                 Run("Closing during startup recovery cannot revive timers or access disposed cancellation", ThemeRegressionTests.CloseDuringStartupRecovery);
                 Run("Renamed executables cannot impersonate an official client", TestClientExecutableValidation);
@@ -74,6 +75,16 @@ namespace WechatDuokai.Tests
                 Run("Process environment groups roots and supports deterministic launch tests", TestProcessEnvironmentAbstraction);
                 Run("Exit-all closes only exact-path processes in the current Windows session", TestSafeExitAll);
                 Run("Windows exit layer revalidates and closes the exact requested process", TestWindowsProcessExitBoundary);
+                Run("Shutdown family selection rejects unrelated accounts, sessions and executable identities", ShutdownRegressionTests.FamilyScope);
+                Run("Shutdown ancestry keeps orphan proof but rejects reused process identifiers", ShutdownRegressionTests.AncestryIdentity);
+                Run("Shutdown helper trust requires an allowed image and preserves its file lease", ShutdownRegressionTests.HelperTrustBoundary);
+                Run("Shutdown waits for stable emptiness and closes short-lived restarts", ShutdownRegressionTests.ConvergentShutdown);
+                Run("Shutdown distinguishes hidden background, denied access and failed inspection", ShutdownRegressionTests.PreciseShutdownResults);
+                Run("Shutdown honors cancellation and does not retain stale success", ShutdownRegressionTests.Cancellation);
+                Run("Native process handles reject stale birth time, path and account identity", ShutdownRegressionTests.NativeIdentityBoundary);
+                Run("Native shutdown closes its verified family and preserves an unrelated same-named helper", ShutdownRegressionTests.NativeFamilyExit);
+                Run("Native shutdown captures a child spawned as its parent closes", ShutdownRegressionTests.NativeLateChild);
+                Run("Startup recovery exceptions fail closed without crashing or changing registry state", ShutdownRegressionTests.RecoveryFailure);
                 Run("WeCom extended launch policy is temporary and reaches three instances", TestWeComExtendedLaunchPolicy);
                 Run("WeCom registry journal recovers crashes and preserves external changes", TestWeComCrashRecovery);
                 Run("Diagnostics stay inside the selected local application directory", TestLocalDiagnostics);
@@ -89,6 +100,7 @@ namespace WechatDuokai.Tests
                 Run("Update mode detection accepts only marked install and portable roots", TestUpdateModeDetection);
                 Run("Transactional update preserves data and rolls back interrupted replacement", TestUpdateTransaction);
                 Run("Manual installation rolls back interrupted payload replacement", TestManualInstallTransaction);
+                Run("Locked fresh-install staging retains a safe retryable recovery marker", ShutdownRegressionTests.LockedInstallRecovery);
                 Run("Cleanup refuses drive roots", () =>
                     Assert(!InstallerEngine.ValidateSourceRoot(Path.GetPathRoot(Environment.SystemDirectory)),
                         "A drive root must never be accepted as a source directory."));
@@ -202,7 +214,9 @@ namespace WechatDuokai.Tests
                     break;
                 case "uninstaller": windowType = LoadCleanupWindowType(); break;
                 case "dialog":
-                case "dialog-confirm": windowType = FindPresentationType(typeof(MainWindow), "ThemedDialogWindow"); break;
+                case "dialog-confirm":
+                case "exit-confirm":
+                case "exit-result": windowType = FindPresentationType(typeof(MainWindow), "ThemedDialogWindow"); break;
                 case "picker-file":
                 case "picker-folder": windowType = FindPresentationType(typeof(MainWindow), "ThemedPathPicker"); break;
                 default: throw new ArgumentException("Unknown window: " + windowName);
@@ -223,6 +237,16 @@ namespace WechatDuokai.Tests
                 case "dialog-confirm":
                     window = CreateThemedDialog("关闭正在运行的程序？",
                         "安装时检测到微窗助手正在运行。确认关闭后继续安装，新版本会保留已有设置。", true, true, "关闭并继续");
+                    break;
+                case "exit-confirm":
+                    window = CreateThemedDialog("退出全部微信窗口",
+                        "将退出当前 Windows 用户会话中的全部 3 个微信实例，并清理已核验的关联后台。\r\n\r\n" +
+                        "先请求正常关闭，超时后结束仍残留的目标进程。不会注销账号或删除聊天；尚未保存的内容可能丢失。是否继续？",
+                        true, true, "确认退出");
+                    break;
+                case "exit-result":
+                    window = CreateThemedDialog("退出结果", ClientShutdownWorkflow.FormatResult("微信",
+                        new ExitAllResult { AfterCount = 0, RemainingProcessCount = 2, AccessDeniedProcessCount = 2 }, true), false, true);
                     break;
                 case "picker-file":
                     window = CreateThemedPicker("File", "选择官方程序",
@@ -867,7 +891,7 @@ namespace WechatDuokai.Tests
                     var themeButton = window.FindName("ThemeButton") as DependencyObject;
                     Assert(themeButton != null &&
                            string.Equals(AutomationProperties.GetName(themeButton), window is MainWindow
-                               ? "打开主题设置" : "切换日间或夜间主题", StringComparison.Ordinal),
+                               ? "切换到下一个主题" : "切换日间或夜间主题", StringComparison.Ordinal),
                         window.GetType().Name + " theme switch is missing.");
                     var logoName = window is MainWindow ? "BrandLogo" : "HeaderLogo";
                     var logo = window.FindName(logoName) as Image;
@@ -2168,7 +2192,7 @@ namespace WechatDuokai.Tests
                 }
                 Assert(interruptedFreshInstall &&
                        !File.Exists(Path.Combine(root, InstallerEngine.InstallMarkerName)) &&
-                       !Directory.Exists(root),
+                       (!Directory.Exists(root) || InstallerEngine.ValidateInstallTarget(root, out _)),
                     "A failed fresh install left a falsely marked or non-retryable directory.");
 
                 Assert(InstallerEngine.PendingInstallMarkerName ==

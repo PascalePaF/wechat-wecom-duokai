@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [string]$Version = '1.1.11',
+    [string]$Version = '1.2.0',
     [string]$MSBuildPath
 )
 
@@ -241,7 +241,8 @@ $manifest = @(
     'UI=Unified classic light/dark and complete Halloween day/night artwork across WPF windows, dialogs and pickers; proportional three-client layout from 901x513 through maximized; no outer scrollbars',
     'SeasonalPresentation=Embedded vector logo, in-memory active-window icon, moon/bats/webs/ghosts, gradient cards and candy traces; passive decoration with no animation timers or remote assets; classic shell icons remain stable',
     'LaunchPolicy=Explicit confirmation after install',
-    'ExitAllPolicy=Per-client confirmation; current session and exact verified executable path only; graceful close before force',
+    'ExitAllPolicy=Per-client confirmation; current user SID/session; exact main image and signature-allowlisted proven descendants; held native identity handles; graceful close then bounded cleanup and three stable empty samples',
+    'ThemeCycle=Main header cycles Light, Dark, HalloweenLight, Halloween without navigation; follow-system remains in settings',
     'UpgradePolicy=Prompt before closing exact-path running helper',
     'UpdatePolicy=Optional automatic download and verification from this repository GitHub Release; installation always requires explicit confirmation; manual browser download remains available',
     'UpdateVerification=Static Release update manifest is primary and quota-free; GitHub API digest is optional enrichment; SHA256SUMS and downloaded setup must match',
