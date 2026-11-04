@@ -1,0 +1,87 @@
+; 公开扫描记录：本机路径已脱敏，检测结果与统计保留。
+; 产品：微窗助手 V1.2.0
+; 扫描对象：成功 GitHub Actions 构建下载的原始发布文件，未使用本地重编译文件替换。
+; 源码提交：9eb11a43fabbbfd217617dc782a3f7688be19866
+; 构建与验证：https://github.com/PascalePaF/wechat-wecom-duokai/actions/runs/41790568636
+; 完整性复核：扫描前后全部 27 个发布文件数量及 SHA-256 保持一致。
+; 安装包 SHA-256：32ba64b3118ecf563579b4d3a540140b1c9307d3761cb9cf57d2a95ff1623845
+; 绿色包 SHA-256：33e4a70e3636b70f483c8a1a0979ec2403131b5f87f55c005c7e954ca87b664b
+; 清理器 SHA-256：1039c0548d23299cd394e2db2ed3bf25412b8e5a62a68b1e77e5aed01c7e5af5
+; 卡巴斯基病毒库原始时间：2026-11-04 06:08:00 (full)，时区以安全软件原始输出为准。
+; 结论：44 个对象正常；检出、怀疑、跳过、损坏和错误均为 0；未执行安装器。
+; 限制：扫描未检出不等于绝对安全，也不保证未来不会出现启发式告警。
+; --- Settings ---
+; Action on detect:	Report only
+; Scan objects:	All objects
+; Use iChecker:	No
+; Use iSwift:	No
+; Try disinfect:	No
+; Try delete:	No
+; Try delete container:	No
+; Scan archives:	No
+; Exclude by mask:	No
+; Include by mask:	No
+; Objects to scan:
+; 	"[项目目录]\artifacts\ci-v1.2.0-41790568636\"	Enable = Yes	Recursive = Yes
+; ------------------
+2026-11-04 16:15:15	Scan_Objects$7840                          starting   1
+2026-11-04 16:15:15	[项目目录]\artifacts\ci-v1.2.0-41790568636\.wechat-duokai-artifacts	ok
+2026-11-04 16:15:15	[项目目录]\artifacts\ci-v1.2.0-41790568636\sbom-validation.json	ok
+2026-11-04 16:15:15	[项目目录]\artifacts\ci-v1.2.0-41790568636\release-manifest.txt	ok
+2026-11-04 16:15:15	[项目目录]\artifacts\ci-v1.2.0-41790568636\SHA256SUMS.txt	ok
+2026-11-04 16:15:15	Scan_Objects$7840                          running    1
+2026-11-04 16:15:15	[项目目录]\artifacts\ci-v1.2.0-41790568636\wechat-duokai-v1.2.0-one-click-update-validation-report.md	ok
+2026-11-04 16:15:15	[项目目录]\artifacts\ci-v1.2.0-41790568636\wechat-duokai-v1.2.0-security-audit.txt	ok
+2026-11-04 16:15:15	[项目目录]\artifacts\ci-v1.2.0-41790568636\update-manifest.json	ok
+2026-11-04 16:15:15	[项目目录]\artifacts\ci-v1.2.0-41790568636\wechat-duokai-v1.2.0-ui-regression-matrix.md	ok
+2026-11-04 16:15:15 	[项目目录]\artifacts\ci-v1.2.0-41790568636\portable\wechat_duokai-portable-v1.2.0.zip	archive	ZIP
+2026-11-04 16:15:15	[项目目录]\artifacts\ci-v1.2.0-41790568636\portable\wechat_duokai-portable-v1.2.0.zip//.wechat-duokai-portable	ok
+2026-11-04 16:15:15	[项目目录]\artifacts\ci-v1.2.0-41790568636\portable\wechat_duokai-portable-v1.2.0\.wechat-duokai-portable	ok
+2026-11-04 16:15:15	[项目目录]\artifacts\ci-v1.2.0-41790568636\portable\wechat_duokai-portable-v1.2.0.zip//LICENSE.txt	ok
+2026-11-04 16:15:15	[项目目录]\artifacts\ci-v1.2.0-41790568636\portable\wechat_duokai-portable-v1.2.0\LICENSE.txt	ok
+2026-11-04 16:15:15 	[项目目录]\artifacts\ci-v1.2.0-41790568636\installer\wechat_duokai-setup-v1.2.0.exe	archive	dotNetResources
+2026-11-04 16:15:15	[项目目录]\artifacts\ci-v1.2.0-41790568636\installer\wechat_duokai-cleanup-v1.2.0.exe	ok
+2026-11-04 16:15:15	[项目目录]\artifacts\ci-v1.2.0-41790568636\portable\wechat_duokai-portable-v1.2.0.zip//README.md	ok
+2026-11-04 16:15:15	[项目目录]\artifacts\ci-v1.2.0-41790568636\portable\wechat_duokai-portable-v1.2.0\README.md	ok
+2026-11-04 16:15:15	[项目目录]\artifacts\ci-v1.2.0-41790568636\portable\wechat_duokai-portable-v1.2.0\SECURITY-AUDIT.md	ok
+2026-11-04 16:15:15	[项目目录]\artifacts\ci-v1.2.0-41790568636\portable\wechat_duokai-portable-v1.2.0.zip//SECURITY-AUDIT.md	ok
+2026-11-04 16:15:15	[项目目录]\artifacts\ci-v1.2.0-41790568636\installer\wechat_duokai-setup-v1.2.0.exe//data0005.res	ok
+2026-11-04 16:15:15	[项目目录]\artifacts\ci-v1.2.0-41790568636\portable\wechat_duokai-portable-v1.2.0\wechat_duokai-cleanup-v1.2.0.exe	ok
+2026-11-04 16:15:15	[项目目录]\artifacts\ci-v1.2.0-41790568636\portable\wechat_duokai-portable-v1.2.0\WechatDuokai.Core.dll	ok
+2026-11-04 16:15:15	[项目目录]\artifacts\ci-v1.2.0-41790568636\portable\wechat_duokai-portable-v1.2.0.zip//wechat_duokai-cleanup-v1.2.0.exe	ok
+2026-11-04 16:15:15	[项目目录]\artifacts\ci-v1.2.0-41790568636\portable\wechat_duokai-portable-v1.2.0\wechat_duokai.exe.config	ok
+2026-11-04 16:15:15	[项目目录]\artifacts\ci-v1.2.0-41790568636\portable\wechat_duokai-portable-v1.2.0\一键更新安全验证报告.md	ok
+2026-11-04 16:15:15	[项目目录]\artifacts\ci-v1.2.0-41790568636\portable\wechat_duokai-portable-v1.2.0\使用说明.txt	ok
+2026-11-04 16:15:15	[项目目录]\artifacts\ci-v1.2.0-41790568636\installer\wechat_duokai-setup-v1.2.0.exe//data0006.res	ok
+2026-11-04 16:15:15	[项目目录]\artifacts\ci-v1.2.0-41790568636\portable\wechat_duokai-portable-v1.2.0\wechat_duokai.exe	ok
+2026-11-04 16:15:15	[项目目录]\artifacts\ci-v1.2.0-41790568636\portable\wechat_duokai-portable-v1.2.0\全项目自查报告.md	ok
+2026-11-04 16:15:15	[项目目录]\artifacts\ci-v1.2.0-41790568636\portable\wechat_duokai-portable-v1.2.0\安全说明-旧版EXE硬编码路径报告.txt	ok
+2026-11-04 16:15:15	[项目目录]\artifacts\ci-v1.2.0-41790568636\portable\wechat_duokai-portable-v1.2.0\完整安全审计与卡巴斯基告警调查报告.txt	ok
+2026-11-04 16:15:15	[项目目录]\artifacts\ci-v1.2.0-41790568636\portable\wechat_duokai-portable-v1.2.0.zip//wechat_duokai.exe	ok
+2026-11-04 16:15:15	[项目目录]\artifacts\ci-v1.2.0-41790568636\portable\wechat_duokai-portable-v1.2.0\版本说明.md	ok
+2026-11-04 16:15:15	[项目目录]\artifacts\ci-v1.2.0-41790568636\portable\wechat_duokai-portable-v1.2.0.zip//wechat_duokai.exe.config	ok
+2026-11-04 16:15:15	[项目目录]\artifacts\ci-v1.2.0-41790568636\_manifest\spdx_2.2\manifest.spdx.json.sha256	ok
+2026-11-04 16:15:15	[项目目录]\artifacts\ci-v1.2.0-41790568636\_manifest\spdx_2.2\manifest.spdx.json	ok
+2026-11-04 16:15:15	[项目目录]\artifacts\ci-v1.2.0-41790568636\installer\wechat_duokai-setup-v1.2.0.exe//data0008.res	ok
+2026-11-04 16:15:15	[项目目录]\artifacts\ci-v1.2.0-41790568636\installer\wechat_duokai-setup-v1.2.0.exe	ok
+2026-11-04 16:15:15	[项目目录]\artifacts\ci-v1.2.0-41790568636\portable\wechat_duokai-portable-v1.2.0.zip//WechatDuokai.Core.dll	ok
+2026-11-04 16:15:15	[项目目录]\artifacts\ci-v1.2.0-41790568636\portable\wechat_duokai-portable-v1.2.0.zip//一键更新安全验证报告.md	ok
+2026-11-04 16:15:15	[项目目录]\artifacts\ci-v1.2.0-41790568636\portable\wechat_duokai-portable-v1.2.0.zip//使用说明.txt	ok
+2026-11-04 16:15:15	[项目目录]\artifacts\ci-v1.2.0-41790568636\portable\wechat_duokai-portable-v1.2.0.zip//全项目自查报告.md	ok
+2026-11-04 16:15:15	[项目目录]\artifacts\ci-v1.2.0-41790568636\portable\wechat_duokai-portable-v1.2.0.zip//安全说明-旧版EXE硬编码路径报告.txt	ok
+2026-11-04 16:15:15	[项目目录]\artifacts\ci-v1.2.0-41790568636\portable\wechat_duokai-portable-v1.2.0.zip//完整安全审计与卡巴斯基告警调查报告.txt	ok
+2026-11-04 16:15:15	[项目目录]\artifacts\ci-v1.2.0-41790568636\portable\wechat_duokai-portable-v1.2.0.zip//版本说明.md	ok
+2026-11-04 16:15:15	[项目目录]\artifacts\ci-v1.2.0-41790568636\portable\wechat_duokai-portable-v1.2.0.zip	ok
+2026-11-04 16:15:15	Scan_Objects$7840                          completed
+;  --- Statistics ---
+; Time Start:	2026-11-04 16:15:15
+; Time Finish:	2026-11-04 16:15:15
+; Processed objects:	44
+; Total OK:	44
+; Total detected:	0
+; Suspicions:	0
+; Total skipped:	0
+; Password protected:	0
+; Corrupted:	0
+; Errors:	0
+;  ------------------
